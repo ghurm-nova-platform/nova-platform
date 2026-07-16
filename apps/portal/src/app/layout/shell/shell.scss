@@ -1,0 +1,38 @@
+.shell {
+  height: 100vh;
+}
+
+.shell__nav {
+  width: 260px;
+}
+
+.shell__brand {
+  font-size: 1.25rem;
+  font-weight: 600;
+  padding: 1rem 1.25rem;
+}
+
+.shell__toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.shell__title {
+  margin-inline-start: 0.5rem;
+  font-weight: 500;
+}
+
+.shell__spacer {
+  flex: 1 1 auto;
+}
+
+.shell__content {
+  padding: 1.5rem;
+  min-height: calc(100vh - 64px);
+  box-sizing: border-box;
+}
+
+a.active {
+  background: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
+}
