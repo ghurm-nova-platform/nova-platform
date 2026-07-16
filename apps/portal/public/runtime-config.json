@@ -1,5 +1,3 @@
 {
-  "platformApiUrl": "http://localhost:8080",
-  "agentRuntimeUrl": "http://localhost:8090",
-  "apiKey": ""
+  "platformApiUrl": "http://localhost:8080"
 }

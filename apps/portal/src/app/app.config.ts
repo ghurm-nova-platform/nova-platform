@@ -11,7 +11,6 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 
 import { routes } from './app.routes';
 import { RuntimeConfigService } from './core/config/runtime-config.service';
-import { apiKeyInterceptor } from './core/http/api-key.interceptor';
 import { correlationIdInterceptor } from './core/http/correlation-id.interceptor';
 import { errorInterceptor } from './core/http/error.interceptor';
 
@@ -21,9 +20,7 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withComponentInputBinding()),
     provideAnimationsAsync(),
-    provideHttpClient(
-      withInterceptors([correlationIdInterceptor, apiKeyInterceptor, errorInterceptor]),
-    ),
+    provideHttpClient(withInterceptors([correlationIdInterceptor, errorInterceptor])),
     provideAppInitializer(() => inject(RuntimeConfigService).load()),
   ],
 };

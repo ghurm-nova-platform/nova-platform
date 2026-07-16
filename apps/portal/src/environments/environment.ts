@@ -1,13 +1,8 @@
-export type AppLocale = 'en' | 'ar';
-export type TextDirection = 'ltr' | 'rtl';
-export type ColorScheme = 'light' | 'dark';
-
 /**
- * Build-time environment defaults.
- * Secrets are never stored here; API keys load from runtime configuration.
+ * Build-time environment defaults for the browser portal.
+ * Internal Agent Runtime credentials are never configured here.
  */
 export const environment = {
   production: true,
   platformApiUrl: 'http://localhost:8080',
-  agentRuntimeUrl: 'http://localhost:8090',
 };

@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 
-import { AppLocale, TextDirection } from '../../../environments/environment';
+import { AppLocale, TextDirection } from '../models/ui';
 
 const STORAGE_KEY = 'nova.portal.locale';
 

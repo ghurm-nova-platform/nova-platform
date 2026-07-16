@@ -4,42 +4,40 @@ import { Observable } from 'rxjs';
 
 import { RuntimeConfigService } from '../config/runtime-config.service';
 
-export type ApiTarget = 'platform' | 'agent-runtime';
-
 /**
- * Reusable HTTP API client foundation for platform and agent-runtime backends.
+ * Browser HTTP client for the Platform API / BFF only.
+ *
+ * Agent Runtime is reached server-to-server by Platform API, which attaches
+ * the internal API key. The browser must never call protected Agent Runtime
+ * endpoints directly.
  */
 @Injectable({ providedIn: 'root' })
 export class ApiClient {
   private readonly http = inject(HttpClient);
   private readonly runtimeConfig = inject(RuntimeConfigService);
 
-  get<T>(target: ApiTarget, path: string, params?: Record<string, string>): Observable<T> {
-    return this.http.get<T>(this.url(target, path), {
+  get<T>(path: string, params?: Record<string, string>): Observable<T> {
+    return this.http.get<T>(this.url(path), {
       params: this.toParams(params),
     });
   }
 
-  post<T>(target: ApiTarget, path: string, body: unknown): Observable<T> {
-    return this.http.post<T>(this.url(target, path), body);
+  post<T>(path: string, body: unknown): Observable<T> {
+    return this.http.post<T>(this.url(path), body);
   }
 
-  put<T>(target: ApiTarget, path: string, body: unknown): Observable<T> {
-    return this.http.put<T>(this.url(target, path), body);
+  put<T>(path: string, body: unknown): Observable<T> {
+    return this.http.put<T>(this.url(path), body);
   }
 
-  delete<T>(target: ApiTarget, path: string): Observable<T> {
-    return this.http.delete<T>(this.url(target, path));
+  delete<T>(path: string): Observable<T> {
+    return this.http.delete<T>(this.url(path));
   }
 
-  private url(target: ApiTarget, path: string): string {
-    const base =
-      target === 'platform'
-        ? this.runtimeConfig.platformApiUrl()
-        : this.runtimeConfig.agentRuntimeUrl();
-    const normalizedBase = base.replace(/\/$/, '');
+  private url(path: string): string {
+    const base = this.runtimeConfig.platformApiUrl().replace(/\/$/, '');
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    return `${normalizedBase}${normalizedPath}`;
+    return `${base}${normalizedPath}`;
   }
 
   private toParams(params?: Record<string, string>): HttpParams | undefined {

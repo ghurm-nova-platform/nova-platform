@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 
-import { ColorScheme } from '../../../environments/environment';
+import { ColorScheme } from '../models/ui';
 
 const STORAGE_KEY = 'nova.portal.theme';
 

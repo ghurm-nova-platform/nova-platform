@@ -8,8 +8,21 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Arabic RTL and English LTR readiness
 - Light and dark theme foundations
 - Routes for Dashboard, Projects, Agents, Feedback, and Settings
-- HTTP client foundation with correlation ID and runtime API-key config
+- HTTP client foundation with correlation ID (Platform API / BFF only)
 - No production business workflows yet
+
+## Architecture
+
+```text
+Browser (Nova Portal)
+  → Platform API / BFF
+      → Agent Runtime (server-to-server, internal API key)
+```
+
+- The browser calls **only** the Platform API / BFF.
+- Future browser auth will use a user session or OAuth/OIDC access token.
+- Platform API attaches the internal Agent Runtime API key on server-to-server calls.
+- The browser must never load or send internal service credentials.
 
 ## Stack
 
@@ -27,17 +40,15 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 
 Build-time defaults live in `src/environments/`.
 
-Runtime overrides (including API key) load from `public/runtime-config.json`:
+Runtime overrides load from `public/runtime-config.json`:
 
 ```json
 {
-  "platformApiUrl": "http://localhost:8080",
-  "agentRuntimeUrl": "http://localhost:8090",
-  "apiKey": ""
+  "platformApiUrl": "http://localhost:8080"
 }
 ```
 
-Never commit real API keys. Mount or replace `runtime-config.json` per environment.
+Do not put API keys or Agent Runtime URLs in browser configuration.
 
 ## Install
 
