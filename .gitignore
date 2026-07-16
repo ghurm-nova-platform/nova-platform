@@ -1,28 +1,47 @@
-# Angular specific
-/dist/
-/out-tsc/
-/tmp/
-/coverage/
-/e2e/test-output/
-/.angular/
-.angular/
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
 
-# Node modules and dependency files
-/node_modules/
-/package-lock.json
-/yarn.lock
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
 
-# Environment files
-/.env
+# Java
+**/target/
+*.class
 
-# Angular CLI and build artefacts
-/.angular-cli.json
-/.ng/
-
-# TypeScript cache
+# Node and Angular
+**/node_modules/
+**/dist/
+**/out-tsc/
+**/.angular/
+**/coverage/
+**/e2e/test-output/
 *.tsbuildinfo
-
-# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Python
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.venv/
+*.py[cod]
+
+# Logs and runtime
+*.log
+logs/
+tmp/
+
+# Infrastructure state
+**/.terraform/
+*.tfstate
+*.tfstate.*
