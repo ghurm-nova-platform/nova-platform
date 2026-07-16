@@ -8,6 +8,7 @@ from fastapi import APIRouter
 
 from agent_runtime.api.dependencies import (
     AgentServiceDep,
+    AuthDep,
     ExecutionServiceDep,
     MetricsServiceDep,
     WorkflowServiceDep,
@@ -55,11 +56,14 @@ async def health() -> HealthResponse:
     tags=["agents"],
     summary="List registered agents",
 )
-async def list_agents(service: AgentServiceDep) -> list[AgentResponse]:
+async def list_agents(
+    auth: AuthDep,
+    service: AgentServiceDep,
+) -> list[AgentResponse]:
     """List all agents in the registry."""
 
     agents = service.list_agents()
-    logger.info("agents_listed", count=len(agents))
+    logger.info("agents_listed", count=len(agents), actor=auth.actor)
     return [AgentResponse.model_validate(agent.model_dump()) for agent in agents]
 
 
@@ -72,12 +76,14 @@ async def list_agents(service: AgentServiceDep) -> list[AgentResponse]:
 )
 async def register_agent(
     payload: AgentRegisterRequest,
+    auth: AuthDep,
     service: AgentServiceDep,
 ) -> AgentResponse:
     """Register a new agent definition."""
 
     agent = AgentDefinition.model_validate(payload.model_dump())
     registered = service.register(agent)
+    logger.info("agent_register_requested", actor=auth.actor, agent_id=registered.agent_id)
     return AgentResponse.model_validate(registered.model_dump())
 
 
@@ -89,11 +95,27 @@ async def register_agent(
 )
 async def execute_agent(
     payload: AgentExecuteRequest,
+    auth: AuthDep,
     service: ExecutionServiceDep,
 ) -> ExecutionResponse:
-    """Execute a registered agent against a goal under policy controls."""
+    """Execute a registered agent using the authenticated actor identity."""
 
-    request = ExecutionRequest.model_validate(payload.model_dump())
+    logger.info(
+        "agent_execute_requested",
+        actor=auth.actor,
+        agent_id=payload.agent_id,
+        requested_risk_level=payload.risk_level.value,
+    )
+    request = ExecutionRequest(
+        agent_id=payload.agent_id,
+        goal=payload.goal,
+        inputs=payload.inputs,
+        actor=auth.actor,
+        organization_id=payload.organization_id,
+        project_id=payload.project_id,
+        risk_level=payload.risk_level,
+        dry_run=False,
+    )
     result = service.execute(request)
     return ExecutionResponse.model_validate(result.model_dump())
 
@@ -104,10 +126,14 @@ async def execute_agent(
     tags=["workflows"],
     summary="List workflows",
 )
-async def list_workflows(service: WorkflowServiceDep) -> list[WorkflowResponse]:
+async def list_workflows(
+    auth: AuthDep,
+    service: WorkflowServiceDep,
+) -> list[WorkflowResponse]:
     """List all workflows tracked by the runtime."""
 
     workflows = service.list_workflows()
+    logger.info("workflows_listed", count=len(workflows), actor=auth.actor)
     return [WorkflowResponse.model_validate(item.model_dump()) for item in workflows]
 
 
@@ -120,6 +146,7 @@ async def list_workflows(service: WorkflowServiceDep) -> list[WorkflowResponse]:
 )
 async def create_workflow(
     payload: WorkflowCreateRequest,
+    auth: AuthDep,
     service: WorkflowServiceDep,
 ) -> WorkflowResponse:
     """Create a queued workflow instance."""
@@ -130,6 +157,7 @@ async def create_workflow(
         agent_id=payload.agent_id,
         risk_level=payload.risk_level,
     )
+    logger.info("workflow_create_requested", actor=auth.actor, workflow_id=workflow.workflow_id)
     return WorkflowResponse.model_validate(workflow.model_dump())
 
 
@@ -139,8 +167,12 @@ async def create_workflow(
     tags=["metrics"],
     summary="Runtime metrics",
 )
-async def get_metrics(service: MetricsServiceDep) -> MetricsResponse:
+async def get_metrics(
+    auth: AuthDep,
+    service: MetricsServiceDep,
+) -> MetricsResponse:
     """Return operational metrics for the agent runtime."""
 
     snapshot = service.get_metrics()
+    logger.info("metrics_requested", actor=auth.actor)
     return MetricsResponse.model_validate(snapshot.model_dump())

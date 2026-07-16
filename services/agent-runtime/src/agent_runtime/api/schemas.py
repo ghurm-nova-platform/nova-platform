@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from agent_runtime.domain.enums import (
     AgentHealth,
@@ -37,7 +37,7 @@ class AgentRegisterRequest(BaseModel):
     output_schema: dict[str, Any] = Field(default_factory=dict)
     required_tools: list[str] = Field(default_factory=list)
     required_permissions: list[PermissionAction] = Field(
-        default_factory=lambda: [PermissionAction.READ]
+        default_factory=lambda: [PermissionAction.READ, PermissionAction.EXECUTE]
     )
     supported_model_classes: list[ModelClass] = Field(
         default_factory=lambda: [ModelClass.GENERAL]
@@ -72,16 +72,21 @@ class AgentResponse(BaseModel):
 
 
 class AgentExecuteRequest(BaseModel):
-    """Payload for executing a registered agent."""
+    """
+    Payload for executing a registered agent.
+
+    Actor identity and dry-run are intentionally absent. Actor is taken from the
+    authenticated request context. Clients cannot supply dry_run to bypass policy.
+    """
+
+    model_config = ConfigDict(extra="forbid")
 
     agent_id: str = Field(min_length=1)
     goal: str = Field(min_length=1, max_length=4000)
     inputs: dict[str, Any] = Field(default_factory=dict)
-    actor: str = Field(default="system", min_length=1, max_length=128)
     organization_id: str | None = None
     project_id: str | None = None
     risk_level: RiskLevel = RiskLevel.LOW
-    dry_run: bool = False
 
 
 class ExecutionResponse(BaseModel):

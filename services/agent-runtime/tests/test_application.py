@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from agent_runtime.application.container import build_container
+from agent_runtime.domain.enums import PermissionAction
 from agent_runtime.domain.models import AgentDefinition, ExecutionRequest
 from agent_runtime.shared.config import Settings
 
@@ -27,12 +28,14 @@ def test_execution_service_persists_memory() -> None:
             version="1.0.0",
             display_name="Exec",
             description="Execution test",
+            required_permissions=[PermissionAction.READ, PermissionAction.EXECUTE],
         )
     )
     result = container.execution_service.execute(
-        ExecutionRequest(agent_id="exec.agent", goal="Do work")
+        ExecutionRequest(agent_id="exec.agent", goal="Do work", actor="trusted-actor")
     )
     assert result.workflow_id is not None
+    assert result.output["actor"] == "trusted-actor"
     metrics = container.metrics_service.get_metrics()
     assert metrics.executions_total == 1
     assert metrics.executions_succeeded == 1

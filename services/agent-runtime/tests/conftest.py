@@ -9,6 +9,9 @@ from agent_runtime.application.container import build_container
 from agent_runtime.main import create_app
 from agent_runtime.shared.config import Settings
 
+TEST_API_KEY = "test-internal-api-key"
+TEST_ACTOR = "agent-runtime-test-actor"
+
 
 @pytest.fixture
 def settings() -> Settings:
@@ -20,7 +23,17 @@ def settings() -> Settings:
         LOG_LEVEL="WARNING",
         LOG_JSON=False,
         PORT=8090,
+        INTERNAL_API_KEY=TEST_API_KEY,
+        API_KEY_HEADER="X-API-Key",
+        SERVICE_ACTOR=TEST_ACTOR,
     )
+
+
+@pytest.fixture
+def auth_headers() -> dict[str, str]:
+    """Return valid authentication headers for protected endpoints."""
+
+    return {"X-API-Key": TEST_API_KEY}
 
 
 @pytest.fixture

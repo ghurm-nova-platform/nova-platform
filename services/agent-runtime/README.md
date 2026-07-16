@@ -48,6 +48,12 @@ cp .env.example .env
 | `LOG_LEVEL` | `INFO` | Log level |
 | `LOG_JSON` | `false` | Structured JSON logs |
 | `DEFAULT_AGENT_READONLY` | `true` | Default agent posture |
+| `INTERNAL_API_KEY` | _(empty)_ | Required API key for protected routes |
+| `API_KEY_HEADER` | `X-API-Key` | Header carrying the API key |
+| `SERVICE_ACTOR` | `agent-runtime-service` | Trusted actor derived after authentication |
+
+Protected endpoints require `X-API-Key`. Actor identity is taken from `SERVICE_ACTOR`
+after successful authentication and is never accepted from request bodies.
 
 ## Install
 

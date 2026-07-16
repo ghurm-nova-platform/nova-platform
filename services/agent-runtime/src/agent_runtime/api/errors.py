@@ -12,6 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from agent_runtime.api.schemas import ApiErrorResponse
 from agent_runtime.shared.exceptions import (
     AgentRuntimeError,
+    AuthenticationError,
     ConflictError,
     NotFoundError,
     PermissionDeniedError,
@@ -50,6 +51,18 @@ def _error_response(
 
 def register_exception_handlers(app: FastAPI) -> None:
     """Attach exception handlers to the FastAPI application."""
+
+    @app.exception_handler(AuthenticationError)
+    async def authentication_handler(
+        request: Request, exc: AuthenticationError
+    ) -> JSONResponse:
+        return _error_response(
+            request=request,
+            status=401,
+            error="Unauthorized",
+            code=exc.code,
+            message=exc.message,
+        )
 
     @app.exception_handler(NotFoundError)
     async def not_found_handler(request: Request, exc: NotFoundError) -> JSONResponse:

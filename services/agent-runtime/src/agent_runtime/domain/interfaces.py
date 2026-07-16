@@ -139,7 +139,13 @@ class ToolGatewayPort(ABC):
         """Return tool identifiers available to the runtime."""
 
     @abstractmethod
-    def invoke(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    def invoke(
+        self,
+        tool_name: str,
+        arguments: dict[str, Any],
+        *,
+        agent_read_only: bool = True,
+    ) -> dict[str, Any]:
         """Invoke a tool after permission evaluation."""
 
 

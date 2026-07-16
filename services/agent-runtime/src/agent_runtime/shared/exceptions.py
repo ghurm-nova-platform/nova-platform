@@ -33,6 +33,13 @@ class PermissionDeniedError(AgentRuntimeError):
         super().__init__(message, code="PERMISSION_DENIED")
 
 
+class AuthenticationError(AgentRuntimeError):
+    """Raised when the internal API authentication boundary rejects a request."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, code="UNAUTHORIZED")
+
+
 class ValidationAppError(AgentRuntimeError):
     """Raised when domain validation fails outside request schemas."""
 

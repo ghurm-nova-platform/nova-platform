@@ -9,13 +9,16 @@ from agent_runtime.shared.logging import get_logger
 
 logger = get_logger(__name__)
 
+_WRITE_ACTIONS = {PermissionAction.WRITE, PermissionAction.DEPLOY}
+
 
 class DefaultPermissionEngine(PermissionEnginePort):
     """
     Least-privilege permission engine.
 
-    Defaults: read-only agents may only READ. HIGH/CRITICAL write/execute/deploy
-    actions are denied unless dry_run is true (planning-only).
+    - Agent execution is always evaluated as EXECUTE (caller responsibility).
+    - ``read_only_default`` blocks write-capable actions/tools, not EXECUTE.
+    - ``dry_run`` never bypasses elevated-risk or write restrictions.
     """
 
     def evaluate(
@@ -29,6 +32,9 @@ class DefaultPermissionEngine(PermissionEnginePort):
     ) -> bool:
         """Evaluate whether the actor may perform the action."""
 
+        _ = dry_run  # Explicitly ignored: clients cannot bypass policy via dry_run.
+        _ = risk_level  # Elevated risk is gated by workflow approval, not denial here.
+
         declared = set(agent.required_permissions) | {PermissionAction.READ}
         if action not in declared:
             logger.info(
@@ -40,28 +46,13 @@ class DefaultPermissionEngine(PermissionEnginePort):
             )
             return False
 
-        if agent.read_only_default and action is not PermissionAction.READ:
-            if dry_run:
-                return True
+        if agent.read_only_default and action in _WRITE_ACTIONS:
             logger.info(
                 "permission_denied",
-                reason="read_only_default",
+                reason="read_only_default_blocks_write",
                 actor=actor,
                 action=action,
                 agent_id=agent.agent_id,
-            )
-            return False
-
-        elevated = risk_level in {RiskLevel.HIGH, RiskLevel.CRITICAL}
-        if elevated and action is not PermissionAction.READ:
-            if dry_run:
-                return True
-            logger.info(
-                "permission_denied",
-                reason="elevated_risk_requires_approval",
-                actor=actor,
-                action=action,
-                risk_level=risk_level,
             )
             return False
 

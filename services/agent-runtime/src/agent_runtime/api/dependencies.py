@@ -6,6 +6,7 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 
+from agent_runtime.api.auth import AuthContext, authenticate_request
 from agent_runtime.application.container import Container
 from agent_runtime.application.services import (
     AgentService,
@@ -13,6 +14,7 @@ from agent_runtime.application.services import (
     MetricsService,
     WorkflowService,
 )
+from agent_runtime.shared.config import Settings
 
 
 def get_container(request: Request) -> Container:
@@ -22,6 +24,24 @@ def get_container(request: Request) -> Container:
 
 
 ContainerDep = Annotated[Container, Depends(get_container)]
+
+
+def get_settings_dep(container: ContainerDep) -> Settings:
+    """Provide application settings."""
+
+    return container.settings
+
+
+def require_auth(
+    request: Request,
+    settings: Annotated[Settings, Depends(get_settings_dep)],
+) -> AuthContext:
+    """Enforce the internal API-key authentication boundary."""
+
+    return authenticate_request(request, settings)
+
+
+AuthDep = Annotated[AuthContext, Depends(require_auth)]
 
 
 def get_agent_service(container: ContainerDep) -> AgentService:

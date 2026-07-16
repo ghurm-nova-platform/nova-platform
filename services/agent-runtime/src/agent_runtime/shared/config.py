@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     default_agent_readonly: bool = Field(default=True, alias="DEFAULT_AGENT_READONLY")
     max_concurrent_executions: int = Field(default=10, alias="MAX_CONCURRENT_EXECUTIONS")
     correlation_header: str = Field(default="X-Correlation-Id", alias="CORRELATION_HEADER")
+    internal_api_key: str = Field(default="", alias="INTERNAL_API_KEY")
+    api_key_header: str = Field(default="X-API-Key", alias="API_KEY_HEADER")
+    service_actor: str = Field(default="agent-runtime-service", alias="SERVICE_ACTOR")
 
 
 @lru_cache

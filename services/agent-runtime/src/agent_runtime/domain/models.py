@@ -35,7 +35,7 @@ class AgentDefinition(BaseModel):
     output_schema: dict[str, Any] = Field(default_factory=dict)
     required_tools: list[str] = Field(default_factory=list)
     required_permissions: list[PermissionAction] = Field(
-        default_factory=lambda: [PermissionAction.READ]
+        default_factory=lambda: [PermissionAction.READ, PermissionAction.EXECUTE]
     )
     supported_model_classes: list[ModelClass] = Field(
         default_factory=lambda: [ModelClass.GENERAL]

@@ -68,6 +68,7 @@ def build_container(settings: Settings | None = None) -> Container:
         event_bus=events,
         memory=memory,
         metrics=metrics,
+        tool_gateway=tools,
     )
     return Container(
         settings=resolved,
