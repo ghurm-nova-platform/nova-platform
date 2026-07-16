@@ -67,6 +67,32 @@ services:
       retries: 12
     restart: unless-stopped
 
+  agent-runtime:
+    build:
+      context: ../../services/agent-runtime
+      dockerfile: Dockerfile
+    profiles: ["apps"]
+    ports:
+      - "${AGENT_RUNTIME_PORT:-8090}:8090"
+    environment:
+      APP_NAME: nova-agent-runtime
+      APP_ENV: local
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_JSON: ${LOG_JSON:-false}
+      DEFAULT_AGENT_READONLY: "true"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
 volumes:
   nova_postgres_data:
   nova_redis_data:
