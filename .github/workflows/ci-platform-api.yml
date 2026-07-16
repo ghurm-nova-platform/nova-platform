@@ -1,0 +1,55 @@
+name: CI Platform API
+
+on:
+  pull_request:
+    paths:
+      - "services/platform-api/**"
+      - ".github/workflows/ci-platform-api.yml"
+  push:
+    branches:
+      - sprint-0/foundation
+      - main
+    paths:
+      - "services/platform-api/**"
+      - ".github/workflows/ci-platform-api.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-platform-api-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  platform-api:
+    name: Spring Boot Platform API
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: ${{ hashFiles('services/platform-api/pom.xml') != '' }}
+    defaults:
+      run:
+        working-directory: services/platform-api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: services/platform-api/pom.xml
+
+      - name: Make Maven Wrapper executable
+        run: chmod +x mvnw
+
+      - name: Compile
+        run: ./mvnw -B -DskipTests compile
+
+      - name: Test
+        run: ./mvnw -B test
+
+      - name: Package
+        run: ./mvnw -B -DskipTests package

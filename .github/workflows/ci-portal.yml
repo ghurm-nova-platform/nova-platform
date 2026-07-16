@@ -1,0 +1,54 @@
+name: CI Portal
+
+on:
+  pull_request:
+    paths:
+      - "apps/portal/**"
+      - ".github/workflows/ci-portal.yml"
+  push:
+    branches:
+      - sprint-0/foundation
+      - main
+    paths:
+      - "apps/portal/**"
+      - ".github/workflows/ci-portal.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-portal-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  portal:
+    name: Angular Portal
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ hashFiles('apps/portal/package.json') != '' }}
+    defaults:
+      run:
+        working-directory: apps/portal
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/portal/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test -- --watch=false --browsers=ChromeHeadless
+
+      - name: Production build
+        run: npm run build
