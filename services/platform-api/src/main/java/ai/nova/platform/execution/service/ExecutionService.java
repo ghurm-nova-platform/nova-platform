@@ -1,8 +1,6 @@
 package ai.nova.platform.execution.service;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -12,7 +10,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import ai.nova.platform.agent.entity.Agent;
 import ai.nova.platform.agent.entity.AgentStatus;
@@ -26,13 +23,10 @@ import ai.nova.platform.execution.dto.ExecutionDtos.ExecutionDetailResponse;
 import ai.nova.platform.execution.dto.ExecutionDtos.ExecutionSummaryResponse;
 import ai.nova.platform.execution.entity.AgentExecution;
 import ai.nova.platform.execution.entity.ExecutionMessage;
-import ai.nova.platform.execution.entity.ExecutionMetric;
 import ai.nova.platform.execution.entity.ExecutionStatus;
-import ai.nova.platform.execution.entity.MessageRole;
 import ai.nova.platform.execution.mapper.ExecutionMapper;
 import ai.nova.platform.execution.repository.AgentExecutionRepository;
 import ai.nova.platform.execution.repository.ExecutionMessageRepository;
-import ai.nova.platform.execution.repository.ExecutionMetricRepository;
 import ai.nova.platform.execution.security.ExecutionAuthorizationService;
 import ai.nova.platform.project.Project;
 import ai.nova.platform.project.ProjectRepository;
@@ -57,7 +51,6 @@ public class ExecutionService {
 
     private final AgentExecutionRepository executionRepository;
     private final ExecutionMessageRepository messageRepository;
-    private final ExecutionMetricRepository metricRepository;
     private final AgentRepository agentRepository;
     private final PromptRepository promptRepository;
     private final PromptVersionRepository promptVersionRepository;
@@ -67,11 +60,11 @@ public class ExecutionService {
     private final ExecutionAuthorizationService authorizationService;
     private final PromptVariableParser variableParser;
     private final AgentRuntimeClient agentRuntimeClient;
+    private final ExecutionLifecycleService lifecycleService;
 
     public ExecutionService(
             AgentExecutionRepository executionRepository,
             ExecutionMessageRepository messageRepository,
-            ExecutionMetricRepository metricRepository,
             AgentRepository agentRepository,
             PromptRepository promptRepository,
             PromptVersionRepository promptVersionRepository,
@@ -80,10 +73,10 @@ public class ExecutionService {
             ExecutionMapper executionMapper,
             ExecutionAuthorizationService authorizationService,
             PromptVariableParser variableParser,
-            AgentRuntimeClient agentRuntimeClient) {
+            AgentRuntimeClient agentRuntimeClient,
+            ExecutionLifecycleService lifecycleService) {
         this.executionRepository = executionRepository;
         this.messageRepository = messageRepository;
-        this.metricRepository = metricRepository;
         this.agentRepository = agentRepository;
         this.promptRepository = promptRepository;
         this.promptVersionRepository = promptVersionRepository;
@@ -93,9 +86,13 @@ public class ExecutionService {
         this.authorizationService = authorizationService;
         this.variableParser = variableParser;
         this.agentRuntimeClient = agentRuntimeClient;
+        this.lifecycleService = lifecycleService;
     }
 
-    @Transactional
+    /**
+     * Orchestrates execution outside a single long transaction so RUNNING is committed
+     * before the runtime call and concurrent cancel can win the race.
+     */
     public ExecuteResponse execute(
             UUID projectId, UUID agentId, ExecuteRequest request, AuthenticatedUser user) {
         authorizationService.require(user, ExecutionAuthorizationService.AGENT_EXECUTE);
@@ -123,10 +120,10 @@ public class ExecutionService {
 
         String renderedPrompt = preview.renderedContent();
         String userMessage = request.input().message().trim();
-        Instant now = Instant.now();
         UUID executionId = UUID.randomUUID();
 
-        AgentExecution execution = new AgentExecution(
+        // Transaction 1: persist RUNNING and commit before runtime.
+        lifecycleService.startRunning(
                 executionId,
                 user.getOrganizationId(),
                 projectId,
@@ -135,25 +132,14 @@ public class ExecutionService {
                 request.conversationId(),
                 agent.getModelProvider(),
                 agent.getModelName(),
-                ExecutionStatus.PENDING,
                 user.getUserId(),
-                now);
-        executionRepository.save(execution);
+                renderedPrompt,
+                userMessage);
 
-        saveMessage(executionId, MessageRole.SYSTEM, renderedPrompt, now);
-        saveMessage(executionId, MessageRole.USER, userMessage, now);
-
-        execution.setStatus(ExecutionStatus.RUNNING);
-        execution.setStartedAt(Instant.now());
-        executionRepository.save(execution);
-
-        log.debug(
-                "Starting execution {} for agent {} in project {}",
-                executionId,
-                agentId,
-                projectId);
+        log.debug("Starting execution {} for agent {} in project {}", executionId, agentId, projectId);
 
         try {
+            // Outside transaction: runtime call (may be cancelled concurrently).
             ExecutionResult result = agentRuntimeClient.execute(new ExecutionRequest(
                     user.getOrganizationId(),
                     projectId,
@@ -165,50 +151,36 @@ public class ExecutionService {
                     userMessage,
                     request.conversationId()));
 
-            Instant completedAt = Instant.now();
-            execution.setStatus(ExecutionStatus.COMPLETED);
-            execution.setInputTokens(result.inputTokens());
-            execution.setOutputTokens(result.outputTokens());
-            execution.setTotalTokens(result.totalTokens());
-            execution.setLatencyMs(Math.toIntExact(result.latencyMs()));
-            execution.setCompletedAt(completedAt);
-            executionRepository.save(execution);
-
-            saveMessage(executionId, MessageRole.ASSISTANT, result.responseText(), completedAt);
-            saveMetric(executionId, "latency_ms", String.valueOf(result.latencyMs()), completedAt);
-            saveMetric(executionId, "total_tokens", String.valueOf(result.totalTokens()), completedAt);
-
-            return executionMapper.toExecuteResponse(execution, result.responseText(), renderedPrompt);
+            // Transaction 2: complete only if still RUNNING (not CANCELLED).
+            AgentExecution completed = lifecycleService.completeIfRunning(executionId, result);
+            String responseText = completed.getStatus() == ExecutionStatus.COMPLETED
+                    ? result.responseText()
+                    : null;
+            return executionMapper.toExecuteResponse(completed, responseText, renderedPrompt);
         } catch (RuntimeException ex) {
-            log.warn("Execution {} failed for agent {}: {}", executionId, agentId, ex.getMessage());
-            execution.setStatus(ExecutionStatus.FAILED);
-            execution.setCompletedAt(Instant.now());
-            execution.setErrorMessage(sanitizeErrorMessage(ex));
-            executionRepository.save(execution);
-            return executionMapper.toExecuteResponse(execution, null, renderedPrompt);
+            // Never persist exception text — may contain provider secrets or request payloads.
+            log.warn(
+                    "Execution {} failed for agent {} (details omitted from persistence)",
+                    executionId,
+                    agentId);
+            AgentExecution failed = lifecycleService.failIfRunning(executionId);
+            return executionMapper.toExecuteResponse(
+                    failed, null, renderedPrompt);
         }
     }
 
-    @Transactional
     public ExecutionDetailResponse cancel(UUID projectId, UUID executionId, AuthenticatedUser user) {
         authorizationService.require(user, ExecutionAuthorizationService.EXECUTION_CANCEL);
         requireProjectInOrganization(projectId, user.getOrganizationId());
 
-        AgentExecution execution = requireExecution(projectId, executionId, user.getOrganizationId());
-        if (execution.getStatus() != ExecutionStatus.PENDING
-                && execution.getStatus() != ExecutionStatus.RUNNING) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT,
-                    "EXECUTION_CANCELLED",
-                    "Execution cannot be cancelled in status " + execution.getStatus());
+        AgentExecution cancelled = lifecycleService.cancelIfActive(
+                projectId, executionId, user.getOrganizationId());
+        try {
+            agentRuntimeClient.cancel(executionId);
+        } catch (RuntimeException ex) {
+            log.debug("Runtime cancel notification failed for execution {}", executionId);
         }
-
-        agentRuntimeClient.cancel(executionId);
-        execution.setStatus(ExecutionStatus.CANCELLED);
-        execution.setCompletedAt(Instant.now());
-        executionRepository.save(execution);
-
-        return toDetail(execution);
+        return toDetail(cancelled);
     }
 
     @Transactional(readOnly = true)
@@ -318,14 +290,6 @@ public class ExecutionService {
         return new VariableDefinition(variable.getName(), variable.isRequired(), variable.getDefaultValue());
     }
 
-    private void saveMessage(UUID executionId, MessageRole role, String content, Instant createdAt) {
-        messageRepository.save(new ExecutionMessage(UUID.randomUUID(), executionId, role, content, createdAt));
-    }
-
-    private void saveMetric(UUID executionId, String name, String value, Instant createdAt) {
-        metricRepository.save(new ExecutionMetric(UUID.randomUUID(), executionId, name, value, createdAt));
-    }
-
     private Agent requireAgent(UUID projectId, UUID agentId, UUID organizationId) {
         return agentRepository
                 .findByIdAndProjectIdAndOrganizationId(agentId, projectId, organizationId)
@@ -343,16 +307,5 @@ public class ExecutionService {
         return projectRepository
                 .findByIdAndOrganizationId(projectId, organizationId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PROJECT_NOT_FOUND", "Project not found"));
-    }
-
-    private static String sanitizeErrorMessage(RuntimeException ex) {
-        String message = ex.getMessage();
-        if (!StringUtils.hasText(message)) {
-            return "Execution failed";
-        }
-        if (message.length() > 500) {
-            return message.substring(0, 500);
-        }
-        return message;
     }
 }

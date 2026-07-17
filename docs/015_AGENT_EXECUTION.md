@@ -118,7 +118,21 @@ Features: input, variables, run, status, latency, tokens, prompt preview, respon
 - No real LLM providers
 - No conversation memory / multi-turn context assembly
 - No streaming responses
-- Cancel is cooperative with NoOp (marks CANCELLED if still pending/running)
+- Cancel is cooperative: RUNNING is committed before the runtime call; completion
+  will not overwrite `CANCELLED`
+- Execution messages currently store full rendered system prompt and user text.
+  Before connecting a real provider, define retention, deletion, redaction,
+  who may read transcripts, and a per-project option to disable content storage.
+
+## Error persistence
+
+On runtime failure, Platform API stores only:
+
+- `error_message` = `Execution failed` (safe user-facing text)
+- metric `error_code` = `EXECUTION_FAILED`
+- metric `correlation_id` when present
+
+Raw provider/runtime exception text is never persisted or returned.
 
 ## Follow-up
 
@@ -126,3 +140,4 @@ Features: input, variables, run, status, latency, tokens, prompt preview, respon
 - Streaming timeline over Platform API
 - Conversation memory store
 - Cost / usage aggregation from `execution_metrics`
+- Execution transcript retention / redaction / project-level content storage toggle

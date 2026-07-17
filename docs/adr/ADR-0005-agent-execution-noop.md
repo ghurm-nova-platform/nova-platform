@@ -14,6 +14,10 @@ Browser → Platform API → Agent Runtime boundaries.
 
 - Add `agent_executions`, `execution_messages`, and `execution_metrics` via Flyway.
 - Expose execute/list/get/cancel APIs only on Platform API.
+- Commit execution as `RUNNING` before calling `AgentRuntimeClient`, then complete
+  or fail in a second transaction that refuses to overwrite `CANCELLED`.
+- Persist only sanitized failure text (`Execution failed`) plus internal
+  `error_code` / `correlation_id` metrics — never raw provider exceptions.
 - Extend `AgentRuntimeClient` with `execute` / `cancel` and ship `NoOpAgentRuntimeClient`
   as the default replaceable implementation.
 - Resolve prompt content from the agent's published (or pinned superseded) prompt
