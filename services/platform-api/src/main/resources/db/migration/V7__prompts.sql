@@ -62,7 +62,7 @@ CREATE TABLE prompt_versions (
     CONSTRAINT fk_prompt_versions_published_by
         FOREIGN KEY (published_by) REFERENCES users (id),
     CONSTRAINT uq_prompt_versions_number UNIQUE (prompt_id, version_number),
-    CONSTRAINT ck_prompt_versions_status CHECK (status IN ('DRAFT', 'PUBLISHED', 'ARCHIVED')),
+    CONSTRAINT ck_prompt_versions_status CHECK (status IN ('DRAFT', 'PUBLISHED', 'SUPERSEDED', 'ARCHIVED')),
     CONSTRAINT ck_prompt_versions_content CHECK (LENGTH(TRIM(content)) > 0),
     CONSTRAINT ck_prompt_versions_number CHECK (version_number > 0)
 );

@@ -10,7 +10,8 @@ Sprint 1 Phase 4 version lifecycle for project-scoped prompts.
 4. Publishing a draft:
    - Validates content and variable definitions
    - Sets the version to `PUBLISHED`
-   - Archives the previous published version (`ARCHIVED`)
+   - Marks the previous published version as `SUPERSEDED` (not `ARCHIVED`) so
+     existing agent references to that version continue to work
    - Updates `prompts.published_version_id` and prompt `status` to `PUBLISHED`
    - Clears `current_draft_version_id` when the published version was that draft
 5. Editing after publish:
@@ -33,6 +34,15 @@ Sprint 1 Phase 4 version lifecycle for project-scoped prompts.
 | `DRAFT` | Never published, or only draft content exists |
 | `PUBLISHED` | Has a current published version |
 | `ARCHIVED` | Soft-deleted; not physically removed |
+
+## Version status
+
+| Status | Meaning |
+|--------|---------|
+| `DRAFT` | Editable working copy |
+| `PUBLISHED` | Current published version for the prompt |
+| `SUPERSEDED` | Previously published; immutable; may still be referenced by agents |
+| `ARCHIVED` | Soft-retired version (not used for publish supersession) |
 
 `DELETE` archives a prompt. Archive is blocked with `PROMPT_IN_USE` when an
 `ACTIVE` agent references the prompt.

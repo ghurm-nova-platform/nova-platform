@@ -87,4 +87,12 @@ public class PromptAuditLog {
     public PromptAuditAction getAction() {
         return action;
     }
+
+    public String getOldValue() {
+        return oldValue;
+    }
+
+    public String getNewValue() {
+        return newValue;
+    }
 }

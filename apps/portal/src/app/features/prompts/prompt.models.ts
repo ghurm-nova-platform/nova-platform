@@ -1,5 +1,5 @@
 export type PromptStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
-export type PromptVersionStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+export type PromptVersionStatus = 'DRAFT' | 'PUBLISHED' | 'SUPERSEDED' | 'ARCHIVED';
 export type PromptType =
   | 'CHAT'
   | 'SYSTEM'

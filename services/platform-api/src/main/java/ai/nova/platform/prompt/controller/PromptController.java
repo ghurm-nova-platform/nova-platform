@@ -170,7 +170,7 @@ public class PromptController {
             @PathVariable UUID projectId,
             @Valid @RequestBody PromptValidateRequest request,
             @AuthenticationPrincipal AuthenticatedUser user) {
-        return promptService.validate(request, user);
+        return promptService.validate(projectId, request, user);
     }
 
     @PostMapping("/preview")
@@ -178,6 +178,6 @@ public class PromptController {
             @PathVariable UUID projectId,
             @Valid @RequestBody PromptPreviewRequest request,
             @AuthenticationPrincipal AuthenticatedUser user) {
-        return promptService.preview(request, user);
+        return promptService.preview(projectId, request, user);
     }
 }

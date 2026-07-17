@@ -104,6 +104,9 @@ See [014_PROMPT_VERSIONING.md](014_PROMPT_VERSIONING.md) and [ADR-0004](adr/ADR-
 - Never log preview variable values
 - Never store provider secrets in prompts
 - Never store prompt content in browser `localStorage` / `sessionStorage`
+- Never store raw prompt content in `prompt_audit_log`; version updates record
+  metadata only (`versionNumber`, content hash, length, `changeSummary`)
+- `validate` and `preview` require the path `projectId` to belong to the caller's organization
 - Configurable max content length: `nova.prompts.max-content-length`
 
 ## Known limitations

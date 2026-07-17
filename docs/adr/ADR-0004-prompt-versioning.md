@@ -18,8 +18,12 @@ and avoiding real LLM execution in this phase.
 - Authorize with permission codes (`PROMPT_READ`, `PROMPT_CREATE`, `PROMPT_UPDATE`,
   `PROMPT_PUBLISH`, `PROMPT_ARCHIVE`, `PROMPT_COMPARE`, `PROMPT_PREVIEW`).
 - Treat published versions as immutable; edits create new draft versions.
+- When a newer version is published, mark the previous published version
+  `SUPERSEDED` (not archived) so existing agent references remain valid.
+- Agents may reference `PUBLISHED` or `SUPERSEDED` versions in the same project.
 - Implement rollback as copy-forward into a new draft (no history rewrite).
 - Support `{{variable}}` parsing and deterministic preview substitution only.
+- Audit version content changes with hashes/lengths only — never raw content.
 - Allow agents optional `prompt_id` / `prompt_version_id` references to published
   versions; keep `system_prompt` for backward compatibility until a later phase.
 - Soft-archive prompts instead of hard delete.

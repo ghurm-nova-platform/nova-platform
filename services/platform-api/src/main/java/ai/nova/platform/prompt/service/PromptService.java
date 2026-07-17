@@ -1,8 +1,12 @@
 package ai.nova.platform.prompt.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -366,7 +370,7 @@ public class PromptService {
         validateContentLength(request.content());
         validateVersionContent(request.content(), request.variables());
 
-        String oldContent = version.getContent();
+        String previousContent = version.getContent();
         version.setContent(request.content().trim());
         version.setChangeSummary(trimToNull(request.changeSummary()));
 
@@ -380,7 +384,19 @@ public class PromptService {
         prompt.setUpdatedAt(Instant.now());
         savePromptWithOptimisticLock(prompt);
 
-        writeAudit(prompt, versionId, PromptAuditAction.VERSION_UPDATED, oldContent, version.getContent(), user.getUserId());
+        writeAudit(
+                prompt,
+                versionId,
+                PromptAuditAction.VERSION_UPDATED,
+                versionContentAuditMetadata(
+                        version.getVersionNumber(),
+                        previousContent,
+                        null),
+                versionContentAuditMetadata(
+                        version.getVersionNumber(),
+                        version.getContent(),
+                        version.getChangeSummary()),
+                user.getUserId());
         return promptMapper.toVersionResponse(version, loadVariables(versionId));
     }
 
@@ -419,7 +435,8 @@ public class PromptService {
             versionRepository
                     .findById(prompt.getPublishedVersionId())
                     .ifPresent(previous -> {
-                        previous.setStatus(PromptVersionStatus.ARCHIVED);
+                        // Keep prior published content addressable for existing agent refs.
+                        previous.setStatus(PromptVersionStatus.SUPERSEDED);
                         versionRepository.save(previous);
                     });
         }
@@ -535,8 +552,10 @@ public class PromptService {
     }
 
     @Transactional(readOnly = true)
-    public PromptValidateResponse validate(PromptValidateRequest request, AuthenticatedUser user) {
+    public PromptValidateResponse validate(
+            UUID projectId, PromptValidateRequest request, AuthenticatedUser user) {
         authorizationService.require(user, PromptAuthorizationService.PROMPT_READ);
+        requireProjectInOrganization(projectId, user.getOrganizationId());
         validateContentLength(request.content());
         var result = variableParser.validate(request.content(), toDefinitions(request.variables()));
         return new PromptValidateResponse(
@@ -544,8 +563,10 @@ public class PromptService {
     }
 
     @Transactional(readOnly = true)
-    public PromptPreviewResponse preview(PromptPreviewRequest request, AuthenticatedUser user) {
+    public PromptPreviewResponse preview(
+            UUID projectId, PromptPreviewRequest request, AuthenticatedUser user) {
         authorizationService.require(user, PromptAuthorizationService.PROMPT_PREVIEW);
+        requireProjectInOrganization(projectId, user.getOrganizationId());
         validateContentLength(request.content());
         var result = variableParser.preview(
                 request.content(), request.values(), toDefinitions(request.variables()));
@@ -572,11 +593,12 @@ public class PromptService {
                 .orElseThrow(() -> new ApiException(
                         HttpStatus.NOT_FOUND, "PROMPT_VERSION_NOT_FOUND", "Prompt version not found"));
 
-        if (version.getStatus() != PromptVersionStatus.PUBLISHED) {
+        if (version.getStatus() != PromptVersionStatus.PUBLISHED
+                && version.getStatus() != PromptVersionStatus.SUPERSEDED) {
             throw new ApiException(
                     HttpStatus.BAD_REQUEST,
                     "PROMPT_VERSION_NOT_PUBLISHED",
-                    "Only published prompt versions can be referenced by agents");
+                    "Only published or superseded prompt versions can be referenced by agents");
         }
     }
 
@@ -791,5 +813,31 @@ public class PromptService {
             return null;
         }
         return value.trim();
+    }
+
+    /**
+     * Audit metadata only — never store raw prompt content (may contain secrets).
+     */
+    private String versionContentAuditMetadata(int versionNumber, String content, String changeSummary) {
+        String safeContent = content == null ? "" : content;
+        String summary = changeSummary == null ? "" : changeSummary;
+        return "versionNumber="
+                + versionNumber
+                + ";contentHash="
+                + sha256Hex(safeContent)
+                + ";contentLength="
+                + safeContent.length()
+                + ";changeSummary="
+                + summary;
+    }
+
+    private static String sha256Hex(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 not available", ex);
+        }
     }
 }
