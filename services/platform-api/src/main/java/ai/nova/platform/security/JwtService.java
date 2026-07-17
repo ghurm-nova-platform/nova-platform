@@ -22,6 +22,7 @@ public class JwtService {
     public static final String CLAIM_USER_ID = "userId";
     public static final String CLAIM_ORGANIZATION_ID = "organizationId";
     public static final String CLAIM_ROLES = "roles";
+    public static final String CLAIM_PERMISSIONS = "permissions";
 
     private final JwtProperties properties;
     private final SecretKey secretKey;
@@ -47,6 +48,7 @@ public class JwtService {
                 .claim(CLAIM_USER_ID, user.getUserId().toString())
                 .claim(CLAIM_ORGANIZATION_ID, user.getOrganizationId().toString())
                 .claim(CLAIM_ROLES, user.getRoles())
+                .claim(CLAIM_PERMISSIONS, user.getPermissions())
                 .signWith(secretKey)
                 .compact();
     }
@@ -63,6 +65,8 @@ public class JwtService {
         UUID organizationId = UUID.fromString(claims.get(CLAIM_ORGANIZATION_ID, String.class));
         @SuppressWarnings("unchecked")
         List<String> roles = claims.get(CLAIM_ROLES, List.class);
+        @SuppressWarnings("unchecked")
+        List<String> permissions = claims.get(CLAIM_PERMISSIONS, List.class);
 
         String subject = claims.getSubject();
         return new AuthenticatedUser(
@@ -71,6 +75,7 @@ public class JwtService {
                 subject,
                 subject,
                 roles == null ? List.of() : List.copyOf(roles),
+                permissions == null ? List.of() : List.copyOf(permissions),
                 true);
     }
 

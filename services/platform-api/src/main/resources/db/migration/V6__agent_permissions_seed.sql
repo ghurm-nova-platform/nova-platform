@@ -1,0 +1,52 @@
+-- Agent management permissions and demo agent for local development.
+
+INSERT INTO permissions (id, code, name, description, created_at)
+VALUES
+    ('33333333-3333-3333-3333-333333333401', 'AGENT_READ', 'Read agents', 'View project agents', CURRENT_TIMESTAMP),
+    ('33333333-3333-3333-3333-333333333402', 'AGENT_CREATE', 'Create agents', 'Create project agents', CURRENT_TIMESTAMP),
+    ('33333333-3333-3333-3333-333333333403', 'AGENT_UPDATE', 'Update agents', 'Update project agents', CURRENT_TIMESTAMP),
+    ('33333333-3333-3333-3333-333333333404', 'AGENT_ACTIVATE', 'Activate agents', 'Activate or pause agents', CURRENT_TIMESTAMP),
+    ('33333333-3333-3333-3333-333333333405', 'AGENT_ARCHIVE', 'Archive agents', 'Archive project agents', CURRENT_TIMESTAMP);
+
+INSERT INTO role_permissions (role_id, permission_id)
+VALUES
+    -- ORG_ADMIN: all agent operations
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333333401'),
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333333402'),
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333333403'),
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333333404'),
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333333405'),
+    -- PROJECT_ADMIN: create/read/update/activate/archive
+    ('22222222-2222-2222-2222-222222222203', '33333333-3333-3333-3333-333333333401'),
+    ('22222222-2222-2222-2222-222222222203', '33333333-3333-3333-3333-333333333402'),
+    ('22222222-2222-2222-2222-222222222203', '33333333-3333-3333-3333-333333333403'),
+    ('22222222-2222-2222-2222-222222222203', '33333333-3333-3333-3333-333333333404'),
+    ('22222222-2222-2222-2222-222222222203', '33333333-3333-3333-3333-333333333405'),
+    -- USER + ORG_MEMBER: read only
+    ('22222222-2222-2222-2222-222222222204', '33333333-3333-3333-3333-333333333401'),
+    ('22222222-2222-2222-2222-222222222202', '33333333-3333-3333-3333-333333333401');
+
+INSERT INTO agents (
+    id, organization_id, project_id, name, description, system_prompt,
+    model_provider, model_name, temperature, max_tokens, status, visibility, version,
+    created_by, updated_by, created_at, updated_at
+)
+VALUES (
+    '66666666-6666-6666-6666-666666666601',
+    '11111111-1111-1111-1111-111111111111',
+    '55555555-5555-5555-5555-555555555501',
+    'Demo Code Reviewer',
+    'Seeded read-only demo agent',
+    'You are a careful code review assistant. Prefer small, validated suggestions.',
+    'OPENAI',
+    'gpt-4.1-mini',
+    0.20,
+    2048,
+    'ACTIVE',
+    'PROJECT',
+    0,
+    '44444444-4444-4444-4444-444444444401',
+    '44444444-4444-4444-4444-444444444401',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);

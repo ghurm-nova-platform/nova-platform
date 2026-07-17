@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import ai.nova.platform.auth.AuthDtos.MeResponse;
 import ai.nova.platform.auth.AuthDtos.TokenResponse;
+import ai.nova.platform.permission.Permission;
 import ai.nova.platform.role.Role;
 import ai.nova.platform.security.AuthenticatedUser;
 import ai.nova.platform.security.JwtService;
@@ -93,7 +94,8 @@ public class AuthService {
                 user.getOrganization().getId(),
                 user.getEmail(),
                 user.getDisplayName(),
-                roleCodes(user));
+                roleCodes(user),
+                permissionCodes(user));
     }
 
     private TokenResponse issueTokens(UserAccount user) {
@@ -124,11 +126,21 @@ public class AuthService {
                 user.getEmail(),
                 user.getDisplayName(),
                 roleCodes(user),
+                permissionCodes(user),
                 user.isEnabled());
     }
 
     private List<String> roleCodes(UserAccount user) {
         return user.getRoles().stream().map(Role::getCode).sorted().toList();
+    }
+
+    private List<String> permissionCodes(UserAccount user) {
+        return user.getRoles().stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .map(Permission::getCode)
+                .distinct()
+                .sorted()
+                .toList();
     }
 
     private String generateRefreshToken() {

@@ -71,10 +71,15 @@ See [`docs/009_AUTH_API.md`](../../docs/009_AUTH_API.md).
 See [`docs/010_ORGANIZATIONS_PROJECTS_API.md`](../../docs/010_ORGANIZATIONS_PROJECTS_API.md)
 and [`docs/011_DATABASE_ER.md`](../../docs/011_DATABASE_ER.md).
 
+## Agents
+
+See [`docs/012_AGENT_MANAGEMENT_API.md`](../../docs/012_AGENT_MANAGEMENT_API.md).
+
 Local demo user (Flyway seed, local only):
 
 - `admin@nova.local` / `ChangeMe123!`
 - Roles: `ORG_ADMIN`, `PROJECT_ADMIN`
+- Includes agent permissions and a seeded demo agent on the demo project
 
 ## Run
 

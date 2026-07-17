@@ -27,6 +27,15 @@ nova:
       issuer: ${JWT_ISSUER:nova-platform}
       access-token-ttl: ${JWT_ACCESS_TTL:PT15M}
       refresh-token-ttl: ${JWT_REFRESH_TTL:P7D}
+  agents:
+    allowed-providers:
+      - OPENAI
+      - ANTHROPIC
+      - GOOGLE
+      - AZURE_OPENAI
+      - LOCAL
+  agent-runtime:
+    enabled: false
 
 management:
   endpoints:

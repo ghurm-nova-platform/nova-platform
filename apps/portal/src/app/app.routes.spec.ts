@@ -15,6 +15,7 @@ describe('App routing', () => {
     email: 'admin@nova.local',
     displayName: 'Nova Admin',
     roles: ['ORG_ADMIN'],
+    permissions: ['AGENT_READ', 'AGENT_CREATE', 'AGENT_UPDATE', 'AGENT_ACTIVATE', 'AGENT_ARCHIVE'],
   };
 
   beforeEach(async () => {

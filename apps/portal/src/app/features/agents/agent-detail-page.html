@@ -1,0 +1,65 @@
+<section class="page">
+  @if (loading()) {
+    <div class="page__loading"><mat-spinner diameter="36" /></div>
+  } @else if (error()) {
+    <p class="page__error" role="alert">{{ error() }}</p>
+  } @else if (agent(); as current) {
+    <header class="page__header">
+      <div>
+        <h1>{{ current.name }}</h1>
+        <p>
+          <span [class]="statusClass(current.status)">{{ current.status }}</span>
+          · {{ current.modelProvider }} / {{ current.modelName }}
+        </p>
+      </div>
+      <div class="page__actions">
+        <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents']">Back</a>
+        @if (permissions.canUpdate() && current.status !== 'ARCHIVED') {
+          <button mat-stroked-button type="button" (click)="edit()">Edit</button>
+        }
+        @if (permissions.canActivate() && current.status !== 'ACTIVE' && current.status !== 'ARCHIVED') {
+          <button mat-flat-button color="primary" type="button" (click)="setStatus('ACTIVE')">
+            Activate
+          </button>
+        }
+        @if (permissions.canActivate() && current.status === 'ACTIVE') {
+          <button mat-stroked-button type="button" (click)="setStatus('PAUSED')">Pause</button>
+        }
+        @if (permissions.canArchive() && current.status !== 'ARCHIVED') {
+          <button mat-button color="warn" type="button" (click)="archive()">Archive</button>
+        }
+      </div>
+    </header>
+
+    <dl class="details">
+      <div>
+        <dt>Description</dt>
+        <dd>{{ current.description || '—' }}</dd>
+      </div>
+      <div>
+        <dt>System prompt</dt>
+        <dd class="prompt">{{ current.systemPrompt }}</dd>
+      </div>
+      <div>
+        <dt>Temperature</dt>
+        <dd>{{ current.temperature }}</dd>
+      </div>
+      <div>
+        <dt>Max tokens</dt>
+        <dd>{{ current.maxTokens ?? '—' }}</dd>
+      </div>
+      <div>
+        <dt>Visibility</dt>
+        <dd>{{ current.visibility }}</dd>
+      </div>
+      <div>
+        <dt>Version</dt>
+        <dd>{{ current.version }}</dd>
+      </div>
+      <div>
+        <dt>Updated</dt>
+        <dd>{{ current.updatedAt | date: 'medium' }}</dd>
+      </div>
+    </dl>
+  }
+</section>
