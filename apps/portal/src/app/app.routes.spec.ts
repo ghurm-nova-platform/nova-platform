@@ -15,6 +15,7 @@ describe('App routing', () => {
     email: 'admin@nova.local',
     displayName: 'Nova Admin',
     roles: ['ORG_ADMIN'],
+    permissions: ['AGENT_READ', 'AGENT_CREATE', 'AGENT_UPDATE', 'AGENT_ACTIVATE', 'AGENT_ARCHIVE'],
   };
 
   beforeEach(async () => {
@@ -53,7 +54,6 @@ describe('App routing', () => {
       '/dashboard',
       '/organizations',
       '/projects',
-      '/agents',
       '/feedback',
       '/settings',
     ]) {
@@ -61,5 +61,9 @@ describe('App routing', () => {
       fixture.detectChanges();
       expect(router.url).toBe(path);
     }
+
+    await router.navigateByUrl('/agents');
+    fixture.detectChanges();
+    expect(router.url).toBe('/projects');
   });
 });

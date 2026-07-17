@@ -31,6 +31,7 @@ class JwtServiceTest {
                 "admin@nova.local",
                 "Nova Admin",
                 List.of("ORG_ADMIN"),
+                List.of("AGENT_READ", "AGENT_CREATE"),
                 true);
 
         String token = jwtService.createAccessToken(user);
@@ -39,7 +40,8 @@ class JwtServiceTest {
         assertThat(parsed.getUserId()).isEqualTo(userId);
         assertThat(parsed.getOrganizationId()).isEqualTo(organizationId);
         assertThat(parsed.getRoles()).containsExactly("ORG_ADMIN");
-        assertThat(parsed.getAuthorities()).extracting(Object::toString).contains("ROLE_ORG_ADMIN");
+        assertThat(parsed.getPermissions()).contains("AGENT_READ", "AGENT_CREATE");
+        assertThat(parsed.getAuthorities()).extracting(Object::toString).contains("ROLE_ORG_ADMIN", "AGENT_READ");
     }
 
     @Test
@@ -51,6 +53,7 @@ class JwtServiceTest {
                 "user@nova.local",
                 "User",
                 List.of("ORG_MEMBER"),
+                List.of("AGENT_READ"),
                 true);
         String token = jwtService.createAccessToken(user);
 

@@ -42,6 +42,10 @@ erDiagram
     string name
   }
 
+  PROJECTS ||--o{ AGENTS : owns
+  USERS ||--o{ AGENTS : audits
+  AGENTS ||--o{ AGENT_AUDIT_LOG : history
+
   PROJECTS {
     uuid id PK
     uuid organization_id FK
@@ -53,6 +57,35 @@ erDiagram
     timestamptz updated_at
     uuid created_by
     uuid updated_by
+  }
+
+  AGENTS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    string name
+    text system_prompt
+    string model_provider
+    string model_name
+    decimal temperature
+    int max_tokens
+    string status
+    string visibility
+    int version
+    uuid created_by
+    uuid updated_by
+  }
+
+  AGENT_AUDIT_LOG {
+    uuid id PK
+    uuid agent_id FK
+    uuid organization_id FK
+    uuid project_id FK
+    string action
+    text old_value
+    text new_value
+    uuid performed_by
+    timestamptz performed_at
   }
 
   REFRESH_TOKENS {
@@ -68,3 +101,4 @@ Unique constraints:
 
 - `organizations.name`, `organizations.slug`
 - `projects (organization_id, name)`
+- `agents (project_id, name)`

@@ -45,6 +45,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Authentication API](docs/009_AUTH_API.md)
 - [Organizations and Projects API](docs/010_ORGANIZATIONS_PROJECTS_API.md)
 - [Database ER diagram](docs/011_DATABASE_ER.md)
+- [Agent Management API](docs/012_AGENT_MANAGEMENT_API.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
@@ -60,4 +61,4 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 
 ## Current status
 
-Sprint 1 Phase 2 — organization and project management on top of JWT authentication.
+Sprint 1 Phase 3 — project-scoped agent management on Platform API.

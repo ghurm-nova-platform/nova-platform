@@ -24,3 +24,12 @@ nova:
       issuer: nova-platform-test
       access-token-ttl: PT15M
       refresh-token-ttl: P7D
+  agents:
+    allowed-providers:
+      - OPENAI
+      - ANTHROPIC
+      - GOOGLE
+      - AZURE_OPENAI
+      - LOCAL
+  agent-runtime:
+    enabled: false

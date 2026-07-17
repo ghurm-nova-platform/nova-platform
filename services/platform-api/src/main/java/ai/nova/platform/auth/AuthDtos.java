@@ -34,6 +34,7 @@ public final class AuthDtos {
             UUID organizationId,
             String email,
             String displayName,
-            List<String> roles) {
+            List<String> roles,
+            List<String> permissions) {
     }
 }

@@ -31,8 +31,29 @@ export const routes: Routes = [
           import('./features/projects/projects-page').then((m) => m.ProjectsPage),
       },
       {
+        path: 'projects/:projectId/agents',
+        loadComponent: () =>
+          import('./features/agents/agents-list-page').then((m) => m.AgentsListPage),
+      },
+      {
+        path: 'projects/:projectId/agents/new',
+        loadComponent: () =>
+          import('./features/agents/agent-form-page').then((m) => m.AgentFormPage),
+      },
+      {
+        path: 'projects/:projectId/agents/:agentId',
+        loadComponent: () =>
+          import('./features/agents/agent-detail-page').then((m) => m.AgentDetailPage),
+      },
+      {
+        path: 'projects/:projectId/agents/:agentId/edit',
+        loadComponent: () =>
+          import('./features/agents/agent-form-page').then((m) => m.AgentFormPage),
+      },
+      {
         path: 'agents',
-        loadComponent: () => import('./features/agents/agents-page').then((m) => m.AgentsPage),
+        redirectTo: 'projects',
+        pathMatch: 'full',
       },
       {
         path: 'feedback',

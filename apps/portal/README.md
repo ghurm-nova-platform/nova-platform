@@ -2,6 +2,12 @@
 
 Angular 20 administration portal for organizations, projects, agents, feedback, policies, usage, and settings.
 
+## Sprint 1 Phase 3 scope
+
+- Project-scoped agent routes under `/projects/:projectId/agents`
+- Agent list/detail/create/edit with status actions
+- Typed AgentService and permission helper (Platform API only)
+
 ## Sprint 1 Phase 2 scope
 
 - Organizations page (table, search, pagination, sorting, dialogs)

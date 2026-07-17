@@ -11,6 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 
 import { Project, ProjectStatus } from '../../core/models/catalog';
@@ -21,6 +22,7 @@ import { ProjectService } from './project.service';
   selector: 'app-projects-page',
   imports: [
     DatePipe,
+    RouterLink,
     ReactiveFormsModule,
     MatTableModule,
     MatPaginatorModule,

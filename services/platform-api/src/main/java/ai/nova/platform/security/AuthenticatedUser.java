@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -16,6 +17,7 @@ public class AuthenticatedUser implements UserDetails {
     private final String email;
     private final String displayName;
     private final List<String> roles;
+    private final List<String> permissions;
     private final boolean enabled;
 
     public AuthenticatedUser(
@@ -24,12 +26,14 @@ public class AuthenticatedUser implements UserDetails {
             String email,
             String displayName,
             List<String> roles,
+            List<String> permissions,
             boolean enabled) {
         this.userId = userId;
         this.organizationId = organizationId;
         this.email = email;
         this.displayName = displayName;
         this.roles = List.copyOf(roles);
+        this.permissions = List.copyOf(permissions);
         this.enabled = enabled;
     }
 
@@ -49,11 +53,21 @@ public class AuthenticatedUser implements UserDetails {
         return roles;
     }
 
+    public List<String> getPermissions() {
+        return permissions;
+    }
+
+    public boolean hasPermission(String permission) {
+        return permissions.contains(permission);
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return roles.stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
-                .collect(Collectors.toUnmodifiableList());
+        Stream<GrantedAuthority> roleAuthorities = roles.stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role));
+        Stream<GrantedAuthority> permissionAuthorities = permissions.stream()
+                .map(SimpleGrantedAuthority::new);
+        return Stream.concat(roleAuthorities, permissionAuthorities).collect(Collectors.toUnmodifiableList());
     }
 
     @Override

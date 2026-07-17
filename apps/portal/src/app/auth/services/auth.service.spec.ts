@@ -60,6 +60,7 @@ describe('AuthService', () => {
       email: 'admin@nova.local',
       displayName: 'Nova Admin',
       roles: ['ORG_ADMIN'],
+      permissions: ['AGENT_READ', 'AGENT_CREATE'],
     });
 
     expect(resolvedEmail).toBe('admin@nova.local');
