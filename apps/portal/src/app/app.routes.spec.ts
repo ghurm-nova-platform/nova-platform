@@ -31,6 +31,12 @@ describe('App routing', () => {
       'AGENT_EXECUTE',
       'EXECUTION_READ',
       'EXECUTION_CANCEL',
+      'CONVERSATION_READ',
+      'CONVERSATION_CREATE',
+      'CONVERSATION_UPDATE',
+      'CONVERSATION_ARCHIVE',
+      'CONVERSATION_MESSAGE_READ',
+      'CONVERSATION_MESSAGE_CREATE',
     ],
   };
 

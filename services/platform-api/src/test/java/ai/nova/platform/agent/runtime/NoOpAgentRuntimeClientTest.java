@@ -2,6 +2,7 @@ package ai.nova.platform.agent.runtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ class NoOpAgentRuntimeClientTest {
         UUID executionId = UUID.randomUUID();
         String systemPrompt = "Hello {{customer_name}} about {{topic}}";
         String userMessage = "I need help with my order please";
+        List<RuntimeMessage> messages = List.of(new RuntimeMessage("USER", userMessage));
 
         ExecutionResult result = client.execute(new ExecutionRequest(
                 UUID.randomUUID(),
@@ -25,7 +27,7 @@ class NoOpAgentRuntimeClientTest {
                 "OPENAI",
                 "gpt-4.1-mini",
                 systemPrompt,
-                userMessage,
+                messages,
                 null));
 
         assertThat(result.responseText())
@@ -35,5 +37,27 @@ class NoOpAgentRuntimeClientTest {
         assertThat(result.outputTokens()).isGreaterThan(0);
         assertThat(result.totalTokens()).isEqualTo(result.inputTokens() + result.outputTokens());
         assertThat(result.latencyMs()).isBetween(100L, 350L);
+    }
+
+    @Test
+    void usesLastUserMessageFromHistory() {
+        UUID agentId = UUID.randomUUID();
+        List<RuntimeMessage> messages = List.of(
+                new RuntimeMessage("USER", "first question"),
+                new RuntimeMessage("ASSISTANT", "first answer"),
+                new RuntimeMessage("USER", "follow up question"));
+
+        ExecutionResult result = client.execute(new ExecutionRequest(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                agentId,
+                UUID.randomUUID(),
+                "OPENAI",
+                "gpt-4.1-mini",
+                "system",
+                messages,
+                UUID.randomUUID()));
+
+        assertThat(result.responseText()).contains("follow up question");
     }
 }

@@ -1,0 +1,118 @@
+<section class="page">
+  @if (loading()) {
+    <div class="page__loading" role="status">
+      <mat-spinner diameter="36" />
+      <span>Loading conversation…</span>
+    </div>
+  } @else if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to view this conversation.</p>
+      <a mat-stroked-button [routerLink]="['/projects', projectId(), 'conversations']">Back</a>
+    </div>
+  } @else if (conversation(); as current) {
+    <header class="page__header">
+      <div>
+        @if (showRename()) {
+          <div class="rename">
+            <mat-form-field appearance="outline" class="rename__field">
+              <mat-label>Title</mat-label>
+              <input matInput [formControl]="titleControl" aria-label="Conversation title" />
+            </mat-form-field>
+            <button mat-flat-button color="primary" type="button" (click)="saveRename()" [disabled]="renaming()">
+              Save
+            </button>
+            <button mat-button type="button" (click)="showRename.set(false)">Cancel</button>
+          </div>
+        } @else {
+          <h1>{{ current.title }}</h1>
+        }
+        <p>
+          <span [class]="statusClass(current.status)">{{ current.status }}</span>
+          · {{ current.messageCount }} messages
+        </p>
+      </div>
+      <div class="page__actions">
+        <a mat-stroked-button [routerLink]="['/projects', projectId(), 'conversations']">All conversations</a>
+        <a
+          mat-stroked-button
+          [routerLink]="['/projects', projectId(), 'agents', current.agentId, 'playground']"
+        >
+          Playground
+        </a>
+        @if (permissions.canUpdate() && !showRename()) {
+          <button mat-stroked-button type="button" (click)="startRename()">Rename</button>
+        }
+        @if (permissions.canArchive() && current.status === 'ACTIVE') {
+          <button mat-button color="warn" type="button" (click)="archive()">Archive</button>
+        }
+        @if (permissions.canArchive() && current.status === 'ARCHIVED') {
+          <button mat-stroked-button type="button" (click)="restore()">Restore</button>
+        }
+      </div>
+    </header>
+
+    @if (error()) {
+      <p class="page__error" role="alert">{{ error() }}</p>
+    }
+
+    <section class="timeline">
+      <h2>Messages</h2>
+      @if (messagesLoading()) {
+        <div class="page__loading" role="status"><mat-spinner diameter="28" /></div>
+      } @else if (messages().length === 0) {
+        <p class="timeline__empty">No messages yet. Send the first message below.</p>
+      } @else {
+        <div class="timeline__list">
+          @for (message of messages(); track message.id) {
+            <article [class]="messageClass(message.role)">
+              <header>
+                <strong>{{ message.role }}</strong>
+                <time>{{ message.createdAt | date: 'medium' }}</time>
+              </header>
+              <pre>{{ message.content }}</pre>
+            </article>
+          }
+        </div>
+      }
+    </section>
+
+    @if (current.status === 'ACTIVE' && executionPermissions.canExecute() && permissions.canCreateMessage()) {
+      <section class="composer">
+        <h2>Send message</h2>
+        <mat-form-field appearance="outline" class="composer__field">
+          <mat-label>Message</mat-label>
+          <textarea
+            matInput
+            rows="4"
+            [formControl]="messageControl"
+            aria-label="Conversation message"
+            placeholder="Type a message for the agent…"
+          ></textarea>
+        </mat-form-field>
+        <div class="composer__actions">
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            (click)="send()"
+            [disabled]="sending() || messageControl.invalid"
+          >
+            @if (sending()) {
+              <mat-spinner diameter="18" />
+              Sending…
+            } @else {
+              Send
+            }
+          </button>
+          @if (runningExecutionId() && isCancellable(runningStatus()) && executionPermissions.canCancel()) {
+            <button mat-stroked-button type="button" (click)="cancelRunning()">Cancel execution</button>
+          }
+        </div>
+      </section>
+    } @else if (current.status === 'ARCHIVED') {
+      <p class="timeline__empty">This conversation is archived. Restore it to continue chatting.</p>
+    }
+  }
+</section>

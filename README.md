@@ -49,6 +49,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Prompt Management API](docs/013_PROMPT_MANAGEMENT_API.md)
 - [Prompt Versioning](docs/014_PROMPT_VERSIONING.md)
 - [Agent Execution Engine](docs/015_AGENT_EXECUTION.md)
+- [Conversation Memory](docs/016_CONVERSATION_MEMORY.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
@@ -64,4 +65,4 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 
 ## Current status
 
-Sprint 1 Phase 5 — agent execution engine (NoOp runtime) on Platform API.
+Sprint 1 Phase 6 — conversation memory and message history on Platform API.

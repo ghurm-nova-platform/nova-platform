@@ -2,6 +2,13 @@
 
 Angular 20 administration portal for organizations, projects, agents, feedback, policies, usage, and settings.
 
+## Sprint 1 Phase 6 scope
+
+- Project-scoped conversations under `/projects/:projectId/conversations`
+- Conversation detail timeline and composer
+- Agent playground Stateless vs Conversation modes
+- Typed ConversationService and permission helper (Platform API only)
+
 ## Sprint 1 Phase 5 scope
 
 - Agent playground under `/projects/:projectId/agents/:agentId/playground`

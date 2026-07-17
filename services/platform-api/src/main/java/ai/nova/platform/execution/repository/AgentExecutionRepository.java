@@ -17,6 +17,10 @@ public interface AgentExecutionRepository extends JpaRepository<AgentExecution, 
     Optional<AgentExecution> findByIdAndProjectIdAndOrganizationId(
             UUID id, UUID projectId, UUID organizationId);
 
+    long countByConversationId(UUID conversationId);
+
+    java.util.List<AgentExecution> findByConversationId(UUID conversationId);
+
     @Query("""
             SELECT e FROM AgentExecution e
             WHERE e.organizationId = :organizationId

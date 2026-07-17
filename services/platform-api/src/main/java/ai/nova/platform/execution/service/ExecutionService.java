@@ -1,6 +1,7 @@
 package ai.nova.platform.execution.service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -17,6 +18,12 @@ import ai.nova.platform.agent.repository.AgentRepository;
 import ai.nova.platform.agent.runtime.AgentRuntimeClient;
 import ai.nova.platform.agent.runtime.ExecutionRequest;
 import ai.nova.platform.agent.runtime.ExecutionResult;
+import ai.nova.platform.agent.runtime.RuntimeMessage;
+import ai.nova.platform.conversation.service.ConversationMemoryService;
+import ai.nova.platform.conversation.service.ConversationMemoryService.AssembledContext;
+import ai.nova.platform.conversation.service.ConversationService;
+import ai.nova.platform.conversation.service.ConversationService.ExecutionUserMessageResult;
+import ai.nova.platform.conversation.validation.ConversationProperties;
 import ai.nova.platform.execution.dto.ExecutionDtos.ExecuteRequest;
 import ai.nova.platform.execution.dto.ExecutionDtos.ExecuteResponse;
 import ai.nova.platform.execution.dto.ExecutionDtos.ExecutionDetailResponse;
@@ -24,6 +31,7 @@ import ai.nova.platform.execution.dto.ExecutionDtos.ExecutionSummaryResponse;
 import ai.nova.platform.execution.entity.AgentExecution;
 import ai.nova.platform.execution.entity.ExecutionMessage;
 import ai.nova.platform.execution.entity.ExecutionStatus;
+import ai.nova.platform.execution.entity.MessageRole;
 import ai.nova.platform.execution.mapper.ExecutionMapper;
 import ai.nova.platform.execution.repository.AgentExecutionRepository;
 import ai.nova.platform.execution.repository.ExecutionMessageRepository;
@@ -61,6 +69,9 @@ public class ExecutionService {
     private final PromptVariableParser variableParser;
     private final AgentRuntimeClient agentRuntimeClient;
     private final ExecutionLifecycleService lifecycleService;
+    private final ConversationService conversationService;
+    private final ConversationMemoryService conversationMemoryService;
+    private final ConversationProperties conversationProperties;
 
     public ExecutionService(
             AgentExecutionRepository executionRepository,
@@ -74,7 +85,10 @@ public class ExecutionService {
             ExecutionAuthorizationService authorizationService,
             PromptVariableParser variableParser,
             AgentRuntimeClient agentRuntimeClient,
-            ExecutionLifecycleService lifecycleService) {
+            ExecutionLifecycleService lifecycleService,
+            ConversationService conversationService,
+            ConversationMemoryService conversationMemoryService,
+            ConversationProperties conversationProperties) {
         this.executionRepository = executionRepository;
         this.messageRepository = messageRepository;
         this.agentRepository = agentRepository;
@@ -87,6 +101,9 @@ public class ExecutionService {
         this.variableParser = variableParser;
         this.agentRuntimeClient = agentRuntimeClient;
         this.lifecycleService = lifecycleService;
+        this.conversationService = conversationService;
+        this.conversationMemoryService = conversationMemoryService;
+        this.conversationProperties = conversationProperties;
     }
 
     /**
@@ -101,6 +118,18 @@ public class ExecutionService {
         Agent agent = requireAgent(projectId, agentId, user.getOrganizationId());
         if (agent.getStatus() != AgentStatus.ACTIVE) {
             throw new ApiException(HttpStatus.CONFLICT, "AGENT_NOT_ACTIVE", "Agent is not active");
+        }
+
+        UUID conversationId = request.conversationId();
+        if (conversationId != null) {
+            if (request.clientRequestId() == null) {
+                throw new ApiException(
+                        HttpStatus.BAD_REQUEST,
+                        "INVALID_INPUT",
+                        "clientRequestId is required when conversationId is provided");
+            }
+            conversationService.requireActiveConversationForExecution(
+                    projectId, agentId, conversationId, user.getOrganizationId());
         }
 
         ResolvedPrompt resolved = resolvePromptVersion(agent, user.getOrganizationId(), projectId);
@@ -120,26 +149,142 @@ public class ExecutionService {
 
         String renderedPrompt = preview.renderedContent();
         String userMessage = request.input().message().trim();
-        UUID executionId = UUID.randomUUID();
 
-        // Transaction 1: persist RUNNING and commit before runtime.
+        if (conversationId == null) {
+            return executeStateless(
+                    projectId, agentId, agent, user, renderedPrompt, userMessage, resolved.versionId());
+        }
+
+        return executeWithConversation(
+                projectId,
+                agentId,
+                agent,
+                user,
+                renderedPrompt,
+                userMessage,
+                resolved.versionId(),
+                conversationId,
+                request.clientRequestId());
+    }
+
+    private ExecuteResponse executeStateless(
+            UUID projectId,
+            UUID agentId,
+            Agent agent,
+            AuthenticatedUser user,
+            String renderedPrompt,
+            String userMessage,
+            UUID promptVersionId) {
+        UUID executionId = UUID.randomUUID();
+        List<RuntimeMessage> messages = List.of(new RuntimeMessage("USER", userMessage));
+
         lifecycleService.startRunning(
                 executionId,
                 user.getOrganizationId(),
                 projectId,
                 agentId,
-                resolved.versionId(),
-                request.conversationId(),
+                promptVersionId,
+                null,
                 agent.getModelProvider(),
                 agent.getModelName(),
                 user.getUserId(),
                 renderedPrompt,
                 userMessage);
 
+        return runRuntimeAndComplete(
+                executionId, agent, user, projectId, agentId, renderedPrompt, messages, null);
+    }
+
+    private ExecuteResponse executeWithConversation(
+            UUID projectId,
+            UUID agentId,
+            Agent agent,
+            AuthenticatedUser user,
+            String renderedPrompt,
+            String userMessage,
+            UUID promptVersionId,
+            UUID conversationId,
+            UUID clientRequestId) {
+        if (clientRequestId == null) {
+            throw new ApiException(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_INPUT",
+                    "clientRequestId is required when conversationId is provided");
+        }
+
+        Optional<UUID> existingExecutionId =
+                conversationService.findExistingExecutionId(conversationId, clientRequestId);
+        if (existingExecutionId.isPresent()) {
+            return toIdempotentExecuteResponse(projectId, existingExecutionId.get(), user.getOrganizationId());
+        }
+
+        AssembledContext context = conversationMemoryService.assemble(
+                conversationId,
+                projectId,
+                user.getOrganizationId(),
+                userMessage,
+                conversationProperties,
+                user);
+
+        ExecutionUserMessageResult registration;
+        try {
+            registration = conversationService.claimAndStartConversationExecution(
+                    projectId,
+                    agentId,
+                    conversationId,
+                    clientRequestId,
+                    userMessage,
+                    user,
+                    promptVersionId,
+                    agent.getModelProvider(),
+                    agent.getModelName(),
+                    renderedPrompt);
+        } catch (ApiException ex) {
+            if ("DUPLICATE_CLIENT_REQUEST".equals(ex.getCode())) {
+                UUID winnerExecutionId = conversationService
+                        .findExistingExecutionId(conversationId, clientRequestId)
+                        .orElseThrow(() -> ex);
+                return toIdempotentExecuteResponse(projectId, winnerExecutionId, user.getOrganizationId());
+            }
+            throw ex;
+        }
+
+        if (registration.duplicate()) {
+            return toIdempotentExecuteResponse(
+                    projectId, registration.executionId(), user.getOrganizationId());
+        }
+
+        UUID executionId = registration.executionId();
+        ExecuteResponse response = runRuntimeAndComplete(
+                executionId,
+                agent,
+                user,
+                projectId,
+                agentId,
+                renderedPrompt,
+                context.messages(),
+                conversationId);
+
+        if (response.status() == ExecutionStatus.COMPLETED && response.response() != null) {
+            conversationService.appendAssistantMessage(
+                    projectId, conversationId, executionId, response.response(), user);
+        }
+
+        return response;
+    }
+
+    private ExecuteResponse runRuntimeAndComplete(
+            UUID executionId,
+            Agent agent,
+            AuthenticatedUser user,
+            UUID projectId,
+            UUID agentId,
+            String renderedPrompt,
+            List<RuntimeMessage> messages,
+            UUID conversationId) {
         log.debug("Starting execution {} for agent {} in project {}", executionId, agentId, projectId);
 
         try {
-            // Outside transaction: runtime call (may be cancelled concurrently).
             ExecutionResult result = agentRuntimeClient.execute(new ExecutionRequest(
                     user.getOrganizationId(),
                     projectId,
@@ -148,25 +293,39 @@ public class ExecutionService {
                     agent.getModelProvider(),
                     agent.getModelName(),
                     renderedPrompt,
-                    userMessage,
-                    request.conversationId()));
+                    messages,
+                    conversationId));
 
-            // Transaction 2: complete only if still RUNNING (not CANCELLED).
             AgentExecution completed = lifecycleService.completeIfRunning(executionId, result);
             String responseText = completed.getStatus() == ExecutionStatus.COMPLETED
                     ? result.responseText()
                     : null;
             return executionMapper.toExecuteResponse(completed, responseText, renderedPrompt);
         } catch (RuntimeException ex) {
-            // Never persist exception text — may contain provider secrets or request payloads.
             log.warn(
                     "Execution {} failed for agent {} (details omitted from persistence)",
                     executionId,
                     agentId);
             AgentExecution failed = lifecycleService.failIfRunning(executionId);
-            return executionMapper.toExecuteResponse(
-                    failed, null, renderedPrompt);
+            return executionMapper.toExecuteResponse(failed, null, renderedPrompt);
         }
+    }
+
+    private ExecuteResponse toIdempotentExecuteResponse(
+            UUID projectId, UUID executionId, UUID organizationId) {
+        AgentExecution execution = executionRepository
+                .findByIdAndProjectIdAndOrganizationId(executionId, projectId, organizationId)
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND, "EXECUTION_NOT_FOUND", "Execution not found"));
+        String responseText = null;
+        if (execution.getStatus() == ExecutionStatus.COMPLETED) {
+            responseText = messageRepository.findByExecutionIdOrderByCreatedAtAsc(executionId).stream()
+                    .filter(m -> m.getRole() == MessageRole.ASSISTANT)
+                    .reduce((first, second) -> second)
+                    .map(ExecutionMessage::getContent)
+                    .orElse(null);
+        }
+        return executionMapper.toExecuteResponse(execution, responseText, null);
     }
 
     public ExecutionDetailResponse cancel(UUID projectId, UUID executionId, AuthenticatedUser user) {
