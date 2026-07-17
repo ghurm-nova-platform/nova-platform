@@ -89,6 +89,8 @@ PR #38 lifecycle is preserved:
 - RUNNING committed before runtime.
 - Completion/failure will not overwrite `CANCELLED`.
 - Cancelled runs do not add ASSISTANT conversation messages.
+- Successful tool results may append TOOL conversation messages when
+  `nova.conversation.store-tool-messages=true` (see tool calling docs).
 
 ## RBAC
 

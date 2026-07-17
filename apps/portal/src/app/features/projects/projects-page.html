@@ -83,6 +83,13 @@
             >
               <mat-icon>forum</mat-icon>
             </a>
+            <a
+              mat-icon-button
+              [routerLink]="['/projects', row.id, 'tools']"
+              aria-label="Open project tools"
+            >
+              <mat-icon>build</mat-icon>
+            </a>
             <button mat-icon-button type="button" aria-label="Edit project" (click)="edit(row)">
               <mat-icon>edit</mat-icon>
             </button>

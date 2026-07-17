@@ -16,8 +16,6 @@ import ai.nova.platform.agent.entity.Agent;
 import ai.nova.platform.agent.entity.AgentStatus;
 import ai.nova.platform.agent.repository.AgentRepository;
 import ai.nova.platform.agent.runtime.AgentRuntimeClient;
-import ai.nova.platform.agent.runtime.ExecutionRequest;
-import ai.nova.platform.agent.runtime.ExecutionResult;
 import ai.nova.platform.agent.runtime.RuntimeMessage;
 import ai.nova.platform.conversation.service.ConversationMemoryService;
 import ai.nova.platform.conversation.service.ConversationMemoryService.AssembledContext;
@@ -50,6 +48,9 @@ import ai.nova.platform.prompt.repository.PromptRepository;
 import ai.nova.platform.prompt.repository.PromptVariableRepository;
 import ai.nova.platform.prompt.repository.PromptVersionRepository;
 import ai.nova.platform.security.AuthenticatedUser;
+import ai.nova.platform.tool.security.ToolAuthorizationService;
+import ai.nova.platform.tool.service.ToolCallingOrchestrator;
+import ai.nova.platform.tool.service.ToolCallingOrchestrator.OrchestrationRequest;
 import ai.nova.platform.web.error.ApiException;
 
 @Service
@@ -68,6 +69,7 @@ public class ExecutionService {
     private final ExecutionAuthorizationService authorizationService;
     private final PromptVariableParser variableParser;
     private final AgentRuntimeClient agentRuntimeClient;
+    private final ToolCallingOrchestrator toolCallingOrchestrator;
     private final ExecutionLifecycleService lifecycleService;
     private final ConversationService conversationService;
     private final ConversationMemoryService conversationMemoryService;
@@ -85,6 +87,7 @@ public class ExecutionService {
             ExecutionAuthorizationService authorizationService,
             PromptVariableParser variableParser,
             AgentRuntimeClient agentRuntimeClient,
+            ToolCallingOrchestrator toolCallingOrchestrator,
             ExecutionLifecycleService lifecycleService,
             ConversationService conversationService,
             ConversationMemoryService conversationMemoryService,
@@ -100,6 +103,7 @@ public class ExecutionService {
         this.authorizationService = authorizationService;
         this.variableParser = variableParser;
         this.agentRuntimeClient = agentRuntimeClient;
+        this.toolCallingOrchestrator = toolCallingOrchestrator;
         this.lifecycleService = lifecycleService;
         this.conversationService = conversationService;
         this.conversationMemoryService = conversationMemoryService;
@@ -285,22 +289,8 @@ public class ExecutionService {
         log.debug("Starting execution {} for agent {} in project {}", executionId, agentId, projectId);
 
         try {
-            ExecutionResult result = agentRuntimeClient.execute(new ExecutionRequest(
-                    user.getOrganizationId(),
-                    projectId,
-                    agentId,
-                    executionId,
-                    agent.getModelProvider(),
-                    agent.getModelName(),
-                    renderedPrompt,
-                    messages,
-                    conversationId));
-
-            AgentExecution completed = lifecycleService.completeIfRunning(executionId, result);
-            String responseText = completed.getStatus() == ExecutionStatus.COMPLETED
-                    ? result.responseText()
-                    : null;
-            return executionMapper.toExecuteResponse(completed, responseText, renderedPrompt);
+            return toolCallingOrchestrator.orchestrate(new OrchestrationRequest(
+                    executionId, agent, user, projectId, agentId, renderedPrompt, messages, conversationId));
         } catch (RuntimeException ex) {
             log.warn(
                     "Execution {} failed for agent {} (details omitted from persistence)",
@@ -309,6 +299,50 @@ public class ExecutionService {
             AgentExecution failed = lifecycleService.failIfRunning(executionId);
             return executionMapper.toExecuteResponse(failed, null, renderedPrompt);
         }
+    }
+
+    public ExecuteResponse continueAfterToolApproval(
+            UUID projectId, UUID executionId, AuthenticatedUser user) {
+        authorizationService.require(user, ToolAuthorizationService.TOOL_EXECUTE);
+        requireProjectInOrganization(projectId, user.getOrganizationId());
+        AgentExecution execution = executionRepository
+                .findByIdAndProjectIdAndOrganizationId(executionId, projectId, user.getOrganizationId())
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND, "EXECUTION_NOT_FOUND", "Execution not found"));
+        if (execution.getStatus() == ExecutionStatus.CANCELLED) {
+            throw new ApiException(HttpStatus.CONFLICT, "EXECUTION_CANCELLED", "Execution was cancelled");
+        }
+        if (execution.getStatus() == ExecutionStatus.FAILED
+                || execution.getStatus() == ExecutionStatus.COMPLETED) {
+            throw new ApiException(
+                    HttpStatus.CONFLICT, "EXECUTION_NOT_RUNNING", "Execution is not running");
+        }
+        if (execution.getStatus() != ExecutionStatus.RUNNING) {
+            throw new ApiException(
+                    HttpStatus.CONFLICT, "EXECUTION_NOT_RUNNING", "Execution is not running");
+        }
+
+        String renderedPrompt = messageRepository.findByExecutionIdOrderByCreatedAtAsc(executionId).stream()
+                .filter(message -> message.getRole() == MessageRole.SYSTEM)
+                .map(ExecutionMessage::getContent)
+                .findFirst()
+                .orElse("");
+
+        ExecuteResponse response = toolCallingOrchestrator.continueAfterApproval(
+                projectId, executionId, user, renderedPrompt);
+
+        if (response.status() == ExecutionStatus.COMPLETED
+                && response.response() != null
+                && execution.getConversationId() != null) {
+            conversationService.appendAssistantMessage(
+                    projectId,
+                    execution.getConversationId(),
+                    executionId,
+                    response.response(),
+                    user);
+        }
+
+        return response;
     }
 
     private ExecuteResponse toIdempotentExecuteResponse(

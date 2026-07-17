@@ -1,0 +1,150 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.page__header,
+.page__actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.page__header {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.page__header h1 {
+  margin: 0;
+}
+
+.page__header p {
+  margin: 0.35rem 0 0;
+  opacity: 0.8;
+}
+
+.page__reject-reason {
+  width: min(100%, 320px);
+}
+
+.page__notice {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, #1565c0 12%, transparent);
+}
+
+.page__loading,
+.page__empty {
+  display: grid;
+  place-items: center;
+  gap: 0.75rem;
+  min-height: 220px;
+  text-align: center;
+}
+
+.page__error {
+  color: #b3261e;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.timeline__item {
+  border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.timeline__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.timeline__header strong {
+  margin-right: 0.5rem;
+}
+
+.timeline__details {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.timeline__details dt {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.timeline__details dd {
+  margin: 0;
+}
+
+.timeline__payload h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+}
+
+.timeline__payload pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+}
+
+.timeline__actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.status {
+  display: inline-flex;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status--requested,
+.status--approval-required {
+  background: color-mix(in srgb, #f9a825 22%, transparent);
+}
+
+.status--approved,
+.status--running {
+  background: color-mix(in srgb, #1565c0 18%, transparent);
+}
+
+.status--completed {
+  background: color-mix(in srgb, #2e7d32 18%, transparent);
+}
+
+.status--failed,
+.status--rejected,
+.status--cancelled {
+  background: color-mix(in srgb, #b3261e 18%, transparent);
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+}

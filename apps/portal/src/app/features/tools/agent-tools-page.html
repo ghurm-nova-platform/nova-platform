@@ -1,0 +1,90 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <h1>Agent tools</h1>
+      <p>Tools assigned to agent <code>{{ agentId() }}</code>.</p>
+    </div>
+    <div class="page__actions">
+      <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents', agentId()]">Back to agent</a>
+      <a mat-stroked-button [routerLink]="['/projects', projectId(), 'tools']">Tool registry</a>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to view agent tool assignments.</p>
+    </div>
+  } @else if (error()) {
+    <p class="page__error" role="alert">{{ error() }}</p>
+  } @else if (loading()) {
+    <div class="page__loading" role="status">
+      <mat-spinner diameter="36" />
+      <span>Loading assignments…</span>
+    </div>
+  } @else {
+    @if (permissions.canAssign()) {
+      <div class="page__assign">
+        <mat-form-field appearance="outline">
+          <mat-label>Assign tool</mat-label>
+          <mat-select [formControl]="toolControl" aria-label="Tool to assign">
+            @for (tool of availableTools(); track tool.id) {
+              <mat-option [value]="tool.id">{{ tool.name }} ({{ tool.toolKey }})</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <button mat-flat-button color="primary" type="button" (click)="assign()" [disabled]="assigning() || toolControl.invalid">
+          @if (assigning()) {
+            Assigning…
+          } @else {
+            Assign
+          }
+        </button>
+      </div>
+    }
+
+    @if (assignments().length === 0) {
+      <div class="page__empty">
+        <mat-icon>build</mat-icon>
+        <h2>No tools assigned</h2>
+        <p>Assign active tools from the project registry.</p>
+      </div>
+    } @else {
+      <div class="page__table-wrap">
+        <table mat-table [dataSource]="assignments()" class="page__table">
+          <ng-container matColumnDef="toolKey">
+            <th mat-header-cell *matHeaderCellDef>Key</th>
+            <td mat-cell *matCellDef="let row"><code>{{ row.toolKey }}</code></td>
+          </ng-container>
+          <ng-container matColumnDef="toolName">
+            <th mat-header-cell *matHeaderCellDef>Name</th>
+            <td mat-cell *matCellDef="let row">{{ row.toolName }}</td>
+          </ng-container>
+          <ng-container matColumnDef="toolStatus">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let row">
+              <span [class]="statusClass(row.toolStatus)">{{ row.toolStatus }}</span>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="updatedAt">
+            <th mat-header-cell *matHeaderCellDef>Updated</th>
+            <td mat-cell *matCellDef="let row">{{ row.updatedAt | date: 'medium' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let row">
+              @if (permissions.canAssign()) {
+                <button mat-icon-button type="button" aria-label="Unassign tool" (click)="unassign(row)">
+                  <mat-icon>link_off</mat-icon>
+                </button>
+              }
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+      </div>
+    }
+  }
+</section>

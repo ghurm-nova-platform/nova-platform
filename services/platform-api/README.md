@@ -88,6 +88,10 @@ See [`docs/015_AGENT_EXECUTION.md`](../../docs/015_AGENT_EXECUTION.md).
 
 See [`docs/016_CONVERSATION_MEMORY.md`](../../docs/016_CONVERSATION_MEMORY.md).
 
+## Tools
+
+See [`docs/017_TOOL_REGISTRY_AND_CALLING.md`](../../docs/017_TOOL_REGISTRY_AND_CALLING.md).
+
 Local demo user (Flyway seed, local only):
 
 - `admin@nova.local` / `ChangeMe123!`

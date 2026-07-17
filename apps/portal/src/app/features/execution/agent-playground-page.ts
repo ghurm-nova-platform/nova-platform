@@ -1,5 +1,5 @@
 import { DatePipe, KeyValuePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import {
   FormArray,
   FormControl,
@@ -17,6 +17,8 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
+import { Subscription, timer } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 
 import { Agent } from '../agents/agent.models';
 import { AgentService } from '../agents/agent.service';
@@ -31,6 +33,16 @@ import {
   ExecutionTokenUsage,
 } from './execution.models';
 import { ExecutionService } from './execution.service';
+import { AgentToolAssignment, ExecutionToolCall, ToolCallStatus } from '../tools/tool.models';
+import { ToolPermissionHelper } from '../tools/tool-permission.helper';
+import { ToolService } from '../tools/tool.service';
+
+const POLLING_TOOL_STATUSES: ToolCallStatus[] = [
+  'REQUESTED',
+  'APPROVAL_REQUIRED',
+  'APPROVED',
+  'RUNNING',
+];
 
 interface VariableRow {
   key: FormControl<string>;
@@ -59,14 +71,16 @@ type PlaygroundMode = 'stateless' | 'conversation';
   templateUrl: './agent-playground-page.html',
   styleUrl: './agent-playground-page.scss',
 })
-export class AgentPlaygroundPage implements OnInit {
+export class AgentPlaygroundPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly agentsApi = inject(AgentService);
   private readonly executionsApi = inject(ExecutionService);
   private readonly conversationsApi = inject(ConversationService);
+  private readonly toolsApi = inject(ToolService);
   readonly permissions = inject(ExecutionPermissionHelper);
   readonly conversationPermissions = inject(ConversationPermissionHelper);
+  readonly toolPermissions = inject(ToolPermissionHelper);
 
   readonly projectId = signal('');
   readonly agentId = signal('');
@@ -113,11 +127,28 @@ export class AgentPlaygroundPage implements OnInit {
   readonly historyPageSize = signal(10);
   readonly historyColumns = ['status', 'latencyMs', 'tokens', 'createdAt', 'actions'];
 
+  readonly assignedTools = signal<AgentToolAssignment[]>([]);
+  readonly assignedToolsLoading = signal(false);
+  readonly toolCalls = signal<ExecutionToolCall[]>([]);
+  readonly toolCallsLoading = signal(false);
+  readonly toolActionError = signal<string | null>(null);
+  readonly toolActionBusy = signal(false);
+  readonly continueMessage = signal<string | null>(null);
+  readonly activeExecutionId = signal<string | null>(null);
+  readonly awaitingApproval = signal(false);
+  readonly rejectReasonControl = new FormControl('USER_REJECTED', { nonNullable: true });
+  private toolPollSub: Subscription | null = null;
+
   ngOnInit(): void {
     this.projectId.set(this.route.snapshot.paramMap.get('projectId') ?? '');
     this.agentId.set(this.route.snapshot.paramMap.get('agentId') ?? '');
     this.loadAgent();
+    this.loadAssignedTools();
     this.loadHistory();
+  }
+
+  ngOnDestroy(): void {
+    this.stopToolPolling();
   }
 
   get variablesArray(): FormArray<FormGroup<VariableRow>> {
@@ -286,11 +317,20 @@ export class AgentPlaygroundPage implements OnInit {
     this.error.set(null);
     this.lastResult.set(null);
     this.selectedExecution.set(null);
+    this.toolCalls.set([]);
+    this.continueMessage.set(null);
+    this.toolActionError.set(null);
+    this.awaitingApproval.set(false);
+    this.activeExecutionId.set(null);
+    this.stopToolPolling();
 
     this.executionsApi.execute(this.projectId(), this.agentId(), body).subscribe({
       next: (result) => {
         this.lastResult.set(result);
         this.running.set(false);
+        this.awaitingApproval.set(!!result.awaitingApproval);
+        this.activeExecutionId.set(result.executionId);
+        this.loadToolActivity(result.executionId, !!result.awaitingApproval);
         this.loadHistory();
         if (this.mode() === 'conversation' && this.selectedConversationId()) {
           this.reloadSelectedConversation();
@@ -460,6 +500,165 @@ export class AgentPlaygroundPage implements OnInit {
       return '—';
     }
     return `${tokens.input} / ${tokens.output} / ${tokens.total}`;
+  }
+
+  openToolCallsPage(): void {
+    const executionId = this.activeExecutionId();
+    if (!executionId) {
+      return;
+    }
+    void this.router.navigate([
+      '/projects',
+      this.projectId(),
+      'executions',
+      executionId,
+      'tool-calls',
+    ]);
+  }
+
+  approveToolCall(toolCall: ExecutionToolCall): void {
+    const executionId = this.activeExecutionId();
+    if (!executionId || !this.toolPermissions.canApproveToolCalls() || this.toolActionBusy()) {
+      return;
+    }
+    this.toolActionBusy.set(true);
+    this.toolActionError.set(null);
+    this.toolsApi.approveToolCall(this.projectId(), executionId, toolCall.id, { version: 0 }).subscribe({
+      next: () => {
+        this.toolActionBusy.set(false);
+        this.loadToolActivity(executionId, true);
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.toolActionBusy.set(false);
+        this.toolActionError.set(err.error?.message ?? 'Unable to approve tool call.');
+      },
+    });
+  }
+
+  rejectToolCall(toolCall: ExecutionToolCall): void {
+    const executionId = this.activeExecutionId();
+    if (!executionId || !this.toolPermissions.canApproveToolCalls() || this.toolActionBusy()) {
+      return;
+    }
+    const reasonCode = this.rejectReasonControl.value.trim() || 'USER_REJECTED';
+    this.toolActionBusy.set(true);
+    this.toolActionError.set(null);
+    this.toolsApi
+      .rejectToolCall(this.projectId(), executionId, toolCall.id, { version: 0, reasonCode })
+      .subscribe({
+        next: () => {
+          this.toolActionBusy.set(false);
+          this.awaitingApproval.set(false);
+          this.loadToolActivity(executionId, true);
+        },
+        error: (err: { error?: { message?: string } }) => {
+          this.toolActionBusy.set(false);
+          this.toolActionError.set(err.error?.message ?? 'Unable to reject tool call.');
+        },
+      });
+  }
+
+  continueAfterTools(): void {
+    const executionId = this.activeExecutionId();
+    if (!executionId || !this.toolPermissions.canExecute() || this.toolActionBusy()) {
+      return;
+    }
+    this.toolActionBusy.set(true);
+    this.toolActionError.set(null);
+    this.continueMessage.set(null);
+    this.toolsApi.continueExecution(this.projectId(), executionId).subscribe({
+      next: (response) => {
+        this.toolActionBusy.set(false);
+        this.continueMessage.set(response.message);
+        this.awaitingApproval.set(!response.readyToContinue);
+        this.loadToolActivity(executionId, !response.readyToContinue);
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.toolActionBusy.set(false);
+        this.toolActionError.set(err.error?.message ?? 'Unable to continue execution.');
+      },
+    });
+  }
+
+  hasPendingToolApproval(): boolean {
+    return this.toolCalls().some((row) => row.status === 'APPROVAL_REQUIRED');
+  }
+
+  toolCallStatusClass(status: ToolCallStatus): string {
+    return `status status--${status.toLowerCase().replace(/_/g, '-')}`;
+  }
+
+  assignedToolStatusClass(status: AgentToolAssignment['toolStatus']): string {
+    return `status status--${status.toLowerCase()}`;
+  }
+
+  private loadAssignedTools(): void {
+    if (!this.toolPermissions.canRead()) {
+      this.assignedTools.set([]);
+      return;
+    }
+    this.assignedToolsLoading.set(true);
+    this.toolsApi.listAgentTools(this.projectId(), this.agentId()).subscribe({
+      next: (rows) => {
+        this.assignedTools.set(rows);
+        this.assignedToolsLoading.set(false);
+      },
+      error: () => {
+        this.assignedToolsLoading.set(false);
+      },
+    });
+  }
+
+  private loadToolActivity(executionId: string, poll: boolean): void {
+    if (!this.toolPermissions.canReadToolCalls()) {
+      this.toolCalls.set([]);
+      return;
+    }
+    this.toolCallsLoading.set(true);
+    this.toolsApi.listExecutionToolCalls(this.projectId(), executionId).subscribe({
+      next: (rows) => {
+        this.toolCalls.set(rows);
+        this.toolCallsLoading.set(false);
+        const pendingApproval = rows.some((row) => row.status === 'APPROVAL_REQUIRED');
+        this.awaitingApproval.set(poll || pendingApproval || !!this.lastResult()?.awaitingApproval);
+        if (poll || this.shouldPollToolCalls(rows)) {
+          this.startToolPolling(executionId);
+        } else {
+          this.stopToolPolling();
+        }
+      },
+      error: () => {
+        this.toolCallsLoading.set(false);
+      },
+    });
+  }
+
+  private shouldPollToolCalls(rows: ExecutionToolCall[]): boolean {
+    return rows.some((row) => POLLING_TOOL_STATUSES.includes(row.status));
+  }
+
+  private startToolPolling(executionId: string): void {
+    if (this.toolPollSub) {
+      return;
+    }
+    this.toolPollSub = timer(3000, 3000)
+      .pipe(switchMap(() => this.toolsApi.listExecutionToolCalls(this.projectId(), executionId)))
+      .subscribe({
+        next: (rows) => {
+          this.toolCalls.set(rows);
+          const pendingApproval = rows.some((row) => row.status === 'APPROVAL_REQUIRED');
+          this.awaitingApproval.set(pendingApproval || !!this.lastResult()?.awaitingApproval);
+          if (!this.shouldPollToolCalls(rows) && !pendingApproval) {
+            this.stopToolPolling();
+          }
+        },
+        error: () => this.stopToolPolling(),
+      });
+  }
+
+  private stopToolPolling(): void {
+    this.toolPollSub?.unsubscribe();
+    this.toolPollSub = null;
   }
 
   private loadAgent(): void {

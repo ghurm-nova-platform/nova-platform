@@ -37,6 +37,15 @@ describe('App routing', () => {
       'CONVERSATION_ARCHIVE',
       'CONVERSATION_MESSAGE_READ',
       'CONVERSATION_MESSAGE_CREATE',
+      'TOOL_READ',
+      'TOOL_CREATE',
+      'TOOL_UPDATE',
+      'TOOL_ACTIVATE',
+      'TOOL_ARCHIVE',
+      'TOOL_ASSIGN',
+      'TOOL_EXECUTE',
+      'TOOL_CALL_READ',
+      'TOOL_CALL_APPROVE',
     ],
   };
 
@@ -91,5 +100,25 @@ describe('App routing', () => {
     await router.navigateByUrl('/prompts');
     fixture.detectChanges();
     expect(router.url).toBe('/projects');
+
+    const projectId = '55555555-5555-5555-5555-555555555501';
+    const agentId = '66666666-6666-6666-6666-666666666601';
+    const toolId = '77777777-7777-7777-7777-777777777701';
+    const executionId = '99999999-9999-9999-9999-999999999901';
+
+    for (const [path, expected] of [
+      [`/projects/${projectId}/tools`, `/projects/${projectId}/tools`],
+      [`/projects/${projectId}/tools/new`, `/projects/${projectId}/tools/new`],
+      [`/projects/${projectId}/tools/${toolId}`, `/projects/${projectId}/tools/${toolId}`],
+      [`/projects/${projectId}/agents/${agentId}/tools`, `/projects/${projectId}/agents/${agentId}/tools`],
+      [
+        `/projects/${projectId}/executions/${executionId}/tool-calls`,
+        `/projects/${projectId}/executions/${executionId}/tool-calls`,
+      ],
+    ] as const) {
+      await router.navigateByUrl(path);
+      fixture.detectChanges();
+      expect(router.url).toBe(expected);
+    }
   });
 });

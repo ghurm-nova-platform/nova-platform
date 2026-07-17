@@ -8,7 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import ai.nova.platform.agent.runtime.ExecutionResult;
+import ai.nova.platform.agent.runtime.RuntimeFinalResponse;
 import ai.nova.platform.execution.entity.AgentExecution;
 import ai.nova.platform.execution.entity.ExecutionMessage;
 import ai.nova.platform.execution.entity.ExecutionMetric;
@@ -81,7 +81,7 @@ public class ExecutionLifecycleService {
     }
 
     @Transactional
-    public AgentExecution completeIfRunning(UUID executionId, ExecutionResult result) {
+    public AgentExecution completeIfRunning(UUID executionId, RuntimeFinalResponse result) {
         AgentExecution execution = require(executionId);
         if (execution.getStatus() == ExecutionStatus.CANCELLED) {
             return execution;
@@ -118,6 +118,11 @@ public class ExecutionLifecycleService {
 
     @Transactional
     public AgentExecution failIfRunning(UUID executionId) {
+        return failIfRunning(executionId, ERROR_CODE_EXECUTION_FAILED);
+    }
+
+    @Transactional
+    public AgentExecution failIfRunning(UUID executionId, String errorCode) {
         AgentExecution execution = require(executionId);
         if (execution.getStatus() == ExecutionStatus.CANCELLED) {
             return execution;
@@ -137,7 +142,7 @@ public class ExecutionLifecycleService {
                 UUID.randomUUID(),
                 executionId,
                 "error_code",
-                ERROR_CODE_EXECUTION_FAILED,
+                errorCode != null ? errorCode : ERROR_CODE_EXECUTION_FAILED,
                 completedAt));
         if (correlationId != null && !correlationId.isBlank()) {
             metricRepository.save(new ExecutionMetric(
@@ -148,6 +153,12 @@ public class ExecutionLifecycleService {
                     completedAt));
         }
         return execution;
+    }
+
+    @Transactional
+    public void persistToolMessage(UUID executionId, String content) {
+        messageRepository.save(new ExecutionMessage(
+                UUID.randomUUID(), executionId, MessageRole.TOOL, content, Instant.now()));
     }
 
     @Transactional

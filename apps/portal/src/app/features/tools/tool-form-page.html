@@ -1,0 +1,104 @@
+<section class="page">
+  @if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to {{ editMode() ? 'edit' : 'create' }} tools.</p>
+      <a mat-stroked-button [routerLink]="['/projects', projectId(), 'tools']">Back to tools</a>
+    </div>
+  } @else if (loading()) {
+    <div class="page__loading" role="status"><mat-spinner diameter="36" /></div>
+  } @else {
+    <header class="page__header">
+      <div>
+        <h1>{{ editMode() ? 'Edit tool' : 'Create tool' }}</h1>
+        <p>
+          @if (currentTool(); as tool) {
+            <span [class]="statusClass(tool.status)">{{ tool.status }}</span>
+            · version {{ tool.version }}
+          } @else {
+            Define a project tool through Platform API.
+          }
+        </p>
+      </div>
+      <div class="page__actions">
+        <a mat-stroked-button [routerLink]="['/projects', projectId(), 'tools']">Back to tools</a>
+        @if (editMode() && permissions.canActivate() && currentTool()?.status === 'DRAFT') {
+          <button mat-stroked-button type="button" (click)="activate()">Activate</button>
+        }
+        @if (editMode() && permissions.canArchive() && currentTool()?.status !== 'ARCHIVED') {
+          <button mat-button color="warn" type="button" (click)="archive()">Archive</button>
+        }
+      </div>
+    </header>
+
+    @if (error()) {
+      <p class="page__error" role="alert">{{ error() }}</p>
+    }
+
+    <form class="form" [formGroup]="form" (ngSubmit)="save()">
+      <div class="form__row">
+        <mat-form-field appearance="outline">
+          <mat-label>Tool key</mat-label>
+          <input matInput formControlName="toolKey" aria-label="Tool key" placeholder="MY_TOOL" />
+          @if (editMode()) {
+            <mat-hint>Tool key cannot be changed after creation.</mat-hint>
+          }
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Name</mat-label>
+          <input matInput formControlName="name" aria-label="Tool name" />
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Description</mat-label>
+        <textarea matInput rows="2" formControlName="description" aria-label="Tool description"></textarea>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Executor</mat-label>
+        <mat-select formControlName="executorKey" aria-label="Executor key">
+          @for (key of executorKeys(); track key) {
+            <mat-option [value]="key">{{ key }}</mat-option>
+          }
+        </mat-select>
+        <mat-hint>Only executors from the Platform allowlist are permitted.</mat-hint>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Input schema (JSON)</mat-label>
+        <textarea matInput rows="8" formControlName="inputSchema" aria-label="Input schema"></textarea>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Output schema (JSON, optional)</mat-label>
+        <textarea matInput rows="6" formControlName="outputSchema" aria-label="Output schema"></textarea>
+      </mat-form-field>
+
+      <div class="form__row">
+        <mat-form-field appearance="outline">
+          <mat-label>Max execution seconds</mat-label>
+          <input matInput type="number" formControlName="maxExecutionSeconds" aria-label="Max execution seconds" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Max output characters</mat-label>
+          <input matInput type="number" formControlName="maxOutputCharacters" aria-label="Max output characters" />
+        </mat-form-field>
+      </div>
+
+      <mat-checkbox formControlName="requiresApproval">Requires approval before execution</mat-checkbox>
+
+      <div class="form__actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="saving() || form.invalid">
+          @if (saving()) {
+            Saving…
+          } @else {
+            {{ editMode() ? 'Save changes' : 'Create tool' }}
+          }
+        </button>
+        <a mat-button [routerLink]="['/projects', projectId(), 'tools']">Cancel</a>
+      </div>
+    </form>
+  }
+</section>

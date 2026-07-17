@@ -12,6 +12,7 @@ public class ConversationProperties {
     private int maxMessageCharacters = 10000;
     private int maxTitleLength = 255;
     private boolean storeSystemMessage = false;
+    private boolean storeToolMessages = true;
 
     public int getMaxContextMessages() {
         return maxContextMessages;
@@ -51,5 +52,13 @@ public class ConversationProperties {
 
     public void setStoreSystemMessage(boolean storeSystemMessage) {
         this.storeSystemMessage = storeSystemMessage;
+    }
+
+    public boolean isStoreToolMessages() {
+        return storeToolMessages;
+    }
+
+    public void setStoreToolMessages(boolean storeToolMessages) {
+        this.storeToolMessages = storeToolMessages;
     }
 }

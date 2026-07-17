@@ -28,6 +28,9 @@
         <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents', agentId(), 'conversations']">
           Conversations
         </a>
+        <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents', agentId(), 'tools']">
+          Tools
+        </a>
         <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents']">All agents</a>
       </div>
     </header>
@@ -194,6 +197,30 @@
           }
         </div>
 
+        @if (toolPermissions.canRead()) {
+          <div class="playground__assigned-tools">
+            <h3>Assigned tools</h3>
+            @if (assignedToolsLoading()) {
+              <mat-spinner diameter="20" />
+            } @else if (assignedTools().length === 0) {
+              <p class="playground__hint">
+                No tools assigned.
+                <a [routerLink]="['/projects', projectId(), 'agents', agentId(), 'tools']">Manage agent tools</a>
+              </p>
+            } @else {
+              <ul class="tool-chip-list">
+                @for (tool of assignedTools(); track tool.id) {
+                  <li>
+                    <strong>{{ tool.toolName }}</strong>
+                    <code>{{ tool.toolKey }}</code>
+                    <span [class]="assignedToolStatusClass(tool.toolStatus)">{{ tool.toolStatus }}</span>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        }
+
         @if (permissions.canExecute()) {
           <button
             mat-flat-button
@@ -238,6 +265,77 @@
 
         @if (activeError()) {
           <p class="page__error" role="alert">{{ activeError() }}</p>
+        }
+
+        @if (awaitingApproval()) {
+          <div class="playground__approval-banner" role="status">
+            <mat-icon>hourglass_top</mat-icon>
+            <div>
+              <strong>Waiting for tool approval</strong>
+              <p>Review pending tool calls before the execution can continue.</p>
+            </div>
+          </div>
+        }
+
+        @if (continueMessage()) {
+          <p class="playground__hint" role="status">{{ continueMessage() }}</p>
+        }
+
+        @if (toolActionError()) {
+          <p class="page__error" role="alert">{{ toolActionError() }}</p>
+        }
+
+        @if (toolPermissions.canReadToolCalls() && (toolCallsLoading() || toolCalls().length > 0 || activeExecutionId())) {
+          <div class="playground__tool-activity">
+            <div class="playground__tool-activity-header">
+              <h3>Tool activity</h3>
+              @if (activeExecutionId()) {
+                <button mat-button type="button" (click)="openToolCallsPage()">Open full timeline</button>
+              }
+            </div>
+            @if (toolCallsLoading()) {
+              <mat-spinner diameter="20" />
+            } @else if (toolCalls().length === 0) {
+              <p class="playground__hint">No tool calls recorded for this execution yet.</p>
+            } @else {
+              @if (hasPendingToolApproval() && toolPermissions.canApproveToolCalls()) {
+                <mat-form-field appearance="outline" class="playground__reject-reason">
+                  <mat-label>Reject reason code</mat-label>
+                  <input matInput [formControl]="rejectReasonControl" aria-label="Reject reason code" />
+                </mat-form-field>
+              }
+              <ol class="tool-timeline">
+                @for (call of toolCalls(); track call.id) {
+                  <li class="tool-timeline__item">
+                    <header>
+                      <strong>#{{ call.sequenceNumber }} · {{ call.toolKey }}</strong>
+                      <span [class]="toolCallStatusClass(call.status)">{{ call.status }}</span>
+                      <time>{{ call.requestedAt | date: 'short' }}</time>
+                    </header>
+                    <pre>{{ call.inputPayload }}</pre>
+                    @if (call.outputPayload) {
+                      <pre class="tool-timeline__output">{{ call.outputPayload }}</pre>
+                    }
+                    @if (call.status === 'APPROVAL_REQUIRED' && toolPermissions.canApproveToolCalls()) {
+                      <div class="tool-timeline__actions">
+                        <button mat-stroked-button type="button" (click)="approveToolCall(call)" [disabled]="toolActionBusy()">
+                          Approve
+                        </button>
+                        <button mat-button color="warn" type="button" (click)="rejectToolCall(call)" [disabled]="toolActionBusy()">
+                          Reject
+                        </button>
+                      </div>
+                    }
+                  </li>
+                }
+              </ol>
+              @if (toolPermissions.canExecute() && activeExecutionId()) {
+                <button mat-stroked-button type="button" (click)="continueAfterTools()" [disabled]="toolActionBusy()">
+                  Continue execution
+                </button>
+              }
+            }
+          </div>
         }
 
         <div class="playground__preview-grid">
