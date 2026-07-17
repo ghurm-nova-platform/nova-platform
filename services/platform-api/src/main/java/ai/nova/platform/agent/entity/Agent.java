@@ -34,6 +34,12 @@ public class Agent {
     @Column(name = "system_prompt", nullable = false, columnDefinition = "TEXT")
     private String systemPrompt;
 
+    @Column(name = "prompt_id")
+    private UUID promptId;
+
+    @Column(name = "prompt_version_id")
+    private UUID promptVersionId;
+
     @Column(name = "model_provider", nullable = false, length = 64)
     private String modelProvider;
 
@@ -140,6 +146,22 @@ public class Agent {
 
     public void setSystemPrompt(String systemPrompt) {
         this.systemPrompt = systemPrompt;
+    }
+
+    public UUID getPromptId() {
+        return promptId;
+    }
+
+    public void setPromptId(UUID promptId) {
+        this.promptId = promptId;
+    }
+
+    public UUID getPromptVersionId() {
+        return promptVersionId;
+    }
+
+    public void setPromptVersionId(UUID promptVersionId) {
+        this.promptVersionId = promptVersionId;
     }
 
     public String getModelProvider() {

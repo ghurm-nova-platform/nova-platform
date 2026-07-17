@@ -75,11 +75,16 @@ and [`docs/011_DATABASE_ER.md`](../../docs/011_DATABASE_ER.md).
 
 See [`docs/012_AGENT_MANAGEMENT_API.md`](../../docs/012_AGENT_MANAGEMENT_API.md).
 
+## Prompts
+
+See [`docs/013_PROMPT_MANAGEMENT_API.md`](../../docs/013_PROMPT_MANAGEMENT_API.md)
+and [`docs/014_PROMPT_VERSIONING.md`](../../docs/014_PROMPT_VERSIONING.md).
+
 Local demo user (Flyway seed, local only):
 
 - `admin@nova.local` / `ChangeMe123!`
 - Roles: `ORG_ADMIN`, `PROJECT_ADMIN`
-- Includes agent permissions and a seeded demo agent on the demo project
+- Includes agent and prompt permissions, a seeded demo agent, and a seeded demo prompt on the demo project
 
 ## Run
 

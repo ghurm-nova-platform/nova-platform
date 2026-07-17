@@ -1,0 +1,67 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <h1>Compare prompt versions</h1>
+      <p>Line-by-line diff between two prompt versions.</p>
+    </div>
+    <a mat-stroked-button [routerLink]="['/projects', projectId(), 'prompts', promptId(), 'versions']">
+      Back to versions
+    </a>
+  </header>
+
+  @if (error()) {
+    <p class="page__error" role="alert">{{ error() }}</p>
+  }
+
+  @if (loading()) {
+    <div class="page__loading"><mat-spinner diameter="36" /></div>
+  } @else {
+    <div class="compare-controls">
+      <mat-form-field appearance="outline">
+        <mat-label>Left version</mat-label>
+        <mat-select [formControl]="leftControl">
+          @for (version of versions(); track version.id) {
+            <mat-option [value]="version.id">{{ versionLabel(version) }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Right version</mat-label>
+        <mat-select [formControl]="rightControl">
+          @for (version of versions(); track version.id) {
+            <mat-option [value]="version.id">{{ versionLabel(version) }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <button mat-flat-button color="primary" type="button" (click)="compare()" [disabled]="comparing()">
+        @if (comparing()) {
+          <mat-spinner diameter="20" />
+        } @else {
+          Compare
+        }
+      </button>
+    </div>
+
+    @if (compareResult(); as result) {
+      <div class="compare-meta">
+        <span>Left: {{ result.leftVersionId }}</span>
+        <span>Right: {{ result.rightVersionId }}</span>
+      </div>
+      <div class="diff">
+        @for (line of result.diff; track $index) {
+          <div [class]="diffClass(line)">
+            <span class="diff-line__number">{{ line.lineNumber }}</span>
+            <span class="diff-line__prefix">
+              @switch (line.type) {
+                @case ('ADDED') { + }
+                @case ('REMOVED') { - }
+                @default { &nbsp; }
+              }
+            </span>
+            <code class="diff-line__content">{{ line.content }}</code>
+          </div>
+        }
+      </div>
+    }
+  }
+</section>

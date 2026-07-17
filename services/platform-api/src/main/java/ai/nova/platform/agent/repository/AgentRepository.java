@@ -20,6 +20,8 @@ public interface AgentRepository extends JpaRepository<Agent, UUID> {
 
     Optional<Agent> findByIdAndProjectIdAndOrganizationId(UUID id, UUID projectId, UUID organizationId);
 
+    boolean existsByPromptIdAndStatus(UUID promptId, AgentStatus status);
+
     @Query("""
             SELECT a FROM Agent a
             WHERE a.organizationId = :organizationId

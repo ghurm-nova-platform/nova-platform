@@ -1,0 +1,82 @@
+<section class="page">
+  @if (loading()) {
+    <div class="page__loading"><mat-spinner diameter="36" /></div>
+  } @else if (error()) {
+    <p class="page__error" role="alert">{{ error() }}</p>
+  } @else if (prompt(); as current) {
+    <header class="page__header">
+      <div>
+        <h1>{{ current.name }}</h1>
+        <p>
+          <span [class]="statusClass(current.status)">{{ current.status }}</span>
+          · {{ current.promptType }}
+        </p>
+      </div>
+      <div class="page__actions">
+        <a mat-stroked-button [routerLink]="['/projects', projectId(), 'prompts']">Back</a>
+        @if (permissions.canUpdate() && current.status !== 'ARCHIVED') {
+          <button mat-stroked-button type="button" (click)="edit()">Edit</button>
+        }
+        <a mat-stroked-button [routerLink]="['/projects', projectId(), 'prompts', promptId(), 'versions']">
+          Versions
+        </a>
+        @if (permissions.canCompare()) {
+          <a mat-stroked-button [routerLink]="['/projects', projectId(), 'prompts', promptId(), 'compare']">
+            Compare
+          </a>
+        }
+        @if (permissions.canPublish() && current.currentDraftVersionId) {
+          <button mat-flat-button color="primary" type="button" (click)="publishDraft()" [disabled]="publishing()">
+            @if (publishing()) {
+              <mat-spinner diameter="20" />
+            } @else {
+              Publish draft
+            }
+          </button>
+        }
+        @if (permissions.canArchive() && current.status !== 'ARCHIVED') {
+          <button mat-button color="warn" type="button" (click)="archive()">Archive</button>
+        }
+      </div>
+    </header>
+
+    <dl class="details">
+      <div>
+        <dt>Description</dt>
+        <dd>{{ current.description || '—' }}</dd>
+      </div>
+      <div>
+        <dt>Tags</dt>
+        <dd>{{ current.tags.length ? current.tags.join(', ') : '—' }}</dd>
+      </div>
+      <div>
+        <dt>Draft version</dt>
+        <dd>
+          @if (current.currentDraftVersionNumber) {
+            v{{ current.currentDraftVersionNumber }}
+          } @else {
+            —
+          }
+        </dd>
+      </div>
+      <div>
+        <dt>Published version</dt>
+        <dd>
+          @if (current.publishedVersionNumber) {
+            v{{ current.publishedVersionNumber }}
+          } @else {
+            —
+          }
+        </dd>
+      </div>
+      <div>
+        <dt>Metadata version</dt>
+        <dd>{{ current.version }}</dd>
+      </div>
+      <div>
+        <dt>Updated</dt>
+        <dd>{{ current.updatedAt | date: 'medium' }}</dd>
+      </div>
+    </dl>
+  }
+</section>

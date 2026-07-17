@@ -1,4 +1,4 @@
-# Database ER — Auth, Organizations, Projects
+# Database ER — Auth, Organizations, Projects, Agents, Prompts
 
 ```mermaid
 erDiagram
@@ -43,8 +43,15 @@ erDiagram
   }
 
   PROJECTS ||--o{ AGENTS : owns
+  PROJECTS ||--o{ PROMPTS : owns
   USERS ||--o{ AGENTS : audits
   AGENTS ||--o{ AGENT_AUDIT_LOG : history
+  PROMPTS ||--o{ PROMPT_VERSIONS : versions
+  PROMPTS ||--o{ PROMPT_TAGS : tagged
+  PROMPT_VERSIONS ||--o{ PROMPT_VARIABLES : defines
+  PROMPTS ||--o{ PROMPT_AUDIT_LOG : history
+  PROMPTS ||--o{ AGENTS : referenced_by
+  PROMPT_VERSIONS ||--o{ AGENTS : referenced_by
 
   PROJECTS {
     uuid id PK
@@ -65,6 +72,8 @@ erDiagram
     uuid project_id FK
     string name
     text system_prompt
+    uuid prompt_id FK
+    uuid prompt_version_id FK
     string model_provider
     string model_name
     decimal temperature
@@ -88,6 +97,59 @@ erDiagram
     timestamptz performed_at
   }
 
+  PROMPTS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    string name
+    string description
+    string prompt_type
+    string status
+    uuid current_draft_version_id FK
+    uuid published_version_id FK
+    int version
+    uuid created_by
+    uuid updated_by
+  }
+
+  PROMPT_VERSIONS {
+    uuid id PK
+    uuid prompt_id FK
+    uuid organization_id FK
+    uuid project_id FK
+    int version_number
+    text content
+    string change_summary
+    string status
+    uuid created_by
+    uuid published_by
+  }
+
+  PROMPT_VARIABLES {
+    uuid id PK
+    uuid prompt_version_id FK
+    string name
+    string data_type
+    boolean required_flag
+  }
+
+  PROMPT_TAGS {
+    uuid id PK
+    uuid prompt_id FK
+    string tag_name
+  }
+
+  PROMPT_AUDIT_LOG {
+    uuid id PK
+    uuid prompt_id FK
+    uuid prompt_version_id FK
+    uuid organization_id FK
+    uuid project_id FK
+    string action
+    uuid performed_by
+    string correlation_id
+  }
+
   REFRESH_TOKENS {
     uuid id PK
     uuid user_id FK
@@ -102,3 +164,7 @@ Unique constraints:
 - `organizations.name`, `organizations.slug`
 - `projects (organization_id, name)`
 - `agents (project_id, name)`
+- `prompts (project_id, name)`
+- `prompt_versions (prompt_id, version_number)`
+- `prompt_variables (prompt_version_id, name)`
+- `prompt_tags (prompt_id, tag_name)`

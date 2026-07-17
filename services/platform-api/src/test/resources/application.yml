@@ -33,3 +33,7 @@ nova:
       - LOCAL
   agent-runtime:
     enabled: false
+  prompts:
+    max-content-length: 50000
+    max-tags: 20
+    max-tag-length: 100

@@ -27,6 +27,7 @@ import ai.nova.platform.agent.repository.AgentAuditLogRepository;
 import ai.nova.platform.agent.repository.AgentRepository;
 import ai.nova.platform.agent.runtime.AgentRuntimeClient;
 import ai.nova.platform.agent.validation.ModelProviderAllowlist;
+import ai.nova.platform.prompt.service.PromptService;
 import ai.nova.platform.project.Project;
 import ai.nova.platform.project.ProjectRepository;
 import ai.nova.platform.security.AuthenticatedUser;
@@ -43,6 +44,7 @@ public class AgentService {
     private final ModelProviderAllowlist modelProviderAllowlist;
     private final AgentRuntimeClient agentRuntimeClient;
     private final ObjectMapper objectMapper;
+    private final PromptService promptService;
 
     public AgentService(
             AgentRepository agentRepository,
@@ -52,7 +54,8 @@ public class AgentService {
             AgentAuthorizationService authorizationService,
             ModelProviderAllowlist modelProviderAllowlist,
             AgentRuntimeClient agentRuntimeClient,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            PromptService promptService) {
         this.agentRepository = agentRepository;
         this.auditLogRepository = auditLogRepository;
         this.projectRepository = projectRepository;
@@ -61,6 +64,7 @@ public class AgentService {
         this.modelProviderAllowlist = modelProviderAllowlist;
         this.agentRuntimeClient = agentRuntimeClient;
         this.objectMapper = objectMapper;
+        this.promptService = promptService;
     }
 
     @Transactional(readOnly = true)
@@ -110,6 +114,7 @@ public class AgentService {
                 request.visibility(),
                 user.getUserId(),
                 now);
+        applyPromptReference(agent, request.promptId(), request.promptVersionId(), user.getOrganizationId(), project.getId());
         Agent saved = agentRepository.save(agent);
         writeAudit(saved, AgentAuditAction.CREATED, null, snapshot(saved), user.getUserId());
         safelySyncCreateOrUpdate(saved);
@@ -139,6 +144,7 @@ public class AgentService {
         agent.setTemperature(request.temperature());
         agent.setMaxTokens(request.maxTokens());
         agent.setVisibility(request.visibility());
+        applyPromptReference(agent, request.promptId(), request.promptVersionId(), user.getOrganizationId(), projectId);
         agent.setUpdatedBy(user.getUserId());
         agent.setUpdatedAt(Instant.now());
 
@@ -301,5 +307,23 @@ public class AgentService {
             return null;
         }
         return value.trim();
+    }
+
+    private void applyPromptReference(
+            Agent agent, UUID promptId, UUID promptVersionId, UUID organizationId, UUID projectId) {
+        if (promptId == null && promptVersionId == null) {
+            agent.setPromptId(null);
+            agent.setPromptVersionId(null);
+            return;
+        }
+        if (promptId == null || promptVersionId == null) {
+            throw new ApiException(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_PROMPT_REFERENCE",
+                    "Both promptId and promptVersionId must be provided together");
+        }
+        promptService.requirePublishedPromptReference(organizationId, projectId, promptId, promptVersionId);
+        agent.setPromptId(promptId);
+        agent.setPromptVersionId(promptVersionId);
     }
 }

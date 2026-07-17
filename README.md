@@ -46,6 +46,8 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Organizations and Projects API](docs/010_ORGANIZATIONS_PROJECTS_API.md)
 - [Database ER diagram](docs/011_DATABASE_ER.md)
 - [Agent Management API](docs/012_AGENT_MANAGEMENT_API.md)
+- [Prompt Management API](docs/013_PROMPT_MANAGEMENT_API.md)
+- [Prompt Versioning](docs/014_PROMPT_VERSIONING.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
@@ -61,4 +63,4 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 
 ## Current status
 
-Sprint 1 Phase 3 — project-scoped agent management on Platform API.
+Sprint 1 Phase 4 — project-scoped prompt management and versioning on Platform API.

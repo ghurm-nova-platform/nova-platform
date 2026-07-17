@@ -16,6 +16,8 @@ public class AgentMapper {
                 agent.getName(),
                 agent.getDescription(),
                 agent.getSystemPrompt(),
+                agent.getPromptId(),
+                agent.getPromptVersionId(),
                 agent.getModelProvider(),
                 agent.getModelName(),
                 agent.getTemperature(),
