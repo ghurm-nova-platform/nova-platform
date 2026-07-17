@@ -57,6 +57,31 @@ export const routes: Routes = [
           import('./features/execution/agent-playground-page').then((m) => m.AgentPlaygroundPage),
       },
       {
+        path: 'projects/:projectId/tools',
+        loadComponent: () =>
+          import('./features/tools/tools-list-page').then((m) => m.ToolsListPage),
+      },
+      {
+        path: 'projects/:projectId/tools/new',
+        loadComponent: () =>
+          import('./features/tools/tool-form-page').then((m) => m.ToolFormPage),
+      },
+      {
+        path: 'projects/:projectId/tools/:toolId',
+        loadComponent: () =>
+          import('./features/tools/tool-form-page').then((m) => m.ToolFormPage),
+      },
+      {
+        path: 'projects/:projectId/agents/:agentId/tools',
+        loadComponent: () =>
+          import('./features/tools/agent-tools-page').then((m) => m.AgentToolsPage),
+      },
+      {
+        path: 'projects/:projectId/executions/:executionId/tool-calls',
+        loadComponent: () =>
+          import('./features/tools/execution-tool-calls-page').then((m) => m.ExecutionToolCallsPage),
+      },
+      {
         path: 'projects/:projectId/conversations',
         loadComponent: () =>
           import('./features/conversations/conversations-list-page').then((m) => m.ConversationsListPage),

@@ -37,7 +37,9 @@ public final class ExecutionDtos {
             long latencyMs,
             TokenUsage tokens,
             String renderedPrompt,
-            String errorMessage) {
+            String errorMessage,
+            Boolean awaitingApproval,
+            UUID pendingToolCallId) {
     }
 
     public record ExecutionSummaryResponse(

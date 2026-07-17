@@ -35,6 +35,8 @@ Rules:
   Platform API assembles bounded conversation context (see
   [`016_CONVERSATION_MEMORY.md`](016_CONVERSATION_MEMORY.md)).
 - Stateless execution (`conversationId` null) remains supported.
+- Assigned ACTIVE tools are orchestrated by Platform API
+  ([`017_TOOL_REGISTRY_AND_CALLING.md`](017_TOOL_REGISTRY_AND_CALLING.md)).
 
 ## Endpoints
 

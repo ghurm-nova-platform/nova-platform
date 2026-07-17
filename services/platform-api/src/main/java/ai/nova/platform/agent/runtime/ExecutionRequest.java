@@ -12,5 +12,7 @@ public record ExecutionRequest(
         String model,
         String systemPrompt,
         List<RuntimeMessage> messages,
-        UUID conversationId) {
+        UUID conversationId,
+        List<RuntimeToolSpec> availableTools,
+        List<RuntimeToolResultMessage> toolResults) {
 }

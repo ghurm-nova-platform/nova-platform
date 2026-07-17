@@ -31,6 +31,13 @@
           <mat-icon>forum</mat-icon>
           Conversations
         </a>
+        <a
+          mat-stroked-button
+          [routerLink]="['/projects', projectId(), 'agents', agentId(), 'tools']"
+        >
+          <mat-icon>build</mat-icon>
+          Tools
+        </a>
         @if (permissions.canUpdate() && current.status !== 'ARCHIVED') {
           <button mat-stroked-button type="button" (click)="edit()">Edit</button>
         }

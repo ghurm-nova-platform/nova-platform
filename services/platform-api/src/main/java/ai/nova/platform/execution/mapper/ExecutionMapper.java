@@ -1,6 +1,7 @@
 package ai.nova.platform.execution.mapper;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
@@ -61,6 +62,15 @@ public class ExecutionMapper {
 
     public ExecuteResponse toExecuteResponse(
             AgentExecution execution, String response, String renderedPrompt) {
+        return toExecuteResponse(execution, response, renderedPrompt, false, null);
+    }
+
+    public ExecuteResponse toExecuteResponse(
+            AgentExecution execution,
+            String response,
+            String renderedPrompt,
+            boolean awaitingApproval,
+            UUID pendingToolCallId) {
         TokenUsage tokens = execution.getTotalTokens() != null
                 ? new TokenUsage(
                         execution.getInputTokens() != null ? execution.getInputTokens() : 0,
@@ -74,6 +84,8 @@ public class ExecutionMapper {
                 execution.getLatencyMs() != null ? execution.getLatencyMs() : 0L,
                 tokens,
                 renderedPrompt,
-                execution.getErrorMessage());
+                execution.getErrorMessage(),
+                awaitingApproval ? Boolean.TRUE : null,
+                pendingToolCallId);
     }
 }

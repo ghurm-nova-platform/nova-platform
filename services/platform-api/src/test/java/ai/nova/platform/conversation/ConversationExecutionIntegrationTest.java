@@ -32,7 +32,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import ai.nova.platform.agent.runtime.AgentRuntimeClient;
 import ai.nova.platform.agent.runtime.ExecutionRequest;
-import ai.nova.platform.agent.runtime.ExecutionResult;
+import ai.nova.platform.agent.runtime.RuntimeFinalResponse;
+import ai.nova.platform.agent.runtime.RuntimeTurnResult;
 import ai.nova.platform.conversation.entity.ConversationAuditAction;
 import ai.nova.platform.conversation.entity.ConversationMessageRole;
 import ai.nova.platform.conversation.repository.ConversationAuditLogRepository;
@@ -81,8 +82,8 @@ class ConversationExecutionIntegrationTest {
         doAnswer(invocation -> null).when(agentRuntimeClient).cancel(any());
         doAnswer(invocation -> {
             ExecutionRequest request = invocation.getArgument(0);
-            return new ExecutionResult(
-                    "assistant reply for " + request.executionId(), 5, 10, 15, 42L);
+            return RuntimeTurnResult.finalResponse(new RuntimeFinalResponse(
+                    "assistant reply for " + request.executionId(), 5, 10, 15, 42L));
         }).when(agentRuntimeClient).execute(any(ExecutionRequest.class));
 
         MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
@@ -150,7 +151,7 @@ class ConversationExecutionIntegrationTest {
             if (!allowFinish.await(5, TimeUnit.SECONDS)) {
                 throw new IllegalStateException("timeout");
             }
-            return new ExecutionResult("should-not-persist", 1, 1, 2, 10L);
+            return RuntimeTurnResult.finalResponse(new RuntimeFinalResponse("should-not-persist", 1, 1, 2, 10L));
         }).when(agentRuntimeClient).execute(any(ExecutionRequest.class));
 
         String conversationId = createConversation();
@@ -305,7 +306,7 @@ class ConversationExecutionIntegrationTest {
             if (!allowFinish.await(5, TimeUnit.SECONDS)) {
                 throw new IllegalStateException("timeout");
             }
-            return new ExecutionResult("late assistant", 1, 1, 2, 10L);
+            return RuntimeTurnResult.finalResponse(new RuntimeFinalResponse("late assistant", 1, 1, 2, 10L));
         }).when(agentRuntimeClient).execute(any(ExecutionRequest.class));
 
         String conversationId = createConversation();

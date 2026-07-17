@@ -341,6 +341,24 @@ public class ConversationService {
                 user.getUserId());
     }
 
+    @Transactional
+    public void appendToolMessage(
+            UUID projectId,
+            UUID conversationId,
+            UUID executionId,
+            String content,
+            AuthenticatedUser user) {
+        Conversation conversation = conversationRepository
+                .findForUpdate(conversationId, projectId, user.getOrganizationId())
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND, "CONVERSATION_NOT_FOUND", "Conversation not found"));
+        if (conversation.getStatus() != ConversationStatus.ACTIVE) {
+            return;
+        }
+        appendMessageLocked(
+                conversation, ConversationMessageRole.TOOL, content, executionId, null, user.getUserId());
+    }
+
     private ConversationMessage appendMessage(
             Conversation conversation,
             ConversationMessageRole role,

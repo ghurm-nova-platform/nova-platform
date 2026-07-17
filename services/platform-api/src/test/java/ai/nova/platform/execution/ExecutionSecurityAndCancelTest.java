@@ -32,7 +32,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import ai.nova.platform.agent.runtime.AgentRuntimeClient;
 import ai.nova.platform.agent.runtime.ExecutionRequest;
-import ai.nova.platform.agent.runtime.ExecutionResult;
+import ai.nova.platform.agent.runtime.RuntimeFinalResponse;
+import ai.nova.platform.agent.runtime.RuntimeTurnResult;
 import ai.nova.platform.execution.entity.AgentExecution;
 import ai.nova.platform.execution.entity.ExecutionMetric;
 import ai.nova.platform.execution.entity.ExecutionStatus;
@@ -145,7 +146,7 @@ class ExecutionSecurityAndCancelTest {
             if (!allowFinish.await(5, TimeUnit.SECONDS)) {
                 throw new IllegalStateException("Timed out waiting to finish runtime");
             }
-            return new ExecutionResult("should-not-win", 1, 1, 2, 50L);
+            return RuntimeTurnResult.finalResponse(new RuntimeFinalResponse("should-not-win", 1, 1, 2, 50L));
         }).when(agentRuntimeClient).execute(any(ExecutionRequest.class));
 
         ExecutorService pool = Executors.newSingleThreadExecutor();

@@ -12,7 +12,7 @@ public interface AgentRuntimeClient {
 
     void archiveAgentDefinition(UUID organizationId, UUID projectId, UUID agentId);
 
-    ExecutionResult execute(ExecutionRequest request);
+    RuntimeTurnResult execute(ExecutionRequest request);
 
     void cancel(UUID executionId);
 }

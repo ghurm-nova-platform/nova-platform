@@ -25,6 +25,8 @@ export interface AgentExecuteResponse {
   tokens: ExecutionTokenUsage;
   renderedPrompt?: string;
   errorMessage?: string | null;
+  awaitingApproval?: boolean;
+  pendingToolCallId?: string | null;
 }
 
 export interface Execution {

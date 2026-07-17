@@ -2,6 +2,14 @@
 
 Angular 20 administration portal for organizations, projects, agents, feedback, policies, usage, and settings.
 
+## Sprint 1 Phase 7 scope
+
+- Project tools under `/projects/:projectId/tools`
+- Agent tool assignment page
+- Execution tool-call timeline with approve/reject/continue
+- Playground assigned-tools and approval states
+- Typed ToolService and permission helper (Platform API only)
+
 ## Sprint 1 Phase 6 scope
 
 - Project-scoped conversations under `/projects/:projectId/conversations`

@@ -50,6 +50,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Prompt Versioning](docs/014_PROMPT_VERSIONING.md)
 - [Agent Execution Engine](docs/015_AGENT_EXECUTION.md)
 - [Conversation Memory](docs/016_CONVERSATION_MEMORY.md)
+- [Tool Registry and Calling](docs/017_TOOL_REGISTRY_AND_CALLING.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
@@ -65,4 +66,4 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 
 ## Current status
 
-Sprint 1 Phase 6 — conversation memory and message history on Platform API.
+Sprint 1 Phase 7 — secure tool registry and agent tool calling on Platform API.

@@ -1,0 +1,103 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <h1>Execution tool calls</h1>
+      <p>Timeline for execution <code>{{ executionId() }}</code>.</p>
+    </div>
+    <div class="page__actions">
+      <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents']">Back to agents</a>
+      @if (permissions.canExecute()) {
+        <button mat-flat-button color="primary" type="button" (click)="continueExecution()" [disabled]="acting()">
+          Continue execution
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (continueMessage()) {
+    <p class="page__notice" role="status">{{ continueMessage() }}</p>
+  }
+
+  @if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to view execution tool calls.</p>
+    </div>
+  } @else if (error()) {
+    <p class="page__error" role="alert">{{ error() }}</p>
+  } @else if (loading()) {
+    <div class="page__loading" role="status">
+      <mat-spinner diameter="36" />
+      <span>Loading tool activity…</span>
+    </div>
+  } @else if (toolCalls().length === 0) {
+    <div class="page__empty">
+      <mat-icon>timeline</mat-icon>
+      <h2>No tool calls</h2>
+      <p>This execution has no tool activity yet.</p>
+    </div>
+  } @else {
+    @if (hasPendingApproval() && permissions.canApproveToolCalls()) {
+      <mat-form-field appearance="outline" class="page__reject-reason">
+        <mat-label>Reject reason code</mat-label>
+        <input matInput [formControl]="rejectReasonControl" aria-label="Reject reason code" />
+      </mat-form-field>
+    }
+
+    <ol class="timeline">
+      @for (call of toolCalls(); track call.id) {
+        <li class="timeline__item">
+          <header class="timeline__header">
+            <div>
+              <strong>#{{ call.sequenceNumber }} · {{ call.toolKey }}</strong>
+              <span [class]="statusClass(call.status)">{{ call.status }}</span>
+            </div>
+            <time>{{ call.requestedAt | date: 'medium' }}</time>
+          </header>
+
+          <dl class="timeline__details">
+            <div>
+              <dt>Runtime call</dt>
+              <dd><code>{{ call.runtimeCallId }}</code></dd>
+            </div>
+            @if (call.durationMs !== null) {
+              <div>
+                <dt>Duration</dt>
+                <dd>{{ call.durationMs }} ms</dd>
+              </div>
+            }
+            @if (call.errorCode) {
+              <div>
+                <dt>Error</dt>
+                <dd class="page__error">{{ call.errorCode }}</dd>
+              </div>
+            }
+          </dl>
+
+          <div class="timeline__payload">
+            <h3>Input</h3>
+            <pre>{{ call.inputPayload }}</pre>
+          </div>
+          @if (call.outputPayload) {
+            <div class="timeline__payload">
+              <h3>Output</h3>
+              <pre>{{ call.outputPayload }}</pre>
+            </div>
+          }
+
+          @if (call.status === 'APPROVAL_REQUIRED' && permissions.canApproveToolCalls()) {
+            <div class="timeline__actions">
+              <button mat-flat-button color="primary" type="button" (click)="approve(call)" [disabled]="acting()">
+                Approve
+              </button>
+              <button mat-stroked-button color="warn" type="button" (click)="reject(call)" [disabled]="acting()">
+                Reject
+              </button>
+            </div>
+          }
+        </li>
+      }
+    </ol>
+  }
+</section>

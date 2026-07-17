@@ -7,9 +7,11 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 class NoOpAgentRuntimeClientTest {
 
-    private final NoOpAgentRuntimeClient client = new NoOpAgentRuntimeClient();
+    private final NoOpAgentRuntimeClient client = new NoOpAgentRuntimeClient(new ObjectMapper());
 
     @Test
     void executeReturnsDeterministicFakeResponseWithTokensAndLatency() {
@@ -19,7 +21,7 @@ class NoOpAgentRuntimeClientTest {
         String userMessage = "I need help with my order please";
         List<RuntimeMessage> messages = List.of(new RuntimeMessage("USER", userMessage));
 
-        ExecutionResult result = client.execute(new ExecutionRequest(
+        RuntimeTurnResult result = client.execute(new ExecutionRequest(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 agentId,
@@ -28,15 +30,20 @@ class NoOpAgentRuntimeClientTest {
                 "gpt-4.1-mini",
                 systemPrompt,
                 messages,
-                null));
+                null,
+                List.of(),
+                List.of()));
 
-        assertThat(result.responseText())
+        assertThat(result.isFinal()).isTrue();
+        RuntimeFinalResponse finalResponse = result.finalResponse();
+        assertThat(finalResponse.responseText())
                 .startsWith("NoOp runtime response for agent " + agentId + ":")
                 .contains("I need help with my order please");
-        assertThat(result.inputTokens()).isGreaterThan(0);
-        assertThat(result.outputTokens()).isGreaterThan(0);
-        assertThat(result.totalTokens()).isEqualTo(result.inputTokens() + result.outputTokens());
-        assertThat(result.latencyMs()).isBetween(100L, 350L);
+        assertThat(finalResponse.inputTokens()).isGreaterThan(0);
+        assertThat(finalResponse.outputTokens()).isGreaterThan(0);
+        assertThat(finalResponse.totalTokens())
+                .isEqualTo(finalResponse.inputTokens() + finalResponse.outputTokens());
+        assertThat(finalResponse.latencyMs()).isBetween(100L, 350L);
     }
 
     @Test
@@ -47,7 +54,7 @@ class NoOpAgentRuntimeClientTest {
                 new RuntimeMessage("ASSISTANT", "first answer"),
                 new RuntimeMessage("USER", "follow up question"));
 
-        ExecutionResult result = client.execute(new ExecutionRequest(
+        RuntimeTurnResult result = client.execute(new ExecutionRequest(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 agentId,
@@ -56,8 +63,67 @@ class NoOpAgentRuntimeClientTest {
                 "gpt-4.1-mini",
                 "system",
                 messages,
-                UUID.randomUUID()));
+                UUID.randomUUID(),
+                List.of(),
+                List.of()));
 
-        assertThat(result.responseText()).contains("follow up question");
+        assertThat(result.finalResponse().responseText()).contains("follow up question");
+    }
+
+    @Test
+    void calculatorMarkerReturnsToolCallWhenToolAvailable() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        RuntimeToolSpec calculator = new RuntimeToolSpec(
+                "CALCULATOR",
+                "Calculator",
+                "Adds numbers",
+                mapper.readTree(
+                        "{\"type\":\"object\",\"properties\":{\"operation\":{\"type\":\"string\"}},\"required\":[\"operation\"]}"));
+
+        RuntimeTurnResult result = client.execute(new ExecutionRequest(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "OPENAI",
+                "gpt-4.1-mini",
+                "system",
+                List.of(new RuntimeMessage("USER", NoOpAgentRuntimeClient.MARKER_CALCULATOR)),
+                null,
+                List.of(calculator),
+                List.of()));
+
+        assertThat(result.isToolCalls()).isTrue();
+        assertThat(result.toolCallBatch().toolCalls()).hasSize(1);
+        assertThat(result.toolCallBatch().toolCalls().getFirst().toolKey()).isEqualTo("CALCULATOR");
+        assertThat(result.toolCallBatch().toolCalls().getFirst().runtimeCallId()).isEqualTo("noop-calc-1");
+    }
+
+    @Test
+    void toolResultsReturnFinalSummaryWithoutPayloadContent() {
+        ObjectMapper mapper = new ObjectMapper();
+        RuntimeToolResultMessage toolResult = new RuntimeToolResultMessage(
+                "call-1",
+                "CALCULATOR",
+                "COMPLETED",
+                mapper.createObjectNode().put("result", 15),
+                null);
+
+        RuntimeTurnResult result = client.execute(new ExecutionRequest(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "OPENAI",
+                "gpt-4.1-mini",
+                "system",
+                List.of(new RuntimeMessage("USER", "done")),
+                null,
+                List.of(),
+                List.of(toolResult)));
+
+        assertThat(result.isFinal()).isTrue();
+        assertThat(result.finalResponse().responseText()).contains("1 tool result");
+        assertThat(result.finalResponse().responseText()).doesNotContain("15");
     }
 }

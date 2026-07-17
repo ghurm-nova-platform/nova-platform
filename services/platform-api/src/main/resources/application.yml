@@ -46,6 +46,16 @@ nova:
     max-message-characters: 10000
     max-title-length: 255
     store-system-message: false
+    store-tool-messages: true
+  tools:
+    max-schema-characters: 20000
+    max-input-characters: 20000
+    max-output-characters: 50000
+    max-tool-calls-per-execution: 5
+    max-orchestration-rounds: 5
+    default-timeout-seconds: 10
+    maximum-timeout-seconds: 30
+    enabled: true
 
 management:
   endpoints:

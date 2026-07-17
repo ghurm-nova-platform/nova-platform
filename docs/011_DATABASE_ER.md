@@ -63,6 +63,12 @@ erDiagram
   CONVERSATIONS ||--o{ CONVERSATION_AUDIT_LOG : history
   CONVERSATIONS ||--o{ CONVERSATION_EXECUTION_REQUESTS : idempotency
   AGENT_EXECUTIONS ||--o{ CONVERSATION_MESSAGES : may_link
+  PROJECTS ||--o{ TOOLS : hosts
+  TOOLS ||--o{ AGENT_TOOL_ASSIGNMENTS : assigned
+  AGENTS ||--o{ AGENT_TOOL_ASSIGNMENTS : uses
+  AGENT_EXECUTIONS ||--o{ EXECUTION_TOOL_CALLS : invokes
+  TOOLS ||--o{ EXECUTION_TOOL_CALLS : called_as
+  TOOLS ||--o{ TOOL_AUDIT_LOG : history
 
   PROJECTS {
     uuid id PK
@@ -232,6 +238,39 @@ erDiagram
     uuid execution_id FK
   }
 
+  TOOLS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    string tool_key
+    string executor_key
+    string status
+    boolean requires_approval
+  }
+
+  AGENT_TOOL_ASSIGNMENTS {
+    uuid id PK
+    uuid agent_id FK
+    uuid tool_id FK
+    boolean enabled
+  }
+
+  EXECUTION_TOOL_CALLS {
+    uuid id PK
+    uuid execution_id FK
+    uuid tool_id FK
+    string runtime_call_id
+    int sequence_number
+    string status
+  }
+
+  TOOL_AUDIT_LOG {
+    uuid id PK
+    uuid tool_id FK
+    string action
+    text metadata
+  }
+
   REFRESH_TOKENS {
     uuid id PK
     uuid user_id FK
@@ -253,3 +292,7 @@ Unique constraints:
 - `execution_metrics (execution_id, metric_name)`
 - `conversation_messages (conversation_id, sequence_number)`
 - `conversation_execution_requests (conversation_id, client_request_id)`
+- `tools (organization_id, project_id, tool_key)`
+- `agent_tool_assignments (agent_id, tool_id)`
+- `execution_tool_calls (execution_id, runtime_call_id)`
+- `execution_tool_calls (execution_id, sequence_number)`
