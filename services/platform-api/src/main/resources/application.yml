@@ -4,6 +4,29 @@ server:
 spring:
   application:
     name: ${SPRING_APPLICATION_NAME:platform-api}
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/nova}
+    username: ${DATABASE_USERNAME:nova}
+    password: ${DATABASE_PASSWORD:nova_local_only}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+nova:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+      issuer: ${JWT_ISSUER:nova-platform}
+      access-token-ttl: ${JWT_ACCESS_TTL:PT15M}
+      refresh-token-ttl: ${JWT_REFRESH_TTL:P7D}
 
 management:
   endpoints:

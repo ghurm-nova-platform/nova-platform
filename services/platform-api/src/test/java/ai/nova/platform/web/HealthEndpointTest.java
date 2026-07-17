@@ -15,7 +15,7 @@ import ai.nova.platform.web.correlation.CorrelationIdFilter;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class HealthEndpointIT {
+class HealthEndpointTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -39,7 +39,7 @@ class HealthEndpointIT {
     @Test
     void actuatorDoesNotExposeEnvEndpoint() throws Exception {
         mockMvc.perform(get("/actuator/env"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

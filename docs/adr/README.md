@@ -10,6 +10,9 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 4. Never rewrite accepted history. Supersede an ADR with a new ADR.
 5. Record security, operational, cost, and migration consequences.
 
-## Statuses
+## Index
 
-Proposed, Accepted, Rejected, Deprecated, Superseded.
+| ADR | Title | Status |
+|-----|-------|--------|
+| [ADR-0001](ADR-0001-modular-monorepo.md) | Modular monorepo | Accepted |
+| [ADR-0002](ADR-0002-jwt-auth-foundation.md) | JWT authentication foundation on Platform API | Accepted |

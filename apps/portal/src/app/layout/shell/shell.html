@@ -53,8 +53,12 @@
         <mat-icon>account_circle</mat-icon>
       </button>
       <mat-menu #userMenu="matMenu">
-        <button mat-menu-item type="button" disabled>Profile (placeholder)</button>
-        <button mat-menu-item type="button" disabled>Sign out (placeholder)</button>
+        <button mat-menu-item type="button" disabled>
+          {{ session.user()?.displayName || session.user()?.email || 'Signed in' }}
+        </button>
+        <button mat-menu-item type="button" (click)="signOut()" [disabled]="signingOut()">
+          Sign out
+        </button>
       </mat-menu>
     </mat-toolbar>
 

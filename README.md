@@ -42,6 +42,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Sprint 0 backlog](docs/006_SPRINT_0_BACKLOG.md)
 - [Cursor execution guide](docs/007_CURSOR_EXECUTION_GUIDE.md)
 - [CI/CD guide](docs/008_CI_CD_GUIDE.md)
+- [Authentication API](docs/009_AUTH_API.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
@@ -53,7 +54,8 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - Isolated and resource-limited code execution
 - Arabic RTL and English LTR support
 - Modular monorepo first; service extraction only when justified
+- Browser → Platform API → Agent Runtime (never browser → Agent Runtime)
 
 ## Current status
 
-Sprint 0 — repository, architecture, security, local infrastructure, and application skeletons.
+Sprint 1 Phase 1 — authentication foundation (JWT, RBAC, portal login) on top of Sprint 0 skeletons.

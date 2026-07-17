@@ -14,10 +14,23 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import ai.nova.platform.auth.AuthenticationFailedException;
 import ai.nova.platform.web.correlation.CorrelationIdFilter;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(AuthenticationFailedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthenticationFailed(
+            AuthenticationFailedException ex,
+            HttpServletRequest request) {
+        return build(
+                HttpStatus.UNAUTHORIZED,
+                "AUTHENTICATION_FAILED",
+                ex.getMessage() != null ? ex.getMessage() : "Authentication failed",
+                request,
+                null);
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(
