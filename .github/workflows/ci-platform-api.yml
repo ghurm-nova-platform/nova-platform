@@ -26,7 +26,6 @@ jobs:
     name: Spring Boot Platform API
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    if: ${{ hashFiles('services/platform-api/pom.xml') != '' }}
     defaults:
       run:
         working-directory: services/platform-api

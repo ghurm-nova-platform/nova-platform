@@ -26,7 +26,6 @@ jobs:
     name: Python Agent Runtime
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: ${{ hashFiles('services/agent-runtime/pyproject.toml') != '' }}
     defaults:
       run:
         working-directory: services/agent-runtime
@@ -47,15 +46,13 @@ jobs:
           virtualenvs-in-project: true
 
       - name: Load cached venv
-        id: cached-poetry-dependencies
         uses: actions/cache@v4
         with:
           path: services/agent-runtime/.venv
           key: venv-${{ runner.os }}-py3.12-${{ hashFiles('services/agent-runtime/poetry.lock') }}
 
-      - name: Install dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction
+      - name: Install and sync dependencies
+        run: poetry install --no-interaction --sync
 
       - name: Ruff
         run: poetry run ruff check src tests

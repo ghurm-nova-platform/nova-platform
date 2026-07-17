@@ -26,7 +26,6 @@ jobs:
     name: Angular Portal
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: ${{ hashFiles('apps/portal/package.json') != '' }}
     defaults:
       run:
         working-directory: apps/portal

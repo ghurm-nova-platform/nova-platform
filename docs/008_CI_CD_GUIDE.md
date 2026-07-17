@@ -13,21 +13,28 @@ Deployment workflows are intentionally out of scope for Sprint 0.
 - Third-party actions are pinned to a stable major version.
 - Dependency review runs on pull requests when GitHub Dependency graph is available.
 - Internal Agent Runtime API keys must never appear in browser applications.
+- Repository security guards run on every pull request and cover all code and infrastructure.
 
 ## Workflows
 
 | Workflow file | Name | Trigger focus |
 |---------------|------|---------------|
-| `.github/workflows/ci-portal.yml` | CI Portal | `apps/portal/**` |
-| `.github/workflows/ci-platform-api.yml` | CI Platform API | `services/platform-api/**` |
-| `.github/workflows/ci-agent-runtime.yml` | CI Agent Runtime | `services/agent-runtime/**` |
-| `.github/workflows/ci-docs-security.yml` | CI Docs and Security | docs, infra, apps, CI scripts |
+| `.github/workflows/ci-portal.yml` | CI Portal | `apps/portal/**` (path-filtered) |
+| `.github/workflows/ci-platform-api.yml` | CI Platform API | `services/platform-api/**` (path-filtered) |
+| `.github/workflows/ci-agent-runtime.yml` | CI Agent Runtime | `services/agent-runtime/**` (path-filtered) |
+| `.github/workflows/ci-docs-security.yml` | CI Docs and Security | **every pull request** and foundation/main pushes |
 | `.github/workflows/dependency-review.yml` | Dependency Review | every pull request |
 
-Each CI workflow also runs when its own workflow file changes, and supports `workflow_dispatch`.
+Each module CI workflow also runs when its own workflow file changes, and supports `workflow_dispatch`.
 
-Jobs that depend on module source skip automatically when the module scaffold is not present yet
-(`hashFiles(...)` guards for `package.json`, `pom.xml`, or `pyproject.toml`).
+### Mandatory module checks
+
+Portal, Platform API, and Agent Runtime jobs are **mandatory** when their path filters match.
+They do **not** use pre-checkout `hashFiles(...)` job guards. Required CI must never silently skip
+because the workspace was empty before `actions/checkout`.
+
+Only expensive module builds stay path-filtered. Repository security, documentation, and
+dependency review run broadly so service and infrastructure changes cannot bypass guards.
 
 ### Concurrency
 
@@ -38,6 +45,9 @@ Superseded runs on the same branch or PR are cancelled via workflow `concurrency
 - Portal: npm cache via `actions/setup-node`
 - Platform API: Maven cache via `actions/setup-java`
 - Agent Runtime: Poetry virtualenv cache via `actions/cache`
+
+Cache may accelerate installs but must not replace dependency reconciliation.
+Agent Runtime always runs `poetry install --no-interaction --sync` after cache restore.
 
 ## Jobs and local equivalents
 
@@ -91,22 +101,26 @@ CI steps:
 
 1. Python 3.12
 2. Poetry 2.4.x
-3. `poetry install`
-4. `poetry run ruff check src tests`
-5. `poetry run mypy`
-6. `poetry run pytest`
+3. Restore cached `.venv` when available
+4. `poetry install --no-interaction --sync` (always)
+5. `poetry run ruff check src tests`
+6. `poetry run mypy`
+7. `poetry run pytest`
 
 Local:
 
 ```bash
 cd services/agent-runtime
-poetry install
+poetry install --no-interaction --sync
 poetry run ruff check src tests
 poetry run mypy
 poetry run pytest
 ```
 
 ### Documentation and repository checks
+
+Runs on **every pull request**. Scope includes services, apps, infrastructure, docs,
+GitHub workflows/scripts, and root configuration/Docker files.
 
 CI steps:
 
@@ -153,8 +167,8 @@ supported by the organization plan.
 
 Until branch protection is configured in the repository settings, treat these as required for merge readiness:
 
-1. Relevant module CI jobs for changed paths
-2. CI Docs and Security when docs/infra/apps/CI scripts change
+1. Relevant module CI jobs for changed paths (mandatory; never skipped by workspace guards)
+2. CI Docs and Security on every pull request
 3. Dependency Review on every pull request
 
 Recommended branch protection for `sprint-0/foundation` and `main`:
@@ -169,12 +183,11 @@ Recommended branch protection for `sprint-0/foundation` and `main`:
 |---------|--------------|-----|
 | Portal tests hang | Browser not headless | Use `--browsers=ChromeHeadless` |
 | Maven wrapper fails | Wrong Java version | Use JDK 21 and `JAVA_HOME` |
-| Poetry mypy fails | Missing `poetry install` | Reinstall lockfile deps |
+| Poetry mypy fails | Missing sync install | Run `poetry install --no-interaction --sync` |
 | Markdown lint fails | Style rule violation | Fix markdown or adjust `.markdownlint.json` intentionally |
 | Compose validation fails | Invalid YAML/interpolation | Fix `infrastructure/local/docker-compose.yml` |
 | Repo guards fail on apps | API key pattern in browser source | Keep credentials server-side only |
 | Dependency review skipped/fails | Org feature unavailable | Enable Dependency graph or adjust org settings |
-| Job skipped unexpectedly | Module file missing | Ensure `package.json` / `pom.xml` / `pyproject.toml` exists |
 
 ## Adding a new application or service
 
@@ -184,10 +197,11 @@ Recommended branch protection for `sprint-0/foundation` and `main`:
    - path filters for the module and workflow file
    - concurrency cancellation
    - dependency caching
-   - a `hashFiles` presence guard
-3. Add Dependabot ecosystem coverage when applicable.
-4. Document local commands in this guide and the module README.
-5. Open a PR and confirm the new job runs for path changes and is skipped for unrelated PRs.
+   - **no** pre-checkout `hashFiles` job skip guards
+3. Keep repository security on every PR (do not path-filter the guard away for the new module).
+4. Add Dependabot ecosystem coverage when applicable.
+5. Document local commands in this guide and the module README.
+6. Open a PR and confirm the new job runs for path changes while docs/security still runs on every PR.
 
 ## Out of scope
 

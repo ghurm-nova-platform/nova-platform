@@ -2,24 +2,10 @@ name: CI Docs and Security
 
 on:
   pull_request:
-    paths:
-      - "docs/**"
-      - "README.md"
-      - "infrastructure/**"
-      - "apps/**"
-      - ".github/**"
-      - "scripts/ci/**"
   push:
     branches:
       - sprint-0/foundation
       - main
-    paths:
-      - "docs/**"
-      - "README.md"
-      - "infrastructure/**"
-      - "apps/**"
-      - ".github/**"
-      - "scripts/ci/**"
   workflow_dispatch:
 
 concurrency:
