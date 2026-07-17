@@ -1,0 +1,226 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <h1>{{ editMode() ? 'Edit prompt' : 'Create prompt' }}</h1>
+      <p>
+        Prompt content uses a plain textarea today. Monaco editor integration is planned as a follow-up.
+      </p>
+    </div>
+    <a mat-stroked-button [routerLink]="editMode() && promptId() ? ['/projects', projectId(), 'prompts', promptId()!] : ['/projects', projectId(), 'prompts']">
+      Cancel
+    </a>
+  </header>
+
+  @if (loading()) {
+    <div class="page__loading"><mat-spinner diameter="36" /></div>
+  } @else {
+    @if (error()) {
+      <p class="page__error" role="alert">{{ error() }}</p>
+    }
+    @if (conflict()) {
+      <p class="page__error" role="alert">Optimistic lock conflict detected.</p>
+    }
+    @if (needsDraft()) {
+      <div class="page__notice">
+        <p>This prompt is published and has no draft. Create a draft to edit content.</p>
+        <button mat-stroked-button type="button" (click)="createDraft()" [disabled]="creatingDraft()">
+          @if (creatingDraft()) {
+            <mat-spinner diameter="20" />
+          } @else {
+            Create draft
+          }
+        </button>
+      </div>
+    }
+
+    <form class="form" [formGroup]="form" (ngSubmit)="save()">
+      <mat-form-field appearance="outline">
+        <mat-label>Name</mat-label>
+        <input matInput formControlName="name" required />
+        @if (form.controls.name.invalid && form.controls.name.touched) {
+          <mat-error>Name is required</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Description</mat-label>
+        <textarea matInput rows="2" formControlName="description"></textarea>
+      </mat-form-field>
+
+      <div class="form__row">
+        <mat-form-field appearance="outline">
+          <mat-label>Prompt type</mat-label>
+          <mat-select formControlName="promptType">
+            @for (type of types; track type) {
+              <mat-option [value]="type">{{ type }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Tags</mat-label>
+          <input matInput formControlName="tagsInput" placeholder="Comma-separated tags" />
+        </mat-form-field>
+      </div>
+
+      @if (!editMode()) {
+        <mat-form-field appearance="outline">
+          <mat-label>Change summary</mat-label>
+          <input matInput formControlName="changeSummary" />
+        </mat-form-field>
+      } @else {
+        <mat-form-field appearance="outline">
+          <mat-label>Version change summary</mat-label>
+          <input matInput formControlName="changeSummary" />
+        </mat-form-field>
+      }
+
+      <div class="form__content-header">
+        <h2>Prompt content</h2>
+        <span class="form__char-count">{{ contentLength() }} characters</span>
+      </div>
+
+      <mat-form-field appearance="outline" class="form__content">
+        <mat-label>Content</mat-label>
+        <textarea #contentArea matInput rows="14" formControlName="content" required></textarea>
+        @if (form.controls.content.invalid && form.controls.content.touched) {
+          <mat-error>Content is required</mat-error>
+        }
+      </mat-form-field>
+
+      <section class="panel">
+        <div class="panel__header">
+          <h3>Detected variables</h3>
+          <span>{{ detectedVariables().length }} found in content</span>
+        </div>
+        @if (detectedVariables().length === 0) {
+          <p class="panel__empty">No {{ '{{' }}variable{{ '}}' }} placeholders detected.</p>
+        } @else {
+          <div class="panel__chips">
+            @for (name of detectedVariables(); track name) {
+              <button mat-stroked-button type="button" (click)="insertVariable(name)">
+                {{ name }}
+              </button>
+            }
+          </div>
+        }
+      </section>
+
+      <section class="panel">
+        <div class="panel__header">
+          <h3>Variables</h3>
+          <button mat-stroked-button type="button" (click)="addVariable()">
+            <mat-icon>add</mat-icon>
+            Add variable
+          </button>
+        </div>
+
+        @if (variablesArray.length === 0) {
+          <p class="panel__empty">No variables defined yet.</p>
+        }
+
+        <div formArrayName="variables" class="variables">
+          @for (group of variablesArray.controls; track $index; let i = $index) {
+            <div class="variable-card" [formGroupName]="i">
+              <div class="variable-card__header">
+                <strong>Variable {{ i + 1 }}</strong>
+                <button mat-icon-button type="button" aria-label="Remove variable" (click)="removeVariable(i)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+              <div class="form__row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Name</mat-label>
+                  <input matInput formControlName="name" required />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Data type</mat-label>
+                  <mat-select formControlName="dataType">
+                    @for (dataType of dataTypes; track dataType) {
+                      <mat-option [value]="dataType">{{ dataType }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              </div>
+              <mat-form-field appearance="outline">
+                <mat-label>Description</mat-label>
+                <input matInput formControlName="description" />
+              </mat-form-field>
+              <div class="form__row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Default value</mat-label>
+                  <input matInput formControlName="defaultValue" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Sample value</mat-label>
+                  <input matInput formControlName="sampleValue" />
+                </mat-form-field>
+              </div>
+              <mat-checkbox formControlName="required">Required</mat-checkbox>
+              <button mat-button type="button" (click)="insertVariable(group.controls['name'].value)">
+                Insert into content
+              </button>
+            </div>
+          }
+        </div>
+      </section>
+
+      @if (validationResult(); as result) {
+        <section class="panel">
+          <div class="panel__header">
+            <h3>Validation</h3>
+            <span [class.valid]="result.valid" [class.invalid]="!result.valid">
+              {{ result.valid ? 'Valid' : 'Invalid' }}
+            </span>
+          </div>
+          @if (result.errors.length > 0) {
+            <ul class="messages messages--error">
+              @for (message of result.errors; track message) {
+                <li>{{ message }}</li>
+              }
+            </ul>
+          }
+          @if (result.warnings.length > 0) {
+            <ul class="messages messages--warn">
+              @for (message of result.warnings; track message) {
+                <li>{{ message }}</li>
+              }
+            </ul>
+          }
+          @if (result.detectedVariables.length > 0) {
+            <p>API detected: {{ result.detectedVariables.join(', ') }}</p>
+          }
+        </section>
+      }
+
+      <div class="form__actions">
+        <button mat-stroked-button type="button" (click)="validateContent()" [disabled]="validating()">
+          @if (validating()) {
+            <mat-spinner diameter="20" />
+          } @else {
+            Validate
+          }
+        </button>
+        @if (permissions.canPreview()) {
+          <button mat-stroked-button type="button" (click)="openPreview()">Preview</button>
+        }
+        @if (editMode() && permissions.canPublish() && draftVersionId() && !needsDraft()) {
+          <button mat-stroked-button type="button" (click)="publishDraft()" [disabled]="publishing()">
+            @if (publishing()) {
+              <mat-spinner diameter="20" />
+            } @else {
+              Publish draft
+            }
+          </button>
+        }
+        <button mat-flat-button color="primary" type="submit" [disabled]="saving() || form.invalid || needsDraft()">
+          @if (saving()) {
+            <mat-spinner diameter="20" />
+          } @else {
+            Save
+          }
+        </button>
+      </div>
+    </form>
+  }
+</section>

@@ -2,6 +2,13 @@
 
 Angular 20 administration portal for organizations, projects, agents, feedback, policies, usage, and settings.
 
+## Sprint 1 Phase 4 scope
+
+- Project-scoped prompt routes under `/projects/:projectId/prompts`
+- Prompt list/detail/create/edit, version history, compare, preview
+- Typed PromptService and permission helper (Platform API only)
+- Material textarea editor (Monaco Editor deferred)
+
 ## Sprint 1 Phase 3 scope
 
 - Project-scoped agent routes under `/projects/:projectId/agents`

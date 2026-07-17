@@ -22,7 +22,13 @@ public final class AgentDtos {
     public record AgentCreateRequest(
             @NotBlank @Size(max = 255) String name,
             @Size(max = 2000) String description,
+            /**
+             * Inline system prompt text. Deprecated in favor of {@code promptId} / {@code promptVersionId}
+             * references to published prompt templates; retained for backward compatibility.
+             */
             @NotBlank @Size(max = 20000) String systemPrompt,
+            UUID promptId,
+            UUID promptVersionId,
             @NotBlank @Size(max = 64) String modelProvider,
             @NotBlank @Size(max = 128) String modelName,
             @NotNull @DecimalMin("0.0") @DecimalMax("2.0") BigDecimal temperature,
@@ -33,7 +39,13 @@ public final class AgentDtos {
     public record AgentUpdateRequest(
             @NotBlank @Size(max = 255) String name,
             @Size(max = 2000) String description,
+            /**
+             * Inline system prompt text. Deprecated in favor of {@code promptId} / {@code promptVersionId}
+             * references to published prompt templates; retained for backward compatibility.
+             */
             @NotBlank @Size(max = 20000) String systemPrompt,
+            UUID promptId,
+            UUID promptVersionId,
             @NotBlank @Size(max = 64) String modelProvider,
             @NotBlank @Size(max = 128) String modelName,
             @NotNull @DecimalMin("0.0") @DecimalMax("2.0") BigDecimal temperature,
@@ -52,6 +64,8 @@ public final class AgentDtos {
             String name,
             String description,
             String systemPrompt,
+            UUID promptId,
+            UUID promptVersionId,
             String modelProvider,
             String modelName,
             BigDecimal temperature,

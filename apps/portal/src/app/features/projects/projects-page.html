@@ -69,6 +69,13 @@
             >
               <mat-icon>smart_toy</mat-icon>
             </a>
+            <a
+              mat-icon-button
+              [routerLink]="['/projects', row.id, 'prompts']"
+              aria-label="Open project prompts"
+            >
+              <mat-icon>description</mat-icon>
+            </a>
             <button mat-icon-button type="button" aria-label="Edit project" (click)="edit(row)">
               <mat-icon>edit</mat-icon>
             </button>
