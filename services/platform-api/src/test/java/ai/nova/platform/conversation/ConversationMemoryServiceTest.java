@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.transaction.annotation.Transactional;
 
 import ai.nova.platform.conversation.entity.Conversation;
 import ai.nova.platform.conversation.entity.ConversationAuditAction;
@@ -59,7 +58,6 @@ class ConversationMemoryServiceTest {
     }
 
     @Test
-    @Transactional
     void respectsMessageLimitAndAlwaysIncludesCurrentUser() {
         Conversation conversation = createConversation();
         addMessage(conversation, ConversationMessageRole.USER, "msg1", 1);
@@ -78,7 +76,6 @@ class ConversationMemoryServiceTest {
     }
 
     @Test
-    @Transactional
     void respectsCharacterLimit() {
         Conversation conversation = createConversation();
         addMessage(conversation, ConversationMessageRole.USER, "1234567890", 1);
@@ -97,7 +94,6 @@ class ConversationMemoryServiceTest {
     }
 
     @Test
-    @Transactional
     void truncationAuditContainsNoMessageContent() {
         Conversation conversation = createConversation();
         for (int i = 1; i <= 5; i++) {
@@ -116,6 +112,26 @@ class ConversationMemoryServiceTest {
             assertThat(audit.getMetadata()).doesNotContain("secret-content");
             assertThat(audit.getMetadata()).contains("droppedCount");
         }
+    }
+
+    /**
+     * Verifies MEMORY_TRUNCATED is committed via REQUIRES_NEW even though assemble() is readOnly.
+     * Setup is committed outside any test-managed transaction so the audit FK can resolve.
+     */
+    @Test
+    void truncationAuditIsPersistedOutsideReadOnlyTransaction() {
+        Conversation conversation = createConversation();
+        for (int i = 1; i <= 5; i++) {
+            addMessage(conversation, ConversationMessageRole.USER, "prior-" + i, i);
+        }
+
+        memoryService.assemble(conversation.getId(), PROJECT_ID, ORG_ID, "current", props, user);
+
+        long truncatedAudits = auditLogRepository.findAll().stream()
+                .filter(a -> a.getConversationId().equals(conversation.getId())
+                        && a.getAction() == ConversationAuditAction.MEMORY_TRUNCATED)
+                .count();
+        assertThat(truncatedAudits).isEqualTo(1);
     }
 
     private Conversation createConversation() {
@@ -139,9 +155,8 @@ class ConversationMemoryServiceTest {
                 USER_ID,
                 Instant.now(),
                 null));
-        conversationRepository.findForUpdate(conversation.getId(), PROJECT_ID, ORG_ID).ifPresent(locked -> {
-            locked.setMessageCount(sequence);
-            conversationRepository.saveAndFlush(locked);
-        });
+        Conversation locked = conversationRepository.findById(conversation.getId()).orElseThrow();
+        locked.setMessageCount(sequence);
+        conversationRepository.saveAndFlush(locked);
     }
 }

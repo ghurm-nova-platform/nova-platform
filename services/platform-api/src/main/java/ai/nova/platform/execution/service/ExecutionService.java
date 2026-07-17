@@ -226,35 +226,35 @@ public class ExecutionService {
                 conversationProperties,
                 user);
 
-        UUID executionId = UUID.randomUUID();
-
-        lifecycleService.startRunning(
-                executionId,
-                user.getOrganizationId(),
-                projectId,
-                agentId,
-                promptVersionId,
-                conversationId,
-                agent.getModelProvider(),
-                agent.getModelName(),
-                user.getUserId(),
-                renderedPrompt,
-                userMessage);
-
-        ExecutionUserMessageResult registration = conversationService.registerExecutionUserMessage(
-                projectId,
-                agentId,
-                conversationId,
-                executionId,
-                clientRequestId,
-                userMessage,
-                user);
+        ExecutionUserMessageResult registration;
+        try {
+            registration = conversationService.claimAndStartConversationExecution(
+                    projectId,
+                    agentId,
+                    conversationId,
+                    clientRequestId,
+                    userMessage,
+                    user,
+                    promptVersionId,
+                    agent.getModelProvider(),
+                    agent.getModelName(),
+                    renderedPrompt);
+        } catch (ApiException ex) {
+            if ("DUPLICATE_CLIENT_REQUEST".equals(ex.getCode())) {
+                UUID winnerExecutionId = conversationService
+                        .findExistingExecutionId(conversationId, clientRequestId)
+                        .orElseThrow(() -> ex);
+                return toIdempotentExecuteResponse(projectId, winnerExecutionId, user.getOrganizationId());
+            }
+            throw ex;
+        }
 
         if (registration.duplicate()) {
             return toIdempotentExecuteResponse(
                     projectId, registration.executionId(), user.getOrganizationId());
         }
 
+        UUID executionId = registration.executionId();
         ExecuteResponse response = runRuntimeAndComplete(
                 executionId,
                 agent,

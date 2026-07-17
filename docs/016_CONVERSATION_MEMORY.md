@@ -66,14 +66,19 @@ Algorithm:
 2. Select until message or character limit is reached (never split a message).
 3. Always include the current user message.
 4. Return ascending sequence for the runtime.
-5. Emit `MEMORY_TRUNCATED` audit with safe metadata only (counts, no content).
+5. Emit `MEMORY_TRUNCATED` audit with safe metadata only (counts, no content)
+   via a separate write transaction (`REQUIRES_NEW`), so assembly can stay
+   `@Transactional(readOnly = true)`.
 
 ## Execution integration
 
 - `conversationId` null → existing stateless execution.
 - `conversationId` set → validate ACTIVE conversation for same org/project/agent,
-  assemble memory, persist USER message, run runtime, append ASSISTANT only on
-  `COMPLETED` (not on FAILED/CANCELLED).
+  assemble memory, then in one short write transaction:
+  reserve `clientRequestId`, create RUNNING execution, append USER message.
+  Duplicates return the reserved execution and never create a second execution row.
+  Run runtime afterward; append ASSISTANT only on `COMPLETED` and only while the
+  conversation is still ACTIVE under lock (archived conversations skip ASSISTANT).
 - `clientRequestId` provides idempotency per conversation via
   `conversation_execution_requests`.
 

@@ -36,6 +36,7 @@ import ai.nova.platform.conversation.repository.ConversationMessageRepository;
 import ai.nova.platform.conversation.repository.ConversationRepository;
 import ai.nova.platform.conversation.security.ConversationAuthorizationService;
 import ai.nova.platform.conversation.validation.ConversationProperties;
+import ai.nova.platform.execution.service.ExecutionLifecycleService;
 import ai.nova.platform.project.Project;
 import ai.nova.platform.project.ProjectRepository;
 import ai.nova.platform.security.AuthenticatedUser;
@@ -57,6 +58,7 @@ public class ConversationService {
     private final ConversationMapper conversationMapper;
     private final ConversationAuthorizationService authorizationService;
     private final ConversationProperties conversationProperties;
+    private final ExecutionLifecycleService executionLifecycleService;
 
     public ConversationService(
             ConversationRepository conversationRepository,
@@ -67,7 +69,8 @@ public class ConversationService {
             AgentRepository agentRepository,
             ConversationMapper conversationMapper,
             ConversationAuthorizationService authorizationService,
-            ConversationProperties conversationProperties) {
+            ConversationProperties conversationProperties,
+            ExecutionLifecycleService executionLifecycleService) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.auditLogRepository = auditLogRepository;
@@ -77,6 +80,7 @@ public class ConversationService {
         this.conversationMapper = conversationMapper;
         this.authorizationService = authorizationService;
         this.conversationProperties = conversationProperties;
+        this.executionLifecycleService = executionLifecycleService;
     }
 
     @Transactional
@@ -233,15 +237,23 @@ public class ConversationService {
         return conversation;
     }
 
+    /**
+     * Atomically reserves {@code clientRequestId}, creates a RUNNING execution, and appends the USER
+     * conversation message in one short write transaction. Duplicates return the existing execution
+     * without creating a new execution row.
+     */
     @Transactional
-    public ExecutionUserMessageResult registerExecutionUserMessage(
+    public ExecutionUserMessageResult claimAndStartConversationExecution(
             UUID projectId,
             UUID agentId,
             UUID conversationId,
-            UUID executionId,
             UUID clientRequestId,
             String content,
-            AuthenticatedUser user) {
+            AuthenticatedUser user,
+            UUID promptVersionId,
+            String provider,
+            String model,
+            String renderedPrompt) {
         Optional<UUID> existingExecutionId = findExistingExecutionId(conversationId, clientRequestId);
         if (existingExecutionId.isPresent()) {
             return new ExecutionUserMessageResult(null, existingExecutionId.get(), true);
@@ -266,6 +278,20 @@ public class ConversationService {
                     HttpStatus.CONFLICT, "CONVERSATION_AGENT_MISMATCH", "Conversation agent mismatch");
         }
 
+        UUID executionId = UUID.randomUUID();
+        executionLifecycleService.startRunning(
+                executionId,
+                conversation.getOrganizationId(),
+                projectId,
+                agentId,
+                promptVersionId,
+                conversationId,
+                provider,
+                model,
+                user.getUserId(),
+                renderedPrompt,
+                content);
+
         ConversationMessage message = appendMessageLocked(
                 conversation,
                 ConversationMessageRole.USER,
@@ -286,11 +312,11 @@ public class ConversationService {
                     message.getId(),
                     Instant.now()));
         } catch (DataIntegrityViolationException ex) {
-            Optional<UUID> duplicateExecutionId = findExistingExecutionId(conversationId, clientRequestId);
-            if (duplicateExecutionId.isPresent()) {
-                return new ExecutionUserMessageResult(null, duplicateExecutionId.get(), true);
-            }
-            throw ex;
+            // Roll back this transaction (including any execution created above).
+            throw new ApiException(
+                    HttpStatus.CONFLICT,
+                    "DUPLICATE_CLIENT_REQUEST",
+                    "Duplicate clientRequestId");
         }
 
         return new ExecutionUserMessageResult(message.getId(), executionId, false);
@@ -303,6 +329,9 @@ public class ConversationService {
                 .findForUpdate(conversationId, projectId, user.getOrganizationId())
                 .orElseThrow(() -> new ApiException(
                         HttpStatus.NOT_FOUND, "CONVERSATION_NOT_FOUND", "Conversation not found"));
+        if (conversation.getStatus() != ConversationStatus.ACTIVE) {
+            return;
+        }
         appendMessageLocked(
                 conversation,
                 ConversationMessageRole.ASSISTANT,

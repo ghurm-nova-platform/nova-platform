@@ -5,23 +5,18 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.nova.platform.agent.runtime.RuntimeMessage;
 import ai.nova.platform.conversation.entity.Conversation;
-import ai.nova.platform.conversation.entity.ConversationAuditAction;
-import ai.nova.platform.conversation.entity.ConversationAuditLog;
 import ai.nova.platform.conversation.entity.ConversationMessage;
 import ai.nova.platform.conversation.entity.ConversationMessageRole;
-import ai.nova.platform.conversation.repository.ConversationAuditLogRepository;
 import ai.nova.platform.conversation.repository.ConversationMessageRepository;
 import ai.nova.platform.conversation.repository.ConversationRepository;
 import ai.nova.platform.conversation.validation.ConversationProperties;
 import ai.nova.platform.security.AuthenticatedUser;
-import ai.nova.platform.web.correlation.CorrelationIdFilter;
 import ai.nova.platform.web.error.ApiException;
 
 @Service
@@ -29,15 +24,15 @@ public class ConversationMemoryService {
 
     private final ConversationRepository conversationRepository;
     private final ConversationMessageRepository messageRepository;
-    private final ConversationAuditLogRepository auditLogRepository;
+    private final ConversationAuditWriteService auditWriteService;
 
     public ConversationMemoryService(
             ConversationRepository conversationRepository,
             ConversationMessageRepository messageRepository,
-            ConversationAuditLogRepository auditLogRepository) {
+            ConversationAuditWriteService auditWriteService) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
-        this.auditLogRepository = auditLogRepository;
+        this.auditWriteService = auditWriteService;
     }
 
     public record AssembledContext(
@@ -102,7 +97,14 @@ public class ConversationMemoryService {
         boolean truncated = droppedCount > 0;
 
         if (truncated) {
-            writeTruncationAudit(conversation, droppedCount, totalPrior, selected.size(), user.getUserId());
+            auditWriteService.writeMemoryTruncated(
+                    conversation.getId(),
+                    conversation.getOrganizationId(),
+                    conversation.getProjectId(),
+                    droppedCount,
+                    totalPrior,
+                    selected.size(),
+                    user.getUserId());
         }
 
         return new AssembledContext(runtimeMessages, droppedCount, totalPrior, truncated);
@@ -110,27 +112,6 @@ public class ConversationMemoryService {
 
     private static RuntimeMessage toRuntimeMessage(ConversationMessage message) {
         return new RuntimeMessage(message.getRole().name(), message.getContent());
-    }
-
-    private void writeTruncationAudit(
-            Conversation conversation,
-            int droppedCount,
-            int totalPriorMessages,
-            int includedPriorMessages,
-            UUID performedBy) {
-        String metadata = String.format(
-                "{\"droppedCount\":%d,\"totalPriorMessages\":%d,\"includedPriorMessages\":%d}",
-                droppedCount, totalPriorMessages, includedPriorMessages);
-        auditLogRepository.save(new ConversationAuditLog(
-                UUID.randomUUID(),
-                conversation.getId(),
-                conversation.getOrganizationId(),
-                conversation.getProjectId(),
-                ConversationAuditAction.MEMORY_TRUNCATED,
-                metadata,
-                performedBy,
-                java.time.Instant.now(),
-                MDC.get(CorrelationIdFilter.CORRELATION_ID_MDC_KEY)));
     }
 
     static void validateMessageLength(String content, ConversationProperties props) {
