@@ -43,6 +43,8 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Cursor execution guide](docs/007_CURSOR_EXECUTION_GUIDE.md)
 - [CI/CD guide](docs/008_CI_CD_GUIDE.md)
 - [Authentication API](docs/009_AUTH_API.md)
+- [Organizations and Projects API](docs/010_ORGANIZATIONS_PROJECTS_API.md)
+- [Database ER diagram](docs/011_DATABASE_ER.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
@@ -58,4 +60,4 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 
 ## Current status
 
-Sprint 1 Phase 1 — authentication foundation (JWT, RBAC, portal login) on top of Sprint 0 skeletons.
+Sprint 1 Phase 2 — organization and project management on top of JWT authentication.

@@ -1,0 +1,73 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <h1>Organizations</h1>
+      <p>Manage tenant organizations for the Nova platform.</p>
+    </div>
+    <button mat-flat-button color="primary" type="button" (click)="create()">
+      <mat-icon>add</mat-icon>
+      Create
+    </button>
+  </header>
+
+  <mat-form-field appearance="outline" class="page__search">
+    <mat-label>Search organizations</mat-label>
+    <input matInput [formControl]="searchControl" aria-label="Search organizations" />
+    <mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+
+  @if (error()) {
+    <p class="page__error" role="alert">{{ error() }}</p>
+  }
+
+  @if (loading()) {
+    <div class="page__loading" role="status" aria-live="polite">
+      <mat-spinner diameter="36" />
+      <span>Loading organizations…</span>
+    </div>
+  } @else if (rows().length === 0) {
+    <div class="page__empty">
+      <mat-icon>business</mat-icon>
+      <h2>No organizations found</h2>
+      <p>Create an organization to get started.</p>
+    </div>
+  } @else {
+    <div class="page__table-wrap">
+      <table mat-table [dataSource]="rows()" matSort (matSortChange)="onSort($event)" class="page__table">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
+          <td mat-cell *matCellDef="let row">{{ row.name }}</td>
+        </ng-container>
+        <ng-container matColumnDef="slug">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Slug</th>
+          <td mat-cell *matCellDef="let row">{{ row.slug }}</td>
+        </ng-container>
+        <ng-container matColumnDef="updatedAt">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Updated</th>
+          <td mat-cell *matCellDef="let row">{{ row.updatedAt | date: 'medium' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Actions</th>
+          <td mat-cell *matCellDef="let row">
+            <button mat-icon-button type="button" aria-label="Edit organization" (click)="edit(row)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button type="button" aria-label="Delete organization" (click)="remove(row)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+    </div>
+
+    <mat-paginator
+      [length]="total()"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="[5, 10, 25]"
+      (page)="onPage($event)"
+    />
+  }
+</section>

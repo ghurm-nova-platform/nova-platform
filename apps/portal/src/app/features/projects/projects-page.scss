@@ -1,0 +1,87 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.page__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.page__header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+.page__header p {
+  margin: 0.35rem 0 0;
+  opacity: 0.8;
+}
+
+.page__search {
+  width: min(100%, 420px);
+}
+
+.page__loading,
+.page__empty {
+  display: grid;
+  place-items: center;
+  gap: 0.75rem;
+  min-height: 220px;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.page__error {
+  color: #b3261e;
+  margin: 0;
+}
+
+.page__table-wrap {
+  width: 100%;
+  overflow: auto;
+}
+
+.page__table {
+  width: 100%;
+}
+
+.name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.name-cell span {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.status--active {
+  background: color-mix(in srgb, #2e7d32 18%, transparent);
+  color: #1b5e20;
+}
+
+.status--draft {
+  background: color-mix(in srgb, #f9a825 22%, transparent);
+  color: #8d6e00;
+}
+
+.status--archived {
+  background: color-mix(in srgb, #616161 18%, transparent);
+  color: #424242;
+}

@@ -49,7 +49,14 @@ describe('App routing', () => {
     const router = TestBed.inject(Router);
     fixture.detectChanges();
 
-    for (const path of ['/dashboard', '/projects', '/agents', '/feedback', '/settings']) {
+    for (const path of [
+      '/dashboard',
+      '/organizations',
+      '/projects',
+      '/agents',
+      '/feedback',
+      '/settings',
+    ]) {
       await router.navigateByUrl(path);
       fixture.detectChanges();
       expect(router.url).toBe(path);

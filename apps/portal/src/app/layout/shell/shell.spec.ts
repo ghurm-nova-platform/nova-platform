@@ -27,6 +27,7 @@ describe('Shell', () => {
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Dashboard');
+    expect(text).toContain('Organizations');
     expect(text).toContain('Projects');
     expect(text).toContain('Agents');
     expect(text).toContain('Feedback');
