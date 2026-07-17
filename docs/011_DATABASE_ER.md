@@ -271,6 +271,63 @@ erDiagram
     text metadata
   }
 
+  KNOWLEDGE_BASES {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    string knowledge_key
+    string status
+    string embedding_provider_key
+    string embedding_model
+    int embedding_dimensions
+  }
+
+  KNOWLEDGE_DOCUMENTS {
+    uuid id PK
+    uuid knowledge_base_id FK
+    string document_key
+    string document_type
+    string status
+    string content_hash
+  }
+
+  KNOWLEDGE_DOCUMENT_CONTENT {
+    uuid document_id PK
+    text extracted_text
+  }
+
+  KNOWLEDGE_CHUNKS {
+    uuid id PK
+    uuid document_id FK
+    int chunk_index
+    text content
+    string content_hash
+  }
+
+  KNOWLEDGE_EMBEDDINGS {
+    uuid id PK
+    uuid chunk_id FK
+    string provider_key
+    string model
+    int dimensions
+    text embedding
+  }
+
+  AGENT_KNOWLEDGE_ASSIGNMENTS {
+    uuid id PK
+    uuid agent_id FK
+    uuid knowledge_base_id FK
+    boolean enabled
+  }
+
+  KNOWLEDGE_RETRIEVAL_AUDIT {
+    uuid id PK
+    uuid knowledge_base_id FK
+    string query_hash
+    int returned_count
+    bigint duration_ms
+  }
+
   REFRESH_TOKENS {
     uuid id PK
     uuid user_id FK
@@ -296,3 +353,11 @@ Unique constraints:
 - `agent_tool_assignments (agent_id, tool_id)`
 - `execution_tool_calls (execution_id, runtime_call_id)`
 - `execution_tool_calls (execution_id, sequence_number)`
+- `knowledge_bases (project_id, knowledge_key)`
+- `knowledge_documents (knowledge_base_id, document_key)`
+- `knowledge_chunks (document_id, chunk_index)`
+- `knowledge_embeddings (chunk_id, provider_key, model)`
+- `agent_knowledge_assignments (agent_id, knowledge_base_id)`
+
+Migrations: `V16__knowledge_base.sql`, `V17__knowledge_embeddings.sql`, `V18__knowledge_permissions_seed.sql`.
+See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md).

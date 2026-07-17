@@ -99,6 +99,13 @@
             >
               <mat-icon>build</mat-icon>
             </a>
+            <a
+              mat-icon-button
+              [routerLink]="['/projects', projectId(), 'agents', row.id, 'knowledge-bases']"
+              aria-label="Open agent knowledge bases"
+            >
+              <mat-icon>menu_book</mat-icon>
+            </a>
             @if (permissions.canArchive() && row.status !== 'ARCHIVED') {
               <button mat-icon-button type="button" aria-label="Archive agent" (click)="archive(row)">
                 <mat-icon>archive</mat-icon>

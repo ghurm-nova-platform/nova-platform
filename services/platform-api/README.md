@@ -92,6 +92,13 @@ See [`docs/016_CONVERSATION_MEMORY.md`](../../docs/016_CONVERSATION_MEMORY.md).
 
 See [`docs/017_TOOL_REGISTRY_AND_CALLING.md`](../../docs/017_TOOL_REGISTRY_AND_CALLING.md).
 
+## Knowledge bases and RAG
+
+See [`docs/018_KNOWLEDGE_BASE_AND_RAG.md`](../../docs/018_KNOWLEDGE_BASE_AND_RAG.md).
+
+Migrations: `V16`–`V18`. Embedding provider allowlist starts with `DETERMINISTIC_LOCAL`.
+PDF extraction is deferred (`nova.knowledge.pdf-enabled=false`).
+
 Local demo user (Flyway seed, local only):
 
 - `admin@nova.local` / `ChangeMe123!`

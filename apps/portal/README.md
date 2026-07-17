@@ -2,6 +2,15 @@
 
 Angular 20 administration portal for organizations, projects, agents, feedback, policies, usage, and settings.
 
+## Sprint 1 Phase 8 scope
+
+- Project knowledge bases under `/projects/:projectId/knowledge-bases`
+- Document upload (TEXT / MARKDOWN), chunk metadata, reprocess/archive
+- Agent knowledge assignment page
+- Playground citations and retrieval indicator
+- Typed KnowledgeBaseService and permission helper (Platform API only)
+- No browser-side embeddings, vector search, or document content in local/session storage
+
 ## Sprint 1 Phase 7 scope
 
 - Project tools under `/projects/:projectId/tools`

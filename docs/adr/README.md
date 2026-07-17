@@ -21,3 +21,4 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0005](ADR-0005-agent-execution-noop.md) | NoOp-first agent execution behind Platform API | Accepted |
 | [ADR-0006](ADR-0006-conversation-memory.md) | Bounded conversation memory on Platform API | Accepted |
 | [ADR-0007](ADR-0007-secure-tool-calling.md) | Secure allowlisted tool calling on Platform API | Accepted |
+| [ADR-0008](ADR-0008-provider-neutral-rag.md) | Provider-neutral knowledge bases and RAG on Platform API | Accepted |

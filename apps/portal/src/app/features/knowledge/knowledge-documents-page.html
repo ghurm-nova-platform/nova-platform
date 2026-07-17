@@ -1,0 +1,153 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <h1>Documents</h1>
+      <p>
+        @if (knowledgeBase(); as kb) {
+          Knowledge base <strong>{{ kb.name }}</strong> · <code>{{ kb.knowledgeKey }}</code>
+        } @else {
+          Upload and manage documents for this knowledge base.
+        }
+      </p>
+    </div>
+    <div class="page__actions">
+      <a
+        mat-stroked-button
+        [routerLink]="['/projects', projectId(), 'knowledge-bases', knowledgeBaseId()]"
+      >
+        Back to knowledge base
+      </a>
+      <a mat-stroked-button [routerLink]="['/projects', projectId(), 'knowledge-bases']">
+        All knowledge bases
+      </a>
+    </div>
+  </header>
+
+  @if (permissions.canUploadDocuments()) {
+    <div class="page__upload">
+      <mat-form-field appearance="outline">
+        <mat-label>Document key (optional)</mat-label>
+        <input matInput [formControl]="documentKeyControl" aria-label="Document key" placeholder="README" />
+      </mat-form-field>
+      <label class="upload-button" mat-stroked-button>
+        <input
+          type="file"
+          accept=".txt,.md,.markdown,text/plain,text/markdown"
+          (change)="onFileSelected($event)"
+          [disabled]="uploading()"
+          aria-label="Upload text or markdown document"
+        />
+        @if (uploading()) {
+          Uploading…
+        } @else {
+          <mat-icon>upload</mat-icon>
+          Upload TEXT / MARKDOWN
+        }
+      </label>
+      <p class="page__hint">
+        Supported: plain text and Markdown files.
+        @if (!pdfEnabled()) {
+          PDF upload is disabled until <code>nova.knowledge.pdf-enabled</code> is enabled server-side.
+        }
+      </p>
+    </div>
+  }
+
+  <div class="page__filters">
+    <mat-form-field appearance="outline">
+      <mat-label>Search documents</mat-label>
+      <input matInput [formControl]="searchControl" aria-label="Search documents" />
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Status</mat-label>
+      <mat-select [formControl]="statusControl">
+        <mat-option value="">All</mat-option>
+        @for (status of statuses; track status) {
+          <mat-option [value]="status">{{ status }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  @if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to view documents for this knowledge base.</p>
+    </div>
+  } @else if (error()) {
+    <p class="page__error" role="alert">{{ error() }}</p>
+  } @else if (loading()) {
+    <div class="page__loading" role="status">
+      <mat-spinner diameter="36" />
+      <span>Loading documents…</span>
+    </div>
+  } @else if (rows().length === 0) {
+    <div class="page__empty">
+      <mat-icon>description</mat-icon>
+      <h2>No documents found</h2>
+      <p>Upload a text or markdown file to begin ingestion.</p>
+    </div>
+  } @else {
+    <div class="page__table-wrap">
+      <table mat-table [dataSource]="rows()" matSort (matSortChange)="onSort($event)" class="page__table">
+        <ng-container matColumnDef="fileName">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>File</th>
+          <td mat-cell *matCellDef="let row">
+            <button class="linkish" type="button" (click)="open(row)">{{ row.fileName }}</button>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="documentKey">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Key</th>
+          <td mat-cell *matCellDef="let row"><code>{{ row.documentKey }}</code></td>
+        </ng-container>
+        <ng-container matColumnDef="documentType">
+          <th mat-header-cell *matHeaderCellDef>Type</th>
+          <td mat-cell *matCellDef="let row">{{ row.documentType }}</td>
+        </ng-container>
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+          <td mat-cell *matCellDef="let row">
+            <span [class]="statusClass(row.status)">{{ row.status }}</span>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="chunkCount">
+          <th mat-header-cell *matHeaderCellDef>Chunks</th>
+          <td mat-cell *matCellDef="let row">{{ row.chunkCount }}</td>
+        </ng-container>
+        <ng-container matColumnDef="updatedAt">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Updated</th>
+          <td mat-cell *matCellDef="let row">{{ row.updatedAt | date: 'medium' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Actions</th>
+          <td mat-cell *matCellDef="let row">
+            <button mat-icon-button type="button" aria-label="Open document" (click)="open(row)">
+              <mat-icon>visibility</mat-icon>
+            </button>
+            @if (permissions.canReprocessDocuments() && row.status !== 'ARCHIVED') {
+              <button mat-icon-button type="button" aria-label="Reprocess document" (click)="reprocess(row)">
+                <mat-icon>refresh</mat-icon>
+              </button>
+            }
+            @if (permissions.canArchiveDocuments() && row.status !== 'ARCHIVED') {
+              <button mat-icon-button type="button" aria-label="Archive document" (click)="archive(row)">
+                <mat-icon>archive</mat-icon>
+              </button>
+            }
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+    </div>
+    <mat-paginator
+      [length]="total()"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="[5, 10, 25]"
+      (page)="onPage($event)"
+    />
+  }
+</section>

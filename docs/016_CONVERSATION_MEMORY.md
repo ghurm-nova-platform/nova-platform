@@ -91,6 +91,9 @@ PR #38 lifecycle is preserved:
 - Cancelled runs do not add ASSISTANT conversation messages.
 - Successful tool results may append TOOL conversation messages when
   `nova.conversation.store-tool-messages=true` (see tool calling docs).
+- Retrieved knowledge chunks are never appended as conversation messages.
+  Citations may appear in the assistant response and execute metadata
+  (see [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md)).
 
 ## RBAC
 

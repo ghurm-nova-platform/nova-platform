@@ -46,6 +46,18 @@ describe('App routing', () => {
       'TOOL_EXECUTE',
       'TOOL_CALL_READ',
       'TOOL_CALL_APPROVE',
+      'KNOWLEDGE_READ',
+      'KNOWLEDGE_CREATE',
+      'KNOWLEDGE_UPDATE',
+      'KNOWLEDGE_ACTIVATE',
+      'KNOWLEDGE_ARCHIVE',
+      'KNOWLEDGE_DOCUMENT_UPLOAD',
+      'KNOWLEDGE_DOCUMENT_READ',
+      'KNOWLEDGE_DOCUMENT_ARCHIVE',
+      'KNOWLEDGE_DOCUMENT_REPROCESS',
+      'KNOWLEDGE_ASSIGN',
+      'KNOWLEDGE_RETRIEVE',
+      'KNOWLEDGE_AUDIT_READ',
     ],
   };
 
@@ -104,9 +116,29 @@ describe('App routing', () => {
     const projectId = '55555555-5555-5555-5555-555555555501';
     const agentId = '66666666-6666-6666-6666-666666666601';
     const toolId = '77777777-7777-7777-7777-777777777701';
+    const knowledgeBaseId = '88888888-8888-8888-8888-888888888801';
+    const documentId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01';
     const executionId = '99999999-9999-9999-9999-999999999901';
 
     for (const [path, expected] of [
+      [`/projects/${projectId}/knowledge-bases`, `/projects/${projectId}/knowledge-bases`],
+      [`/projects/${projectId}/knowledge-bases/new`, `/projects/${projectId}/knowledge-bases/new`],
+      [
+        `/projects/${projectId}/knowledge-bases/${knowledgeBaseId}`,
+        `/projects/${projectId}/knowledge-bases/${knowledgeBaseId}`,
+      ],
+      [
+        `/projects/${projectId}/knowledge-bases/${knowledgeBaseId}/documents`,
+        `/projects/${projectId}/knowledge-bases/${knowledgeBaseId}/documents`,
+      ],
+      [
+        `/projects/${projectId}/knowledge-bases/${knowledgeBaseId}/documents/${documentId}`,
+        `/projects/${projectId}/knowledge-bases/${knowledgeBaseId}/documents/${documentId}`,
+      ],
+      [
+        `/projects/${projectId}/agents/${agentId}/knowledge-bases`,
+        `/projects/${projectId}/agents/${agentId}/knowledge-bases`,
+      ],
       [`/projects/${projectId}/tools`, `/projects/${projectId}/tools`],
       [`/projects/${projectId}/tools/new`, `/projects/${projectId}/tools/new`],
       [`/projects/${projectId}/tools/${toolId}`, `/projects/${projectId}/tools/${toolId}`],

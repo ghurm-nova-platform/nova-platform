@@ -1,0 +1,109 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <h1>Agent knowledge bases</h1>
+      <p>Knowledge bases assigned to agent <code>{{ agentId() }}</code>.</p>
+    </div>
+    <div class="page__actions">
+      <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents', agentId()]">Back to agent</a>
+      <a mat-stroked-button [routerLink]="['/projects', projectId(), 'knowledge-bases']">Knowledge registry</a>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to view agent knowledge assignments.</p>
+    </div>
+  } @else if (error()) {
+    <p class="page__error" role="alert">{{ error() }}</p>
+  } @else if (loading()) {
+    <div class="page__loading" role="status">
+      <mat-spinner diameter="36" />
+      <span>Loading assignments…</span>
+    </div>
+  } @else {
+    @if (permissions.canAssign()) {
+      <form class="page__assign" [formGroup]="assignForm" (ngSubmit)="assign()">
+        <mat-form-field appearance="outline">
+          <mat-label>Assign knowledge base</mat-label>
+          <mat-select formControlName="knowledgeBaseId" aria-label="Knowledge base to assign">
+            @for (kb of availableKnowledgeBases(); track kb.id) {
+              <mat-option [value]="kb.id">{{ kb.name }} ({{ kb.knowledgeKey }})</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Top K override</mat-label>
+          <input matInput formControlName="topKOverride" aria-label="Top K override" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Minimum score override</mat-label>
+          <input matInput formControlName="minimumScoreOverride" aria-label="Minimum score override" />
+        </mat-form-field>
+        <button mat-flat-button color="primary" type="submit" [disabled]="assigning() || assignForm.invalid">
+          @if (assigning()) {
+            Assigning…
+          } @else {
+            Assign
+          }
+        </button>
+      </form>
+    }
+
+    @if (assignments().length === 0) {
+      <div class="page__empty">
+        <mat-icon>menu_book</mat-icon>
+        <h2>No knowledge bases assigned</h2>
+        <p>Assign active knowledge bases from the project registry.</p>
+      </div>
+    } @else {
+      <div class="page__table-wrap">
+        <table mat-table [dataSource]="assignments()" class="page__table">
+          <ng-container matColumnDef="knowledgeKey">
+            <th mat-header-cell *matHeaderCellDef>Key</th>
+            <td mat-cell *matCellDef="let row"><code>{{ row.knowledgeKey }}</code></td>
+          </ng-container>
+          <ng-container matColumnDef="knowledgeBaseName">
+            <th mat-header-cell *matHeaderCellDef>Name</th>
+            <td mat-cell *matCellDef="let row">{{ row.knowledgeBaseName }}</td>
+          </ng-container>
+          <ng-container matColumnDef="knowledgeBaseStatus">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let row">
+              <span [class]="statusClass(row.knowledgeBaseStatus)">{{ row.knowledgeBaseStatus }}</span>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="topKOverride">
+            <th mat-header-cell *matHeaderCellDef>Top K</th>
+            <td mat-cell *matCellDef="let row">{{ row.topKOverride ?? '—' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="minimumScoreOverride">
+            <th mat-header-cell *matHeaderCellDef>Min score</th>
+            <td mat-cell *matCellDef="let row">{{ row.minimumScoreOverride ?? '—' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="updatedAt">
+            <th mat-header-cell *matHeaderCellDef>Updated</th>
+            <td mat-cell *matCellDef="let row">{{ row.updatedAt | date: 'medium' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let row">
+              @if (permissions.canAssign()) {
+                <button mat-icon-button type="button" aria-label="Update assignment" (click)="updateAssignment(row)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button type="button" aria-label="Unassign knowledge base" (click)="unassign(row)">
+                  <mat-icon>link_off</mat-icon>
+                </button>
+              }
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+      </div>
+    }
+  }
+</section>

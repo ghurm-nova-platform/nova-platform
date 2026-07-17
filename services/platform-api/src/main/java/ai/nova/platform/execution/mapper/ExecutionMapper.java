@@ -12,6 +12,7 @@ import ai.nova.platform.execution.dto.ExecutionDtos.ExecuteResponse;
 import ai.nova.platform.execution.dto.ExecutionDtos.TokenUsage;
 import ai.nova.platform.execution.entity.AgentExecution;
 import ai.nova.platform.execution.entity.ExecutionMessage;
+import ai.nova.platform.knowledge.dto.KnowledgeDtos.KnowledgeCitationResponse;
 
 @Component
 public class ExecutionMapper {
@@ -62,7 +63,15 @@ public class ExecutionMapper {
 
     public ExecuteResponse toExecuteResponse(
             AgentExecution execution, String response, String renderedPrompt) {
-        return toExecuteResponse(execution, response, renderedPrompt, false, null);
+        return toExecuteResponse(execution, response, renderedPrompt, false, null, List.of());
+    }
+
+    public ExecuteResponse toExecuteResponse(
+            AgentExecution execution,
+            String response,
+            String renderedPrompt,
+            List<KnowledgeCitationResponse> citations) {
+        return toExecuteResponse(execution, response, renderedPrompt, false, null, citations);
     }
 
     public ExecuteResponse toExecuteResponse(
@@ -71,6 +80,17 @@ public class ExecutionMapper {
             String renderedPrompt,
             boolean awaitingApproval,
             UUID pendingToolCallId) {
+        return toExecuteResponse(
+                execution, response, renderedPrompt, awaitingApproval, pendingToolCallId, List.of());
+    }
+
+    public ExecuteResponse toExecuteResponse(
+            AgentExecution execution,
+            String response,
+            String renderedPrompt,
+            boolean awaitingApproval,
+            UUID pendingToolCallId,
+            List<KnowledgeCitationResponse> citations) {
         TokenUsage tokens = execution.getTotalTokens() != null
                 ? new TokenUsage(
                         execution.getInputTokens() != null ? execution.getInputTokens() : 0,
@@ -86,6 +106,7 @@ public class ExecutionMapper {
                 renderedPrompt,
                 execution.getErrorMessage(),
                 awaitingApproval ? Boolean.TRUE : null,
-                pendingToolCallId);
+                pendingToolCallId,
+                citations == null ? List.of() : citations);
     }
 }

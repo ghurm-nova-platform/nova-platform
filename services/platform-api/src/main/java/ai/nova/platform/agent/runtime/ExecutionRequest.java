@@ -14,5 +14,6 @@ public record ExecutionRequest(
         List<RuntimeMessage> messages,
         UUID conversationId,
         List<RuntimeToolSpec> availableTools,
-        List<RuntimeToolResultMessage> toolResults) {
+        List<RuntimeToolResultMessage> toolResults,
+        RuntimeKnowledgeContext knowledgeContext) {
 }

@@ -51,6 +51,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Agent Execution Engine](docs/015_AGENT_EXECUTION.md)
 - [Conversation Memory](docs/016_CONVERSATION_MEMORY.md)
 - [Tool Registry and Calling](docs/017_TOOL_REGISTRY_AND_CALLING.md)
+- [Knowledge Bases and RAG](docs/018_KNOWLEDGE_BASE_AND_RAG.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
@@ -66,4 +67,4 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 
 ## Current status
 
-Sprint 1 Phase 7 — secure tool registry and agent tool calling on Platform API.
+Sprint 1 Phase 8 — secure knowledge bases and RAG retrieval on Platform API.

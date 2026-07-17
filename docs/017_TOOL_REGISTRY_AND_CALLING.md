@@ -75,6 +75,12 @@ Audit metadata and INFO/WARN logs must not contain tool input/output payloads, p
 - Sequential tool execution only
 - No real LLM provider (NoOp runtime)
 
+## Compatibility with knowledge retrieval
+
+Tool calling and RAG coexist. Platform API retrieves knowledge once before the
+initial runtime turn, then continues tool orchestration as documented here.
+Retrieval does not re-run after every tool call in this phase.
+
 ## Migrations
 
 - `V14__tool_registry.sql`

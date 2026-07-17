@@ -77,6 +77,7 @@ Identity Projects     Agent Runtime   Feedback    Audit/Usage
 - Agent Execution (Platform API orchestration with replaceable AgentRuntimeClient)
 - Conversation Memory (bounded durable history assembled by Platform API)
 - Tool Registry (allowlisted executors orchestrated by Platform API)
+- Knowledge Bases and RAG (allowlisted embeddings + vector store owned by Platform API)
 - Agent Runtime
 - Workflows and Events
 - Tools and Sandboxes
@@ -91,7 +92,7 @@ Identity Projects     Agent Runtime   Feedback    Audit/Usage
 ```text
 Request received
 → policy evaluation
-→ context retrieval
+→ context retrieval (assigned knowledge bases)
 → plan creation
 → approval gate when required
 → tool execution in sandbox
@@ -113,10 +114,12 @@ Request received
 - High-risk actions require explicit user approval.
 - Every tool invocation records actor, agent, input summary, result, duration, and policy decision.
 - Browser clients authenticate only to Platform API using user JWTs.
-- The browser must never call Agent Runtime or carry internal service API keys.
+- The browser must never call Agent Runtime, embedding providers, or vector stores.
+- The browser must never carry internal service API keys.
 - Platform API JWTs carry `userId`, `organizationId`, and `roles` for RBAC.
 - Organization and project APIs are scoped by JWT organization membership and role codes
   (`ORG_ADMIN`, `PROJECT_ADMIN`, `USER`).
+- Knowledge retrieval is tenant-scoped; raw embeddings and document content are not exposed in list APIs or INFO/WARN logs.
 
 ## 7. Data stores
 

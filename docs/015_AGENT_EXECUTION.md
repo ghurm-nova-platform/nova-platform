@@ -37,6 +37,10 @@ Rules:
 - Stateless execution (`conversationId` null) remains supported.
 - Assigned ACTIVE tools are orchestrated by Platform API
   ([`017_TOOL_REGISTRY_AND_CALLING.md`](017_TOOL_REGISTRY_AND_CALLING.md)).
+- Assigned ACTIVE knowledge bases are retrieved once before the initial runtime turn
+  ([`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md)).
+  Runtime receives only server-authorized `RuntimeKnowledgeContext`; citations are
+  returned on the execute response without exposing embeddings.
 
 ## Endpoints
 

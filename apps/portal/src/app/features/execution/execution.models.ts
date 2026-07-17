@@ -6,6 +6,16 @@ export interface ExecutionTokenUsage {
   total: number;
 }
 
+export interface Citation {
+  label: string;
+  knowledgeBaseId: string;
+  knowledgeBaseName: string;
+  documentId: string;
+  documentName: string;
+  chunkIndex: number;
+  score: number;
+}
+
 export interface AgentExecuteInput {
   message: string;
 }
@@ -27,6 +37,7 @@ export interface AgentExecuteResponse {
   errorMessage?: string | null;
   awaitingApproval?: boolean;
   pendingToolCallId?: string | null;
+  citations?: Citation[];
 }
 
 export interface Execution {

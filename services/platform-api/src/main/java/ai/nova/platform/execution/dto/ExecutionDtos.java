@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotNull;
 
 import ai.nova.platform.execution.entity.ExecutionStatus;
 import ai.nova.platform.execution.entity.MessageRole;
+import ai.nova.platform.knowledge.dto.KnowledgeDtos.KnowledgeCitationResponse;
 
 public final class ExecutionDtos {
 
@@ -39,7 +40,8 @@ public final class ExecutionDtos {
             String renderedPrompt,
             String errorMessage,
             Boolean awaitingApproval,
-            UUID pendingToolCallId) {
+            UUID pendingToolCallId,
+            List<KnowledgeCitationResponse> citations) {
     }
 
     public record ExecutionSummaryResponse(
