@@ -32,6 +32,42 @@ public class GlobalExceptionHandler {
                 null);
     }
 
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleResourceNotFound(
+            ResourceNotFoundException ex,
+            HttpServletRequest request) {
+        return build(
+                HttpStatus.NOT_FOUND,
+                "RESOURCE_NOT_FOUND",
+                ex.getMessage() != null ? ex.getMessage() : "Resource not found",
+                request,
+                null);
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleConflict(
+            ConflictException ex,
+            HttpServletRequest request) {
+        return build(
+                HttpStatus.CONFLICT,
+                "CONFLICT",
+                ex.getMessage() != null ? ex.getMessage() : "Conflict",
+                request,
+                null);
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiErrorResponse> handleForbidden(
+            ForbiddenException ex,
+            HttpServletRequest request) {
+        return build(
+                HttpStatus.FORBIDDEN,
+                "FORBIDDEN",
+                ex.getMessage() != null ? ex.getMessage() : "Forbidden",
+                request,
+                null);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(
             MethodArgumentNotValidException ex,

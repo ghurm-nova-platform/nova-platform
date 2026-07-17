@@ -66,10 +66,15 @@ ai.nova.platform
 
 See [`docs/009_AUTH_API.md`](../../docs/009_AUTH_API.md).
 
+## Organizations and projects
+
+See [`docs/010_ORGANIZATIONS_PROJECTS_API.md`](../../docs/010_ORGANIZATIONS_PROJECTS_API.md)
+and [`docs/011_DATABASE_ER.md`](../../docs/011_DATABASE_ER.md).
+
 Local demo user (Flyway seed, local only):
 
 - `admin@nova.local` / `ChangeMe123!`
-- Role: `ORG_ADMIN`
+- Roles: `ORG_ADMIN`, `PROJECT_ADMIN`
 
 ## Run
 

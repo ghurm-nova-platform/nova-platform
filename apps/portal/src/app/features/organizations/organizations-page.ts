@@ -8,17 +8,16 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 
-import { Project, ProjectStatus } from '../../core/models/catalog';
-import { ProjectDialog } from './project-dialog';
-import { ProjectService } from './project.service';
+import { Organization } from '../../core/models/catalog';
+import { OrganizationDialog } from './organization-dialog';
+import { OrganizationService } from './organization.service';
 
 @Component({
-  selector: 'app-projects-page',
+  selector: 'app-organizations-page',
   imports: [
     DatePipe,
     ReactiveFormsModule,
@@ -29,22 +28,21 @@ import { ProjectService } from './project.service';
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    MatChipsModule,
     MatProgressSpinnerModule,
     MatDialogModule,
   ],
-  templateUrl: './projects-page.html',
-  styleUrl: './projects-page.scss',
+  templateUrl: './organizations-page.html',
+  styleUrl: './organizations-page.scss',
 })
-export class ProjectsPage implements OnInit {
-  private readonly projectsApi = inject(ProjectService);
+export class OrganizationsPage implements OnInit {
+  private readonly organizationsApi = inject(OrganizationService);
   private readonly dialog = inject(MatDialog);
 
   readonly searchControl = new FormControl('', { nonNullable: true });
-  readonly displayedColumns = ['name', 'status', 'visibility', 'updatedAt', 'actions'];
+  readonly displayedColumns = ['name', 'slug', 'updatedAt', 'actions'];
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
-  readonly rows = signal<Project[]>([]);
+  readonly rows = signal<Organization[]>([]);
   readonly total = signal(0);
   readonly pageIndex = signal(0);
   readonly pageSize = signal(10);
@@ -61,7 +59,7 @@ export class ProjectsPage implements OnInit {
   load(): void {
     this.loading.set(true);
     this.error.set(null);
-    this.projectsApi
+    this.organizationsApi
       .list({
         search: this.searchControl.value.trim() || undefined,
         page: this.pageIndex(),
@@ -75,7 +73,7 @@ export class ProjectsPage implements OnInit {
           this.loading.set(false);
         },
         error: () => {
-          this.error.set('Unable to load projects.');
+          this.error.set('Unable to load organizations.');
           this.loading.set(false);
         },
       });
@@ -98,46 +96,45 @@ export class ProjectsPage implements OnInit {
 
   create(): void {
     this.dialog
-      .open(ProjectDialog, { data: { mode: 'create' }, width: '520px' })
+      .open(OrganizationDialog, { data: { mode: 'create' }, width: '480px' })
       .afterClosed()
       .subscribe((result) => {
         if (!result) {
           return;
         }
-        this.projectsApi.create(result).subscribe({
+        this.organizationsApi.create(result).subscribe({
           next: () => this.load(),
-          error: () => this.error.set('Unable to create project.'),
+          error: () => this.error.set('Unable to create organization.'),
         });
       });
   }
 
-  edit(project: Project): void {
+  edit(organization: Organization): void {
     this.dialog
-      .open(ProjectDialog, { data: { mode: 'edit', project }, width: '520px' })
+      .open(OrganizationDialog, {
+        data: { mode: 'edit', organization },
+        width: '480px',
+      })
       .afterClosed()
       .subscribe((result) => {
         if (!result) {
           return;
         }
-        this.projectsApi.update(project.id, result).subscribe({
+        this.organizationsApi.update(organization.id, result).subscribe({
           next: () => this.load(),
-          error: () => this.error.set('Unable to update project.'),
+          error: () => this.error.set('Unable to update organization.'),
         });
       });
   }
 
-  archive(project: Project): void {
-    const confirmed = window.confirm(`Archive project "${project.name}"?`);
+  remove(organization: Organization): void {
+    const confirmed = window.confirm(`Delete organization "${organization.name}"?`);
     if (!confirmed) {
       return;
     }
-    this.projectsApi.remove(project.id).subscribe({
+    this.organizationsApi.remove(organization.id).subscribe({
       next: () => this.load(),
-      error: () => this.error.set('Unable to archive project.'),
+      error: () => this.error.set('Unable to delete organization.'),
     });
-  }
-
-  statusClass(status: ProjectStatus): string {
-    return `status status--${status.toLowerCase()}`;
   }
 }
