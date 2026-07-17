@@ -80,11 +80,16 @@ See [`docs/012_AGENT_MANAGEMENT_API.md`](../../docs/012_AGENT_MANAGEMENT_API.md)
 See [`docs/013_PROMPT_MANAGEMENT_API.md`](../../docs/013_PROMPT_MANAGEMENT_API.md)
 and [`docs/014_PROMPT_VERSIONING.md`](../../docs/014_PROMPT_VERSIONING.md).
 
+## Agent execution
+
+See [`docs/015_AGENT_EXECUTION.md`](../../docs/015_AGENT_EXECUTION.md).
+
 Local demo user (Flyway seed, local only):
 
 - `admin@nova.local` / `ChangeMe123!`
 - Roles: `ORG_ADMIN`, `PROJECT_ADMIN`
-- Includes agent and prompt permissions, a seeded demo agent, and a seeded demo prompt on the demo project
+- Includes agent, prompt, and execution permissions
+- Seeded ACTIVE demo agent linked to a published demo prompt
 
 ## Run
 

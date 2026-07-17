@@ -74,6 +74,7 @@ Identity Projects     Agent Runtime   Feedback    Audit/Usage
 - Projects and Repositories
 - Workspace and Web IDE
 - Prompt Management (project-scoped reusable prompts and immutable published versions)
+- Agent Execution (Platform API orchestration with replaceable AgentRuntimeClient)
 - Agent Runtime
 - Workflows and Events
 - Tools and Sandboxes

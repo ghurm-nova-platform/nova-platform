@@ -28,6 +28,9 @@ describe('App routing', () => {
       'PROMPT_ARCHIVE',
       'PROMPT_COMPARE',
       'PROMPT_PREVIEW',
+      'AGENT_EXECUTE',
+      'EXECUTION_READ',
+      'EXECUTION_CANCEL',
     ],
   };
 

@@ -44,14 +44,19 @@ erDiagram
 
   PROJECTS ||--o{ AGENTS : owns
   PROJECTS ||--o{ PROMPTS : owns
+  PROJECTS ||--o{ AGENT_EXECUTIONS : runs
   USERS ||--o{ AGENTS : audits
   AGENTS ||--o{ AGENT_AUDIT_LOG : history
+  AGENTS ||--o{ AGENT_EXECUTIONS : executes
   PROMPTS ||--o{ PROMPT_VERSIONS : versions
   PROMPTS ||--o{ PROMPT_TAGS : tagged
   PROMPT_VERSIONS ||--o{ PROMPT_VARIABLES : defines
+  PROMPT_VERSIONS ||--o{ AGENT_EXECUTIONS : used_by
   PROMPTS ||--o{ PROMPT_AUDIT_LOG : history
   PROMPTS ||--o{ AGENTS : referenced_by
   PROMPT_VERSIONS ||--o{ AGENTS : referenced_by
+  AGENT_EXECUTIONS ||--o{ EXECUTION_MESSAGES : contains
+  AGENT_EXECUTIONS ||--o{ EXECUTION_METRICS : records
 
   PROJECTS {
     uuid id PK
@@ -150,6 +155,37 @@ erDiagram
     string correlation_id
   }
 
+  AGENT_EXECUTIONS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    uuid agent_id FK
+    uuid prompt_version_id FK
+    uuid conversation_id
+    string provider
+    string model
+    string status
+    int input_tokens
+    int output_tokens
+    int total_tokens
+    int latency_ms
+    uuid created_by
+  }
+
+  EXECUTION_MESSAGES {
+    uuid id PK
+    uuid execution_id FK
+    string role
+    text content
+  }
+
+  EXECUTION_METRICS {
+    uuid id PK
+    uuid execution_id FK
+    string metric_name
+    string metric_value
+  }
+
   REFRESH_TOKENS {
     uuid id PK
     uuid user_id FK
@@ -168,3 +204,4 @@ Unique constraints:
 - `prompt_versions (prompt_id, version_number)`
 - `prompt_variables (prompt_version_id, name)`
 - `prompt_tags (prompt_id, tag_name)`
+- `execution_metrics (execution_id, metric_name)`

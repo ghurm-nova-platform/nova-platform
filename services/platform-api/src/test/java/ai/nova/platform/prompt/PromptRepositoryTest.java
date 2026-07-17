@@ -30,7 +30,7 @@ class PromptRepositoryTest {
                         organizationId,
                         projectId,
                         "Demo",
-                        PromptStatus.DRAFT,
+                        PromptStatus.PUBLISHED,
                         PromptType.CHAT,
                         "support",
                         PageRequest.of(0, 10))

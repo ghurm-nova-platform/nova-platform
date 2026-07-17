@@ -1,0 +1,52 @@
+export type ExecutionStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+
+export interface ExecutionTokenUsage {
+  input: number;
+  output: number;
+  total: number;
+}
+
+export interface AgentExecuteInput {
+  message: string;
+}
+
+export interface AgentExecuteRequest {
+  input: AgentExecuteInput;
+  variables?: Record<string, string>;
+  conversationId?: string | null;
+}
+
+export interface AgentExecuteResponse {
+  executionId: string;
+  status: ExecutionStatus;
+  response: string;
+  latencyMs: number;
+  tokens: ExecutionTokenUsage;
+  renderedPrompt?: string;
+  errorMessage?: string | null;
+}
+
+export interface Execution {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  agentId: string;
+  status: ExecutionStatus;
+  response: string | null;
+  latencyMs: number | null;
+  tokens: ExecutionTokenUsage | null;
+  renderedPrompt: string | null;
+  errorMessage: string | null;
+  conversationId: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export interface ExecutionListParams {
+  agentId?: string;
+  status?: ExecutionStatus;
+  page?: number;
+  size?: number;
+  sort?: string;
+}
