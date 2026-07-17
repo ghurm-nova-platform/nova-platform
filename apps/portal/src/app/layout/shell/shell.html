@@ -1,0 +1,65 @@
+<mat-sidenav-container class="shell">
+  <mat-sidenav
+    class="shell__nav"
+    [mode]="isHandset() ? 'over' : 'side'"
+    [opened]="navOpen()"
+    (openedChange)="navOpen.set($event)"
+  >
+    <div class="shell__brand">Nova</div>
+    <mat-nav-list>
+      @for (item of navItems; track item.path) {
+        <a
+          mat-list-item
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          (click)="isHandset() && navOpen.set(false)"
+        >
+          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+          <span matListItemTitle>{{ labelFor(item) }}</span>
+        </a>
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <mat-toolbar color="primary" class="shell__toolbar">
+      <button mat-icon-button type="button" (click)="toggleNav()" aria-label="Toggle navigation">
+        <mat-icon>menu</mat-icon>
+      </button>
+      <span class="shell__title">Nova Portal</span>
+      <span class="shell__spacer"></span>
+
+      <button
+        mat-icon-button
+        type="button"
+        (click)="direction.toggleLocale()"
+        [matTooltip]="direction.locale() === 'en' ? 'العربية' : 'English'"
+        aria-label="Toggle language direction"
+      >
+        <mat-icon>translate</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        type="button"
+        (click)="theme.toggleScheme()"
+        [matTooltip]="theme.scheme() === 'light' ? 'Dark theme' : 'Light theme'"
+        aria-label="Toggle color theme"
+      >
+        <mat-icon>{{ theme.scheme() === 'light' ? 'dark_mode' : 'light_mode' }}</mat-icon>
+      </button>
+
+      <button mat-icon-button type="button" [matMenuTriggerFor]="userMenu" aria-label="User menu">
+        <mat-icon>account_circle</mat-icon>
+      </button>
+      <mat-menu #userMenu="matMenu">
+        <button mat-menu-item type="button" disabled>Profile (placeholder)</button>
+        <button mat-menu-item type="button" disabled>Sign out (placeholder)</button>
+      </mat-menu>
+    </mat-toolbar>
+
+    <main class="shell__content">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>
