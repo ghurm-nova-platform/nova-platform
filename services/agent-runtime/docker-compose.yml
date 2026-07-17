@@ -1,0 +1,37 @@
+# Optional local overlay for the agent-runtime service.
+# Usage from this directory:
+#   docker compose -f ../../infrastructure/local/docker-compose.yml -f docker-compose.yml up -d agent-runtime
+#
+# Or standalone (runtime only, in-memory foundation — no DB required):
+#   docker compose up --build
+
+name: nova-agent-runtime
+
+services:
+  agent-runtime:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-8090}:8090"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      APP_NAME: ${APP_NAME:-nova-agent-runtime}
+      APP_ENV: ${APP_ENV:-local}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_JSON: ${LOG_JSON:-false}
+      DEFAULT_AGENT_READONLY: ${DEFAULT_AGENT_READONLY:-true}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped

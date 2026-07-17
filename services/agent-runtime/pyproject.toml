@@ -1,0 +1,51 @@
+[tool.poetry]
+name = "nova-agent-runtime"
+version = "0.1.0"
+description = "Nova Platform provider-neutral agent runtime foundation"
+authors = ["Nova Platform <platform@nova.ai>"]
+readme = "README.md"
+packages = [{ include = "agent_runtime", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.0"
+uvicorn = { extras = ["standard"], version = "^0.34.0" }
+pydantic = "^2.10.0"
+pydantic-settings = "^2.7.0"
+structlog = "^25.1.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.0"
+pytest-asyncio = "^0.25.0"
+httpx = "^0.28.0"
+ruff = "^0.9.0"
+mypy = "^1.14.0"
+
+[tool.poetry.scripts]
+agent-runtime = "agent_runtime.main:run"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+mypy_path = "src"
+packages = ["agent_runtime"]

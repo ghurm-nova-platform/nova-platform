@@ -21,20 +21,20 @@ Describe viable alternatives and why they were not selected.
 
 ### Positive
 
-- 
+- TBD
 
 ### Negative and risks
 
-- 
+- TBD
 
 ## Security and privacy impact
 
-- 
+- TBD
 
 ## Operational and cost impact
 
-- 
+- TBD
 
 ## Follow-up actions
 
-- [ ] 
+- [ ] Document follow-up work

@@ -1,0 +1,56 @@
+name: CI Docs and Security
+
+on:
+  pull_request:
+  push:
+    branches:
+      - sprint-0/foundation
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ci-docs-security-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  docs-security:
+    name: Documentation and repository checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install markdownlint
+        run: npm install --global markdownlint-cli2@0.17.2
+
+      - name: Lint Markdown
+        run: markdownlint-cli2 "**/*.md" "#**/node_modules/**" "#**/dist/**" "#**/target/**" "#**/.venv/**"
+
+      - name: Check local Markdown links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --offline
+            --no-progress
+            --include-fragments
+            './README.md'
+            './docs/**/*.md'
+            './apps/*/README.md'
+            './services/*/README.md'
+            './infrastructure/**/*.md'
+          fail: true
+
+      - name: Validate Docker Compose
+        run: docker compose -f infrastructure/local/docker-compose.yml config --quiet
+
+      - name: Repository security guards
+        run: bash scripts/ci/check-repo-guards.sh
