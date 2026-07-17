@@ -1,5 +1,6 @@
 package ai.nova.platform.agent.runtime;
 
+import java.util.List;
 import java.util.UUID;
 
 public record ExecutionRequest(
@@ -10,6 +11,6 @@ public record ExecutionRequest(
         String provider,
         String model,
         String systemPrompt,
-        String userMessage,
+        List<RuntimeMessage> messages,
         UUID conversationId) {
 }

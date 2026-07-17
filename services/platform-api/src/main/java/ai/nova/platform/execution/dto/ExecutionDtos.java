@@ -23,7 +23,8 @@ public final class ExecutionDtos {
     public record ExecuteRequest(
             @NotNull @Valid ExecuteInput input,
             Map<String, String> variables,
-            UUID conversationId) {
+            UUID conversationId,
+            UUID clientRequestId) {
     }
 
     public record TokenUsage(int input, int output, int total) {

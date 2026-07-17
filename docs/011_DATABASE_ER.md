@@ -45,9 +45,11 @@ erDiagram
   PROJECTS ||--o{ AGENTS : owns
   PROJECTS ||--o{ PROMPTS : owns
   PROJECTS ||--o{ AGENT_EXECUTIONS : runs
+  PROJECTS ||--o{ CONVERSATIONS : hosts
   USERS ||--o{ AGENTS : audits
   AGENTS ||--o{ AGENT_AUDIT_LOG : history
   AGENTS ||--o{ AGENT_EXECUTIONS : executes
+  AGENTS ||--o{ CONVERSATIONS : chats
   PROMPTS ||--o{ PROMPT_VERSIONS : versions
   PROMPTS ||--o{ PROMPT_TAGS : tagged
   PROMPT_VERSIONS ||--o{ PROMPT_VARIABLES : defines
@@ -57,6 +59,10 @@ erDiagram
   PROMPT_VERSIONS ||--o{ AGENTS : referenced_by
   AGENT_EXECUTIONS ||--o{ EXECUTION_MESSAGES : contains
   AGENT_EXECUTIONS ||--o{ EXECUTION_METRICS : records
+  CONVERSATIONS ||--o{ CONVERSATION_MESSAGES : contains
+  CONVERSATIONS ||--o{ CONVERSATION_AUDIT_LOG : history
+  CONVERSATIONS ||--o{ CONVERSATION_EXECUTION_REQUESTS : idempotency
+  AGENT_EXECUTIONS ||--o{ CONVERSATION_MESSAGES : may_link
 
   PROJECTS {
     uuid id PK
@@ -186,6 +192,46 @@ erDiagram
     string metric_value
   }
 
+  CONVERSATIONS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    uuid agent_id FK
+    string title
+    string status
+    int message_count
+    int version
+    uuid created_by
+    uuid updated_by
+  }
+
+  CONVERSATION_MESSAGES {
+    uuid id PK
+    uuid conversation_id FK
+    uuid execution_id FK
+    string role
+    text content
+    int sequence_number
+    uuid client_request_id
+  }
+
+  CONVERSATION_AUDIT_LOG {
+    uuid id PK
+    uuid conversation_id FK
+    uuid organization_id FK
+    uuid project_id FK
+    string action
+    text metadata
+    uuid performed_by
+  }
+
+  CONVERSATION_EXECUTION_REQUESTS {
+    uuid id PK
+    uuid conversation_id FK
+    uuid client_request_id
+    uuid execution_id FK
+  }
+
   REFRESH_TOKENS {
     uuid id PK
     uuid user_id FK
@@ -205,3 +251,5 @@ Unique constraints:
 - `prompt_variables (prompt_version_id, name)`
 - `prompt_tags (prompt_id, tag_name)`
 - `execution_metrics (execution_id, metric_name)`
+- `conversation_messages (conversation_id, sequence_number)`
+- `conversation_execution_requests (conversation_id, client_request_id)`

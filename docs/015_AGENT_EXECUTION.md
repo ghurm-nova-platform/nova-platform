@@ -31,7 +31,10 @@ Rules:
 - Never execute a `DRAFT` prompt version.
 - Reject archived prompts.
 - Reject missing required variables (`MISSING_VARIABLE`).
-- `conversationId` is accepted and stored but conversation memory is not implemented yet.
+- `conversationId` is accepted and stored. When provided with `clientRequestId`,
+  Platform API assembles bounded conversation context (see
+  [`016_CONVERSATION_MEMORY.md`](016_CONVERSATION_MEMORY.md)).
+- Stateless execution (`conversationId` null) remains supported.
 
 ## Endpoints
 

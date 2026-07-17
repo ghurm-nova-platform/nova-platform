@@ -20,11 +20,15 @@ describe('ExecutionService', () => {
   it('executes an agent through Platform API only', () => {
     const http = TestBed.inject(HttpTestingController);
     const service = TestBed.inject(ExecutionService);
+    const conversationId = '88888888-8888-8888-8888-888888888801';
+    const clientRequestId = '99999999-9999-9999-9999-999999999901';
 
     service
       .execute(projectId, agentId, {
         input: { message: 'Hello agent' },
         variables: { name: 'Nova' },
+        conversationId,
+        clientRequestId,
       })
       .subscribe();
 
@@ -35,6 +39,8 @@ describe('ExecutionService', () => {
     expect(req.request.body).toEqual({
       input: { message: 'Hello agent' },
       variables: { name: 'Nova' },
+      conversationId,
+      clientRequestId,
     });
     expect(req.request.url.includes('8090')).toBeFalse();
     req.flush({

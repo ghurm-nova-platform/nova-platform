@@ -57,6 +57,26 @@ export const routes: Routes = [
           import('./features/execution/agent-playground-page').then((m) => m.AgentPlaygroundPage),
       },
       {
+        path: 'projects/:projectId/conversations',
+        loadComponent: () =>
+          import('./features/conversations/conversations-list-page').then((m) => m.ConversationsListPage),
+      },
+      {
+        path: 'projects/:projectId/conversations/new',
+        loadComponent: () =>
+          import('./features/conversations/conversation-form-page').then((m) => m.ConversationFormPage),
+      },
+      {
+        path: 'projects/:projectId/conversations/:conversationId',
+        loadComponent: () =>
+          import('./features/conversations/conversation-detail-page').then((m) => m.ConversationDetailPage),
+      },
+      {
+        path: 'projects/:projectId/agents/:agentId/conversations',
+        loadComponent: () =>
+          import('./features/conversations/conversations-list-page').then((m) => m.ConversationsListPage),
+      },
+      {
         path: 'projects/:projectId/prompts',
         loadComponent: () =>
           import('./features/prompts/prompts-list-page').then((m) => m.PromptsListPage),

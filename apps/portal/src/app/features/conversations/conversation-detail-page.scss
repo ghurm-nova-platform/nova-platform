@@ -1,0 +1,134 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.page__header,
+.page__actions,
+.rename {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.page__header {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.page__header h1 {
+  margin: 0;
+}
+
+.page__header p {
+  margin: 0.35rem 0 0;
+  opacity: 0.85;
+}
+
+.page__loading,
+.page__empty {
+  display: grid;
+  place-items: center;
+  gap: 0.75rem;
+  min-height: 180px;
+  text-align: center;
+}
+
+.page__error {
+  color: #b3261e;
+}
+
+.rename__field {
+  min-width: min(100%, 320px);
+}
+
+.timeline,
+.composer {
+  border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.timeline h2,
+.composer h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.timeline__empty {
+  margin: 0;
+  opacity: 0.75;
+}
+
+.timeline__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.timeline__message {
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+.timeline__message header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.timeline__message pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+}
+
+.timeline__message--user {
+  background: color-mix(in srgb, #1565c0 10%, transparent);
+}
+
+.timeline__message--assistant {
+  background: color-mix(in srgb, #2e7d32 10%, transparent);
+}
+
+.timeline__message--system,
+.timeline__message--tool {
+  background: color-mix(in srgb, currentColor 6%, transparent);
+}
+
+.composer__field {
+  width: 100%;
+}
+
+.composer__actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.status {
+  display: inline-flex;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status--active {
+  background: color-mix(in srgb, #2e7d32 18%, transparent);
+}
+
+.status--archived {
+  background: color-mix(in srgb, #616161 18%, transparent);
+}
+
+button mat-spinner {
+  display: inline-block;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}

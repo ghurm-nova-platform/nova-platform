@@ -1,5 +1,6 @@
 package ai.nova.platform.agent.runtime;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -45,14 +46,17 @@ public class NoOpAgentRuntimeClient implements AgentRuntimeClient {
         }
         long latencyMs = (System.nanoTime() - startNanos) / 1_000_000L;
 
-        String userPreview = request.userMessage();
+        String userPreview = lastUserMessage(request.messages());
         if (userPreview.length() > 80) {
             userPreview = userPreview.substring(0, 80);
         }
         String responseText =
                 "NoOp runtime response for agent " + request.agentId() + ": " + userPreview;
 
-        int inputTokens = wordCount(request.systemPrompt()) + wordCount(request.userMessage());
+        int inputTokens = wordCount(request.systemPrompt()) + wordCount(userPreview);
+        for (RuntimeMessage message : request.messages()) {
+            inputTokens += wordCount(message.content());
+        }
         int outputTokens = wordCount(responseText);
         return new ExecutionResult(responseText, inputTokens, outputTokens, inputTokens + outputTokens, latencyMs);
     }
@@ -60,6 +64,19 @@ public class NoOpAgentRuntimeClient implements AgentRuntimeClient {
     @Override
     public void cancel(UUID executionId) {
         log.debug("Skipping Agent Runtime cancel for execution {} (runtime disabled)", executionId);
+    }
+
+    static String lastUserMessage(List<RuntimeMessage> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return "";
+        }
+        String lastUser = "";
+        for (RuntimeMessage message : messages) {
+            if ("USER".equals(message.role())) {
+                lastUser = message.content();
+            }
+        }
+        return lastUser;
     }
 
     private static int wordCount(String text) {

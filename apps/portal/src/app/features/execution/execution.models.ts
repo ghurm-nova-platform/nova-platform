@@ -14,6 +14,7 @@ export interface AgentExecuteRequest {
   input: AgentExecuteInput;
   variables?: Record<string, string>;
   conversationId?: string | null;
+  clientRequestId?: string | null;
 }
 
 export interface AgentExecuteResponse {

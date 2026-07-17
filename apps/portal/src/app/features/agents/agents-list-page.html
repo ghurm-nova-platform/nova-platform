@@ -85,6 +85,13 @@
                 <mat-icon>play_arrow</mat-icon>
               </button>
             }
+            <a
+              mat-icon-button
+              [routerLink]="['/projects', projectId(), 'agents', row.id, 'conversations']"
+              aria-label="Open agent conversations"
+            >
+              <mat-icon>forum</mat-icon>
+            </a>
             @if (permissions.canArchive() && row.status !== 'ARCHIVED') {
               <button mat-icon-button type="button" aria-label="Archive agent" (click)="archive(row)">
                 <mat-icon>archive</mat-icon>

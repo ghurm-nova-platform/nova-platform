@@ -25,6 +25,9 @@
       </div>
       <div class="page__actions">
         <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents', agentId()]">Back to agent</a>
+        <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents', agentId(), 'conversations']">
+          Conversations
+        </a>
         <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents']">All agents</a>
       </div>
     </header>
@@ -36,6 +39,116 @@
     <div class="playground">
       <section class="playground__panel">
         <h2>Input</h2>
+
+        <div class="playground__mode">
+          <span class="playground__mode-label">Mode</span>
+          <mat-button-toggle-group
+            [value]="mode()"
+            (change)="onModeChange($event.value)"
+            aria-label="Execution mode"
+          >
+            <mat-button-toggle value="stateless">Stateless</mat-button-toggle>
+            <mat-button-toggle value="conversation">Conversation</mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+
+        @if (mode() === 'conversation') {
+          <div class="playground__conversation">
+            @if (conversationsLoading()) {
+              <div class="page__loading" role="status"><mat-spinner diameter="24" /></div>
+            } @else {
+              <mat-form-field appearance="outline" class="playground__message">
+                <mat-label>Conversation</mat-label>
+                <mat-select
+                  [value]="selectedConversationId() ?? ''"
+                  (selectionChange)="onConversationChange($event.value)"
+                  aria-label="Select conversation"
+                >
+                  @for (conversation of conversations(); track conversation.id) {
+                    <mat-option [value]="conversation.id">{{ conversation.title }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              @if (selectedConversation(); as currentConversation) {
+                <div class="playground__conversation-meta">
+                  <span [class]="conversationStatusClass(currentConversation.status)">
+                    {{ currentConversation.status }}
+                  </span>
+                  <span>{{ currentConversation.messageCount }} messages</span>
+                  <button mat-button type="button" (click)="openConversationDetail()">Open detail</button>
+                  @if (conversationPermissions.canUpdate() && !showRenameConversation()) {
+                    <button mat-button type="button" (click)="startRenameConversation()">Rename</button>
+                  }
+                  @if (conversationPermissions.canArchive() && currentConversation.status === 'ACTIVE') {
+                    <button mat-button color="warn" type="button" (click)="archiveSelectedConversation()">
+                      Archive
+                    </button>
+                  }
+                  @if (conversationPermissions.canArchive() && currentConversation.status === 'ARCHIVED') {
+                    <button mat-button type="button" (click)="restoreSelectedConversation()">Restore</button>
+                  }
+                </div>
+
+                @if (showRenameConversation()) {
+                  <div class="playground__rename">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Title</mat-label>
+                      <input matInput [formControl]="renameTitleControl" aria-label="Conversation title" />
+                    </mat-form-field>
+                    <button mat-stroked-button type="button" (click)="saveRenameConversation()" [disabled]="renamingConversation()">
+                      Save
+                    </button>
+                    <button mat-button type="button" (click)="showRenameConversation.set(false)">Cancel</button>
+                  </div>
+                }
+
+                @if (conversationPermissions.canReadMessages()) {
+                  <div class="playground__conversation-messages">
+                    <h3>Recent messages</h3>
+                    @if (conversationMessagesLoading()) {
+                      <mat-spinner diameter="20" />
+                    } @else if (conversationMessages().length === 0) {
+                      <p class="playground__hint">No messages yet in this conversation.</p>
+                    } @else {
+                      @for (message of conversationMessages(); track message.id) {
+                        <article [class]="messageClass(message.role)">
+                          <header>
+                            <strong>{{ message.role }}</strong>
+                            <time>{{ message.createdAt | date: 'short' }}</time>
+                          </header>
+                          <pre>{{ message.content }}</pre>
+                        </article>
+                      }
+                    }
+                  </div>
+                }
+              }
+
+              @if (conversationPermissions.canCreate()) {
+                <div class="playground__create-conversation">
+                  <mat-form-field appearance="outline">
+                    <mat-label>New conversation title (optional)</mat-label>
+                    <input matInput [formControl]="conversationTitleControl" aria-label="New conversation title" />
+                  </mat-form-field>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="createConversation()"
+                    [disabled]="creatingConversation()"
+                  >
+                    @if (creatingConversation()) {
+                      Creating…
+                    } @else {
+                      Create conversation
+                    }
+                  </button>
+                </div>
+              }
+            }
+          </div>
+        }
+
         <mat-form-field appearance="outline" class="playground__message">
           <mat-label>Message</mat-label>
           <textarea
