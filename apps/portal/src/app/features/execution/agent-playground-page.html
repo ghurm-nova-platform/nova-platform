@@ -1,0 +1,262 @@
+<section class="page">
+  @if (loadingAgent()) {
+    <div class="page__loading" role="status">
+      <mat-spinner diameter="36" />
+      <span>Loading playground…</span>
+    </div>
+  } @else if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to execute or view agent runs for this project.</p>
+      <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents', agentId()]">Back to agent</a>
+    </div>
+  } @else {
+    <header class="page__header">
+      <div>
+        <h1>Agent playground</h1>
+        <p>
+          @if (agent(); as current) {
+            Test runs for <strong>{{ current.name }}</strong> through Platform API.
+          } @else {
+            Test agent executions through Platform API.
+          }
+        </p>
+      </div>
+      <div class="page__actions">
+        <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents', agentId()]">Back to agent</a>
+        <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents']">All agents</a>
+      </div>
+    </header>
+
+    @if (error()) {
+      <p class="page__error" role="alert">{{ error() }}</p>
+    }
+
+    <div class="playground">
+      <section class="playground__panel">
+        <h2>Input</h2>
+        <mat-form-field appearance="outline" class="playground__message">
+          <mat-label>Message</mat-label>
+          <textarea
+            matInput
+            rows="6"
+            [formControl]="messageControl"
+            aria-label="Agent input message"
+            placeholder="Enter a message to send to the agent…"
+          ></textarea>
+        </mat-form-field>
+
+        <div class="playground__variables">
+          <div class="playground__variables-header">
+            <h3>Variables</h3>
+            <button mat-stroked-button type="button" (click)="addVariable()">
+              <mat-icon>add</mat-icon>
+              Add variable
+            </button>
+          </div>
+          @if (variablesArray.length === 0) {
+            <p class="playground__hint">Optional key/value pairs substituted into the prompt.</p>
+          } @else {
+            @for (row of variablesArray.controls; track $index) {
+              <div class="playground__variable-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Key</mat-label>
+                  <input matInput [formControl]="row.controls.key" aria-label="Variable key" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Value</mat-label>
+                  <input matInput [formControl]="row.controls.value" aria-label="Variable value" />
+                </mat-form-field>
+                <button
+                  mat-icon-button
+                  type="button"
+                  aria-label="Remove variable"
+                  (click)="removeVariable($index)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            }
+          }
+        </div>
+
+        @if (permissions.canExecute()) {
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            (click)="run()"
+            [disabled]="running() || messageControl.invalid"
+          >
+            @if (running()) {
+              <mat-spinner diameter="18" />
+              Running…
+            } @else {
+              <ng-container>
+                <mat-icon>play_arrow</mat-icon>
+                Run
+              </ng-container>
+            }
+          </button>
+        } @else {
+          <p class="playground__hint">You need AGENT_EXECUTE permission to run the agent.</p>
+        }
+      </section>
+
+      <section class="playground__panel">
+        <h2>Result</h2>
+        <div class="playground__metrics">
+          @if (activeStatus(); as status) {
+            <span [class]="statusClass(status)">{{ status }}</span>
+          } @else {
+            <span class="playground__metric-label">Status</span>
+            <span>—</span>
+          }
+          <div>
+            <span class="playground__metric-label">Latency</span>
+            <span>{{ activeLatency() !== null ? activeLatency() + ' ms' : '—' }}</span>
+          </div>
+          <div>
+            <span class="playground__metric-label">Tokens (in / out / total)</span>
+            <span>{{ formatTokens(activeTokens()) }}</span>
+          </div>
+        </div>
+
+        @if (activeError()) {
+          <p class="page__error" role="alert">{{ activeError() }}</p>
+        }
+
+        <div class="playground__preview-grid">
+          <div class="playground__preview">
+            <h3>Prompt preview</h3>
+            @if (renderedPromptPreview()) {
+              <pre>{{ renderedPromptPreview() }}</pre>
+            } @else {
+              <p class="playground__placeholder">Rendered prompt will appear after a run.</p>
+            }
+          </div>
+          <div class="playground__preview">
+            <h3>Variables preview</h3>
+            @if (variablesArray.length > 0) {
+              <dl class="variables-map">
+                @for (entry of variablesPreview() | keyvalue; track entry.key) {
+                  <div>
+                    <dt>{{ entry.key }}</dt>
+                    <dd>{{ entry.value || '—' }}</dd>
+                  </div>
+                }
+              </dl>
+            } @else {
+              <p class="playground__placeholder">No variables configured.</p>
+            }
+          </div>
+          <div class="playground__preview playground__preview--wide">
+            <h3>Response</h3>
+            @if (responsePreview()) {
+              <pre>{{ responsePreview() }}</pre>
+            } @else {
+              <p class="playground__placeholder">Agent response will appear here.</p>
+            }
+          </div>
+        </div>
+      </section>
+    </div>
+
+    @if (permissions.canRead()) {
+      <section class="playground__history">
+        <h2>Execution history</h2>
+        @if (historyError()) {
+          <p class="page__error" role="alert">{{ historyError() }}</p>
+        } @else if (historyLoading()) {
+          <div class="page__loading" role="status">
+            <mat-spinner diameter="28" />
+          </div>
+        } @else if (historyRows().length === 0) {
+          <p class="playground__placeholder">No executions yet for this agent.</p>
+        } @else {
+          <div class="page__table-wrap">
+            <table mat-table [dataSource]="historyRows()" class="page__table">
+              <ng-container matColumnDef="status">
+                <th mat-header-cell *matHeaderCellDef>Status</th>
+                <td mat-cell *matCellDef="let row">
+                  <span [class]="statusClass(row.status)">{{ row.status }}</span>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="latencyMs">
+                <th mat-header-cell *matHeaderCellDef>Latency</th>
+                <td mat-cell *matCellDef="let row">{{ row.latencyMs ?? '—' }}@if (row.latencyMs !== null) { ms }</td>
+              </ng-container>
+              <ng-container matColumnDef="tokens">
+                <th mat-header-cell *matHeaderCellDef>Tokens</th>
+                <td mat-cell *matCellDef="let row">{{ formatTokens(row.tokens) }}</td>
+              </ng-container>
+              <ng-container matColumnDef="createdAt">
+                <th mat-header-cell *matHeaderCellDef>Created</th>
+                <td mat-cell *matCellDef="let row">{{ row.createdAt | date: 'medium' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Actions</th>
+                <td mat-cell *matCellDef="let row">
+                  <button mat-icon-button type="button" aria-label="View execution" (click)="openDetail(row)">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                  @if (permissions.canCancel() && isCancellable(row.status)) {
+                    <button mat-icon-button type="button" aria-label="Cancel execution" (click)="cancelExecution(row)">
+                      <mat-icon>cancel</mat-icon>
+                    </button>
+                  }
+                </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="historyColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: historyColumns"></tr>
+            </table>
+          </div>
+          <mat-paginator
+            [length]="historyTotal()"
+            [pageIndex]="historyPageIndex()"
+            [pageSize]="historyPageSize()"
+            [pageSizeOptions]="[5, 10, 25]"
+            (page)="onHistoryPage($event)"
+          />
+        }
+
+        @if (detailLoading()) {
+          <div class="page__loading" role="status"><mat-spinner diameter="24" /></div>
+        } @else if (selectedExecution(); as detail) {
+          <div class="playground__detail">
+            <h3>Execution detail</h3>
+            <dl class="details">
+              <div>
+                <dt>ID</dt>
+                <dd>{{ detail.id }}</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd><span [class]="statusClass(detail.status)">{{ detail.status }}</span></dd>
+              </div>
+              @if (detail.errorMessage) {
+                <div>
+                  <dt>Error</dt>
+                  <dd class="page__error">{{ detail.errorMessage }}</dd>
+                </div>
+              }
+              @if (detail.response) {
+                <div>
+                  <dt>Response</dt>
+                  <dd class="mono">{{ detail.response }}</dd>
+                </div>
+              }
+              @if (detail.renderedPrompt) {
+                <div>
+                  <dt>Rendered prompt</dt>
+                  <dd class="mono">{{ detail.renderedPrompt }}</dd>
+                </div>
+              }
+            </dl>
+          </div>
+        }
+      </section>
+    }
+  }
+</section>

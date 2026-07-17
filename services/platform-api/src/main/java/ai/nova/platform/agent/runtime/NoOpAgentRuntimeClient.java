@@ -33,4 +33,39 @@ public class NoOpAgentRuntimeClient implements AgentRuntimeClient {
                 agentId,
                 projectId);
     }
+
+    @Override
+    public ExecutionResult execute(ExecutionRequest request) {
+        long startNanos = System.nanoTime();
+        try {
+            Thread.sleep(100 + (Math.abs(request.executionId().hashCode()) % 201));
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Execution interrupted", ex);
+        }
+        long latencyMs = (System.nanoTime() - startNanos) / 1_000_000L;
+
+        String userPreview = request.userMessage();
+        if (userPreview.length() > 80) {
+            userPreview = userPreview.substring(0, 80);
+        }
+        String responseText =
+                "NoOp runtime response for agent " + request.agentId() + ": " + userPreview;
+
+        int inputTokens = wordCount(request.systemPrompt()) + wordCount(request.userMessage());
+        int outputTokens = wordCount(responseText);
+        return new ExecutionResult(responseText, inputTokens, outputTokens, inputTokens + outputTokens, latencyMs);
+    }
+
+    @Override
+    public void cancel(UUID executionId) {
+        log.debug("Skipping Agent Runtime cancel for execution {} (runtime disabled)", executionId);
+    }
+
+    private static int wordCount(String text) {
+        if (text == null || text.isBlank()) {
+            return 0;
+        }
+        return text.trim().split("\\s+").length;
+    }
 }

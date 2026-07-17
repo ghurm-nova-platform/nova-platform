@@ -52,6 +52,11 @@ export const routes: Routes = [
           import('./features/agents/agent-form-page').then((m) => m.AgentFormPage),
       },
       {
+        path: 'projects/:projectId/agents/:agentId/playground',
+        loadComponent: () =>
+          import('./features/execution/agent-playground-page').then((m) => m.AgentPlaygroundPage),
+      },
+      {
         path: 'projects/:projectId/prompts',
         loadComponent: () =>
           import('./features/prompts/prompts-list-page').then((m) => m.PromptsListPage),

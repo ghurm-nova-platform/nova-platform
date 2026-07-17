@@ -11,4 +11,8 @@ public interface AgentRuntimeClient {
     void createOrUpdateAgentDefinition(UUID organizationId, UUID projectId, UUID agentId, String name, String status);
 
     void archiveAgentDefinition(UUID organizationId, UUID projectId, UUID agentId);
+
+    ExecutionResult execute(ExecutionRequest request);
+
+    void cancel(UUID executionId);
 }

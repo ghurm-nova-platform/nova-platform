@@ -2,6 +2,13 @@
 
 Angular 20 administration portal for organizations, projects, agents, feedback, policies, usage, and settings.
 
+## Sprint 1 Phase 5 scope
+
+- Agent playground under `/projects/:projectId/agents/:agentId/playground`
+- Execute via Platform API only (NoOp runtime server-side)
+- Execution history, token/latency display, cancel action
+- Typed ExecutionService and permission helper
+
 ## Sprint 1 Phase 4 scope
 
 - Project-scoped prompt routes under `/projects/:projectId/prompts`

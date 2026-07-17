@@ -18,3 +18,4 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0002](ADR-0002-jwt-auth-foundation.md) | JWT authentication foundation on Platform API | Accepted |
 | [ADR-0003](ADR-0003-agent-lifecycle.md) | Project-scoped agent lifecycle on Platform API | Accepted |
 | [ADR-0004](ADR-0004-prompt-versioning.md) | Immutable published prompt versions | Accepted |
+| [ADR-0005](ADR-0005-agent-execution-noop.md) | NoOp-first agent execution behind Platform API | Accepted |

@@ -14,6 +14,16 @@
       </div>
       <div class="page__actions">
         <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents']">Back</a>
+        @if (executionPermissions.canExecute()) {
+          <a
+            mat-flat-button
+            color="primary"
+            [routerLink]="['/projects', projectId(), 'agents', agentId(), 'playground']"
+          >
+            <mat-icon>science</mat-icon>
+            Playground
+          </a>
+        }
         @if (permissions.canUpdate() && current.status !== 'ARCHIVED') {
           <button mat-stroked-button type="button" (click)="edit()">Edit</button>
         }

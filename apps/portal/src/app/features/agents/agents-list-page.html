@@ -80,6 +80,11 @@
             <button mat-icon-button type="button" aria-label="Open agent" (click)="open(row)">
               <mat-icon>visibility</mat-icon>
             </button>
+            @if (executionPermissions.canExecute()) {
+              <button mat-icon-button type="button" aria-label="Open playground" (click)="playground(row)">
+                <mat-icon>play_arrow</mat-icon>
+              </button>
+            }
             @if (permissions.canArchive() && row.status !== 'ARCHIVED') {
               <button mat-icon-button type="button" aria-label="Archive agent" (click)="archive(row)">
                 <mat-icon>archive</mat-icon>

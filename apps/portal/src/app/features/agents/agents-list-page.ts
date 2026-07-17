@@ -14,6 +14,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 
 import { Agent, AgentStatus } from './agent.models';
+import { ExecutionPermissionHelper } from '../execution/execution-permission.helper';
 import { AgentPermissionHelper } from './agent-permission.helper';
 import { AgentService } from './agent.service';
 
@@ -41,6 +42,7 @@ export class AgentsListPage implements OnInit {
   private readonly router = inject(Router);
   private readonly agentsApi = inject(AgentService);
   readonly permissions = inject(AgentPermissionHelper);
+  readonly executionPermissions = inject(ExecutionPermissionHelper);
 
   readonly projectId = signal('');
   readonly searchControl = new FormControl('', { nonNullable: true });
@@ -120,6 +122,10 @@ export class AgentsListPage implements OnInit {
 
   open(agent: Agent): void {
     void this.router.navigate(['/projects', this.projectId(), 'agents', agent.id]);
+  }
+
+  playground(agent: Agent): void {
+    void this.router.navigate(['/projects', this.projectId(), 'agents', agent.id, 'playground']);
   }
 
   archive(agent: Agent): void {

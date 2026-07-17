@@ -48,6 +48,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Agent Management API](docs/012_AGENT_MANAGEMENT_API.md)
 - [Prompt Management API](docs/013_PROMPT_MANAGEMENT_API.md)
 - [Prompt Versioning](docs/014_PROMPT_VERSIONING.md)
+- [Agent Execution Engine](docs/015_AGENT_EXECUTION.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
@@ -63,4 +64,4 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 
 ## Current status
 
-Sprint 1 Phase 4 — project-scoped prompt management and versioning on Platform API.
+Sprint 1 Phase 5 — agent execution engine (NoOp runtime) on Platform API.
