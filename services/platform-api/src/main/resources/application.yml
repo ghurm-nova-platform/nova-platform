@@ -1,0 +1,39 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: ${SPRING_APPLICATION_NAME:platform-api}
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: false
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    ai.nova.platform: ${LOG_LEVEL_APP:INFO}
+  pattern:
+    console: "%d{ISO8601} [%thread] %-5level correlationId=%X{correlationId} %logger{36} - %msg%n"
+
+---
+spring:
+  config:
+    activate:
+      on-profile: json-logs
+
+logging:
+  structured:
+    format:
+      console: logstash

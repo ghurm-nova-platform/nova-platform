@@ -150,9 +150,13 @@ Repository guards fail when:
 
 ### Dependency review
 
-Runs on every pull request using `actions/dependency-review-action@v4` and fails on high or
-critical advisories. Requires GitHub Dependency graph / Advanced Security features where
-supported by the organization plan.
+Runs on every pull request. When GitHub Dependency Graph is available, `actions/dependency-review-action@v4`
+enforces `fail-on-severity: high`.
+
+If Dependency Graph is disabled or unavailable for the repository, the workflow detects that via the
+SBOM API and **skips with a clear notice** instead of failing. This does not weaken policy when the
+graph is enabled—enable Dependency Graph under repository Code security settings so review can
+enforce advisories.
 
 ## Dependabot
 
@@ -169,7 +173,7 @@ Until branch protection is configured in the repository settings, treat these as
 
 1. Relevant module CI jobs for changed paths (mandatory; never skipped by workspace guards)
 2. CI Docs and Security on every pull request
-3. Dependency Review on every pull request
+3. Dependency Review on every pull request (enforced when Dependency Graph is enabled; otherwise skips with a notice)
 
 Recommended branch protection for `sprint-0/foundation` and `main`:
 

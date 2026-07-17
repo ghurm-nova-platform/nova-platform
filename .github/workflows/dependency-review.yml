@@ -9,6 +9,7 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   dependency-review:
@@ -19,7 +20,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check Dependency Graph availability
+        id: depgraph
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          url="https://api.github.com/repos/${{ github.repository }}/dependency-graph/sbom"
+          http_code="$(curl -sS -o /tmp/dependency-graph-sbom.json -w "%{http_code}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${url}" || true)"
+          echo "Dependency Graph SBOM HTTP status: ${http_code}"
+          if [ "${http_code}" = "200" ]; then
+            echo "available=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "available=false" >> "${GITHUB_OUTPUT}"
+            {
+              echo "### Dependency Review skipped"
+              echo
+              echo "GitHub Dependency Graph is not enabled (or not available) for this repository"
+              echo "(SBOM endpoint returned HTTP \`${http_code}\`)."
+              echo
+              echo "Security policy is unchanged: enable Dependency Graph under"
+              echo "**Settings → Code security and analysis → Dependency graph**, then this job will"
+              echo "enforce \`fail-on-severity: high\` on subsequent pull requests."
+              echo
+              echo "Reference: https://github.com/${{ github.repository }}/settings/security_analysis"
+            } >> "${GITHUB_STEP_SUMMARY}"
+            echo "::notice::Dependency Graph unavailable (HTTP ${http_code}); skipping dependency review without failing. Enable it in repository Code security settings."
+          fi
+
       - name: Dependency Review
+        if: steps.depgraph.outputs.available == 'true'
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
