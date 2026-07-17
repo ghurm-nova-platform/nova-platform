@@ -108,6 +108,9 @@ Request received
 - Protected branches cannot be directly modified by agents.
 - High-risk actions require explicit user approval.
 - Every tool invocation records actor, agent, input summary, result, duration, and policy decision.
+- Browser clients authenticate only to Platform API using user JWTs.
+- The browser must never call Agent Runtime or carry internal service API keys.
+- Platform API JWTs carry `userId`, `organizationId`, and `roles` for RBAC.
 
 ## 7. Data stores
 

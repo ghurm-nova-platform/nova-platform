@@ -7,17 +7,25 @@ policies, audit records, feedback, and orchestration-facing APIs.
 
 - Java 21
 - Spring Boot 3.5.x
+- Spring Security (stateless JWT + BCrypt + RBAC)
+- Spring Data JPA + Flyway + PostgreSQL
 - Maven Wrapper
 - Package root: `ai.nova.platform`
 
 ## Boundary
 
+```text
+Browser → Platform API → Agent Runtime (server-to-server only)
+```
+
 AI provider SDKs and code-execution logic do not belong in this service.
+The browser must never call Agent Runtime directly.
 
 ## Prerequisites
 
 - JDK 21
 - Maven Wrapper (included) or Maven 3.9+
+- PostgreSQL 16 for local runs (`infrastructure/local` Compose service)
 
 ## Configuration
 
@@ -28,29 +36,60 @@ and export values in your shell, or set them in your IDE run configuration.
 |----------|---------|-------------|
 | `SERVER_PORT` | `8080` | HTTP port |
 | `SPRING_APPLICATION_NAME` | `platform-api` | Application name |
+| `DATABASE_URL` | `jdbc:postgresql://localhost:5432/nova` | JDBC URL |
+| `DATABASE_USERNAME` | `nova` | DB user |
+| `DATABASE_PASSWORD` | `nova_local_only` | DB password (local only) |
+| `JWT_SECRET` | _(required)_ | HMAC secret, >= 32 bytes |
+| `JWT_ISSUER` | `nova-platform` | JWT issuer claim |
+| `JWT_ACCESS_TTL` | `PT15M` | Access token TTL |
+| `JWT_REFRESH_TTL` | `P7D` | Refresh token TTL |
 | `LOG_LEVEL_ROOT` | `INFO` | Root log level |
 | `LOG_LEVEL_APP` | `INFO` | `ai.nova.platform` log level |
 | `SPRING_PROFILES_ACTIVE` | _(empty)_ | Set `json-logs` for structured JSON console logging |
 
-Do not commit real secrets. This foundation does not require database credentials yet.
+Do not commit real secrets. Generate `JWT_SECRET` per environment (for example `openssl rand -base64 48`).
+
+## Package layout
+
+```text
+ai.nova.platform
+  auth/            login, refresh, logout, /me
+  security/        JWT filter, SecurityConfig, JwtService
+  user/            UserAccount entity
+  organization/    Organization entity
+  role/            Role entity + permissions join
+  permission/      Permission entity
+  web/             health, correlation, errors
+```
+
+## Authentication
+
+See [`docs/009_AUTH_API.md`](../../docs/009_AUTH_API.md).
+
+Local demo user (Flyway seed, local only):
+
+- `admin@nova.local` / `ChangeMe123!`
+- Role: `ORG_ADMIN`
 
 ## Run
 
 ```bash
 cd services/platform-api
+export JWT_SECRET="$(openssl rand -base64 48)"
 ./mvnw spring-boot:run
 ```
 
-Windows:
+Windows (PowerShell):
 
 ```powershell
 cd services/platform-api
+$env:JWT_SECRET = [Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])
 .\mvnw.cmd spring-boot:run
 ```
 
 ## Test
 
-Unit and Spring integration tests:
+Unit and Spring Security integration tests use an in-memory H2 database:
 
 ```bash
 ./mvnw test

@@ -5,25 +5,46 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 
 import { routes } from './app.routes';
 import { App } from './app';
+import { UserSessionService } from './auth/services/user-session.service';
+import { AuthUser } from './auth/services/auth.models';
 
 describe('App routing', () => {
+  const demoUser: AuthUser = {
+    userId: '44444444-4444-4444-4444-444444444401',
+    organizationId: '11111111-1111-1111-1111-111111111111',
+    email: 'admin@nova.local',
+    displayName: 'Nova Admin',
+    roles: ['ORG_ADMIN'],
+  };
+
   beforeEach(async () => {
+    sessionStorage.clear();
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [provideRouter(routes), provideHttpClient(), provideAnimationsAsync()],
     }).compileComponents();
   });
 
-  it('redirects the root path to dashboard', async () => {
+  afterEach(() => {
+    sessionStorage.clear();
+  });
+
+  it('redirects anonymous users from root to login', async () => {
     const fixture = TestBed.createComponent(App);
     const router = TestBed.inject(Router);
     fixture.detectChanges();
     await router.navigateByUrl('/');
     fixture.detectChanges();
-    expect(router.url).toBe('/dashboard');
+    expect(router.url).toBe('/login');
   });
 
-  it('navigates to each primary administration route', async () => {
+  it('navigates authenticated users to administration routes', async () => {
+    const session = TestBed.inject(UserSessionService);
+    session.setSession(
+      { accessToken: 'test-access', refreshToken: 'test-refresh' },
+      demoUser,
+    );
+
     const fixture = TestBed.createComponent(App);
     const router = TestBed.inject(Router);
     fixture.detectChanges();
