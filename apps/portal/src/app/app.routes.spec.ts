@@ -54,7 +54,6 @@ describe('App routing', () => {
       '/dashboard',
       '/organizations',
       '/projects',
-      '/agents',
       '/feedback',
       '/settings',
     ]) {
@@ -62,5 +61,9 @@ describe('App routing', () => {
       fixture.detectChanges();
       expect(router.url).toBe(path);
     }
+
+    await router.navigateByUrl('/agents');
+    fixture.detectChanges();
+    expect(router.url).toBe('/projects');
   });
 });
