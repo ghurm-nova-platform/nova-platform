@@ -111,6 +111,8 @@ Request received
 - Browser clients authenticate only to Platform API using user JWTs.
 - The browser must never call Agent Runtime or carry internal service API keys.
 - Platform API JWTs carry `userId`, `organizationId`, and `roles` for RBAC.
+- Organization and project APIs are scoped by JWT organization membership and role codes
+  (`ORG_ADMIN`, `PROJECT_ADMIN`, `USER`).
 
 ## 7. Data stores
 

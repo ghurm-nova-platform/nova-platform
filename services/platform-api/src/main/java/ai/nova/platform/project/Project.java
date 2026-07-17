@@ -1,25 +1,38 @@
-package ai.nova.platform.organization;
+package ai.nova.platform.project;
 
 import java.time.Instant;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "organizations")
-public class Organization {
+@Table(name = "projects")
+public class Project {
 
     @Id
     private UUID id;
 
-    @Column(nullable = false, unique = true)
+    @Column(name = "organization_id", nullable = false)
+    private UUID organizationId;
+
+    @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false, unique = true, length = 100)
-    private String slug;
+    @Column(length = 2000)
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private ProjectStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private ProjectVisibility visibility;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -33,20 +46,26 @@ public class Organization {
     @Column(name = "updated_by", nullable = false)
     private UUID updatedBy;
 
-    protected Organization() {
+    protected Project() {
     }
 
-    public Organization(
+    public Project(
             UUID id,
+            UUID organizationId,
             String name,
-            String slug,
+            String description,
+            ProjectStatus status,
+            ProjectVisibility visibility,
             Instant createdAt,
             Instant updatedAt,
             UUID createdBy,
             UUID updatedBy) {
         this.id = id;
+        this.organizationId = organizationId;
         this.name = name;
-        this.slug = slug;
+        this.description = description;
+        this.status = status;
+        this.visibility = visibility;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.createdBy = createdBy;
@@ -57,6 +76,10 @@ public class Organization {
         return id;
     }
 
+    public UUID getOrganizationId() {
+        return organizationId;
+    }
+
     public String getName() {
         return name;
     }
@@ -65,12 +88,28 @@ public class Organization {
         this.name = name;
     }
 
-    public String getSlug() {
-        return slug;
+    public String getDescription() {
+        return description;
     }
 
-    public void setSlug(String slug) {
-        this.slug = slug;
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public ProjectStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ProjectStatus status) {
+        this.status = status;
+    }
+
+    public ProjectVisibility getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(ProjectVisibility visibility) {
+        this.visibility = visibility;
     }
 
     public Instant getCreatedAt() {
