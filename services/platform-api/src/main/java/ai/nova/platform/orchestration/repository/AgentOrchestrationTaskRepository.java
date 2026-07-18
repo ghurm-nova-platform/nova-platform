@@ -20,6 +20,8 @@ public interface AgentOrchestrationTaskRepository extends JpaRepository<AgentOrc
 
     Optional<AgentOrchestrationTask> findByIdAndRunIdAndOrganizationId(UUID id, UUID runId, UUID organizationId);
 
+    Optional<AgentOrchestrationTask> findByIdAndOrganizationId(UUID id, UUID organizationId);
+
     List<AgentOrchestrationTask> findByRunIdAndOrganizationId(UUID runId, UUID organizationId);
 
     List<AgentOrchestrationTask> findByRunIdAndOrganizationIdOrderBySequenceOrderAscCreatedAtAsc(

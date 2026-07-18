@@ -122,6 +122,13 @@ nova:
     cost-per-thousand-tokens-usd: 0.002
     default-provider: LOCAL
     default-model: planner-local
+  coding:
+    enabled: true
+    max-artifacts: 40
+    max-content-chars: 200000
+    max-path-length: 1000
+    default-provider: LOCAL
+    default-model: coding-local
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 

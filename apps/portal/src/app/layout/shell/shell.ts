@@ -75,6 +75,12 @@ export class Shell {
       icon: 'schema',
     },
     {
+      labelEn: 'Coding Agent',
+      labelAr: 'وكيل البرمجة',
+      path: '/coding',
+      icon: 'code',
+    },
+    {
       labelEn: 'AI Orchestration',
       labelAr: 'تنسيق الوكلاء',
       path: '/orchestration-runs',
