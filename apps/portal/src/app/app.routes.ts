@@ -67,6 +67,11 @@ export const routes: Routes = [
           import('./features/model-gateway/provider-secret-detail-page').then((m) => m.ProviderSecretDetailPage),
       },
       {
+        path: 'planner',
+        loadComponent: () =>
+          import('./features/planner/planner-page').then((m) => m.PlannerPage),
+      },
+      {
         path: 'orchestration-runs',
         loadComponent: () =>
           import('./features/orchestration/orchestration-runs-list-page').then(

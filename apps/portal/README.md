@@ -11,6 +11,12 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 2 Phase 2 scope
+
+- AI Planner under `/planner`
+- Generate plan, DAG preview (zoom/pan), estimates, edit JSON, create draft run
+- PLANNER_* permission helper (Platform API only)
+
 ## Sprint 1 Phase 11 scope
 
 - Organization AI model catalog under `/ai-models`

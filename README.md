@@ -56,6 +56,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Secure Provider Integration](docs/020_SECURE_PROVIDER_INTEGRATION.md)
 - [Model Catalog](docs/021_MODEL_CATALOG.md)
 - [Multi-Agent Orchestration Foundation](docs/022_MULTI_AGENT_ORCHESTRATION_FOUNDATION.md)
+- [Planner Agent](docs/023_PLANNER_AGENT.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles

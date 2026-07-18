@@ -96,6 +96,10 @@ describe('App routing', () => {
       'ORCHESTRATION_TASK_MANAGE',
       'ORCHESTRATION_TASK_EXECUTE',
       'ORCHESTRATION_EVENT_READ',
+      'PLANNER_PLAN',
+      'PLANNER_IMPORT',
+      'PLANNER_TEMPLATE_READ',
+      'PLANNER_TEMPLATE_MANAGE',
     ],
   };
 
@@ -138,6 +142,7 @@ describe('App routing', () => {
       '/model-providers',
       '/ai-models',
       '/provider-secrets',
+      '/planner',
       '/orchestration-runs',
       '/feedback',
       '/settings',

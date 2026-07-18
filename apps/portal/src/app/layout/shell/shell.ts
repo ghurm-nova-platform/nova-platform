@@ -69,6 +69,12 @@ export class Shell {
     { labelEn: 'AI Models', labelAr: 'نماذج الذكاء', path: '/ai-models', icon: 'model_training' },
     { labelEn: 'Provider secrets', labelAr: 'أسرار المزودين', path: '/provider-secrets', icon: 'vpn_key' },
     {
+      labelEn: 'AI Planner',
+      labelAr: 'مخطط الذكاء',
+      path: '/planner',
+      icon: 'schema',
+    },
+    {
       labelEn: 'AI Orchestration',
       labelAr: 'تنسيق الوكلاء',
       path: '/orchestration-runs',

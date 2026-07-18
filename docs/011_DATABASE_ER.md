@@ -431,6 +431,16 @@ erDiagram
     string event_type
   }
 
+  PLANNER_TEMPLATES {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    string name
+    string template_type
+    text system_prompt
+    boolean enabled
+  }
+
   PROJECT_MODELS {
     uuid id PK
     uuid project_id FK
