@@ -1,0 +1,131 @@
+<section class="review-page">
+  <header class="page-header">
+    <div>
+      <h1>Review Agent</h1>
+      <p class="subtitle">
+        Evaluate generated artifacts for quality. Never edits source code or creates patches.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">You need REVIEW_RUN or REVIEW_READ to use this page.</p>
+  } @else {
+    <form class="run-form" [formGroup]="form" (ngSubmit)="runReview()">
+      <mat-form-field appearance="outline" class="task-field">
+        <mat-label>Orchestration task ID</mat-label>
+        <input matInput formControlName="taskId" placeholder="UUID" />
+      </mat-form-field>
+      <div class="actions">
+        @if (permissions.canRun()) {
+          <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
+            Run review
+          </button>
+        }
+        @if (permissions.canRead()) {
+          <button mat-stroked-button type="button" (click)="loadLatest()" [disabled]="loading()">
+            Load latest
+          </button>
+        }
+      </div>
+    </form>
+
+    @if (loading()) {
+      <div class="loading">
+        <mat-spinner diameter="36"></mat-spinner>
+      </div>
+    }
+
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    @if (result(); as review) {
+      <section class="score-panel">
+        <div class="score-badge" [attr.data-tone]="scoreClass()">{{ review.score }}</div>
+        <div class="score-meta">
+          <div class="approval" [class.approved]="review.approved" [class.rejected]="!review.approved">
+            {{ review.approved ? 'Approved' : 'Not approved' }}
+          </div>
+          <p>{{ review.summary }}</p>
+          <p class="meta">
+            model={{ review.model }} · tokens={{ review.tokensUsed ?? '—' }} ·
+            {{ review.reviewTimeMs ?? '—' }} ms
+          </p>
+        </div>
+        <div class="severity-counts">
+          @for (entry of review.severityCounts | keyvalue; track entry.key) {
+            <span class="count-chip" [attr.data-severity]="entry.key">
+              {{ entry.key }}: {{ entry.value }}
+            </span>
+          }
+        </div>
+      </section>
+
+      <section class="filters">
+        <mat-form-field appearance="outline">
+          <mat-label>Search</mat-label>
+          <input
+            matInput
+            [value]="search()"
+            (input)="onSearch($any($event.target).value)"
+            placeholder="title, description, recommendation"
+          />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Severity</mat-label>
+          <mat-select [value]="filterSeverity()" (selectionChange)="onSeverityFilter($event.value)">
+            <mat-option value="">All</mat-option>
+            @for (severity of severityOptions; track severity) {
+              <mat-option [value]="severity">{{ severity }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Category</mat-label>
+          <mat-select [value]="filterCategory()" (selectionChange)="onCategoryFilter($event.value)">
+            <mat-option value="">All</mat-option>
+            @for (category of categoryOptions; track category) {
+              <mat-option [value]="category">{{ category }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Artifact</mat-label>
+          <mat-select [value]="filterArtifact()" (selectionChange)="onArtifactFilter($event.value)">
+            <mat-option value="">All</mat-option>
+            @for (artifact of review.reviewedArtifacts; track artifact.artifactId) {
+              <mat-option [value]="artifact.path">{{ artifact.path }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </section>
+
+      <section class="findings">
+        <h2>Findings ({{ filteredFindings().length }})</h2>
+        @if (!filteredFindings().length) {
+          <p class="meta">No findings match the current filters.</p>
+        }
+        @for (finding of filteredFindings(); track finding.id) {
+          <article class="finding-card">
+            <button type="button" class="finding-header" (click)="toggleFinding(finding.id)">
+              <span class="severity" [attr.data-severity]="finding.severity">{{ finding.severity }}</span>
+              <span class="category">{{ finding.category }}</span>
+              <strong>{{ finding.title }}</strong>
+              <mat-icon>{{ expanded()[finding.id] ? 'expand_less' : 'expand_more' }}</mat-icon>
+            </button>
+            @if (expanded()[finding.id]) {
+              <div class="finding-body">
+                <p>{{ finding.description }}</p>
+                <p><strong>Recommendation:</strong> {{ finding.recommendation }}</p>
+                @if (finding.artifactPath) {
+                  <p class="meta">Artifact: {{ finding.artifactPath }}</p>
+                }
+              </div>
+            }
+          </article>
+        }
+      </section>
+    }
+  }
+</section>

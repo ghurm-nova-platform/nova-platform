@@ -58,6 +58,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Multi-Agent Orchestration Foundation](docs/022_MULTI_AGENT_ORCHESTRATION_FOUNDATION.md)
 - [Planner Agent](docs/023_PLANNER_AGENT.md)
 - [Coding Agent](docs/024_CODING_AGENT.md)
+- [Review Agent](docs/025_REVIEW_AGENT.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles

@@ -11,6 +11,14 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 2 Phase 4 scope
+
+- Review Agent under `/review`
+- Run / load latest review for an orchestration task with generated artifacts
+- Score badge (green/yellow/red), approval badge, severity counts
+- Finding filters by severity, category, artifact, and search text
+- REVIEW_* permission helper (Platform API only)
+
 ## Sprint 2 Phase 3 scope
 
 - Coding Agent under `/coding`

@@ -129,6 +129,12 @@ nova:
     max-path-length: 1000
     default-provider: LOCAL
     default-model: coding-local
+  review:
+    enabled: true
+    max-findings: 100
+    max-artifact-chars-in-prompt: 120000
+    default-provider: LOCAL
+    default-model: review-local
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 
