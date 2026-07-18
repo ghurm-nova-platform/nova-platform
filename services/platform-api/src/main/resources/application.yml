@@ -150,6 +150,13 @@ nova:
     max-path-length: 1000
     default-provider: LOCAL
     default-model: patch-local
+  git:
+    enabled: true
+    workspace-root: ./.nova-git-workspaces
+    base-ref: main
+    author-name: Nova Git Agent
+    author-email: git-agent@nova.local
+    allow-init-repository: true
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 

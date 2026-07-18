@@ -31,3 +31,4 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0015](ADR-0015-review-agent.md) | Review Agent evaluates artifacts only | Accepted |
 | [ADR-0016](ADR-0016-testing-agent.md) | Testing Agent generates plans only | Accepted |
 | [ADR-0017](ADR-0017-patch-agent.md) | Patch Agent generates diffs only | Accepted |
+| [ADR-0018](ADR-0018-git-integration-agent.md) | Git Integration Agent applies patches on isolated branches only | Accepted |

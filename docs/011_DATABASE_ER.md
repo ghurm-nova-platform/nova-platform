@@ -536,6 +536,33 @@ erDiagram
     string sha256
   }
 
+  GIT_OPERATIONS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    uuid run_id FK
+    uuid task_id FK
+    uuid patch_result_id
+    string status
+    string branch_name
+    string commit_hash
+    string patch_hash
+  }
+
+  GIT_BRANCHES {
+    uuid id PK
+    uuid git_operation_id FK
+    string branch_name
+    string base_ref
+  }
+
+  GIT_COMMITS {
+    uuid id PK
+    uuid git_operation_id FK
+    string commit_hash
+    string message
+  }
+
   PLANNER_TEMPLATES {
     uuid id PK
     uuid organization_id FK
@@ -624,12 +651,13 @@ Migrations: `V16__knowledge_base.sql`, `V17__knowledge_embeddings.sql`, `V18__kn
 `V22__model_gateway_permissions.sql`, `V23__provider_secret_vault.sql`,
 `V24__provider_connection_metadata.sql`, `V25__provider_secret_permissions.sql`,
 `V34__planner_templates.sql`, `V35__generated_artifacts.sql`, `V36__review_findings.sql`,
-`V37__testing_results.sql`, `V38__patch_results.sql`.
+`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`.
 See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md),
 [`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md),
 [`023_PLANNER_AGENT.md`](023_PLANNER_AGENT.md),
 [`024_CODING_AGENT.md`](024_CODING_AGENT.md),
 [`026_REVIEW_AGENT.md`](026_REVIEW_AGENT.md),
-[`027_TESTING_AGENT.md`](027_TESTING_AGENT.md), and
-[`028_PATCH_AGENT.md`](028_PATCH_AGENT.md).
+[`027_TESTING_AGENT.md`](027_TESTING_AGENT.md),
+[`028_PATCH_AGENT.md`](028_PATCH_AGENT.md), and
+[`029_GIT_INTEGRATION_AGENT.md`](029_GIT_INTEGRATION_AGENT.md).

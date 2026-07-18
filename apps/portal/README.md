@@ -11,6 +11,13 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 3 Phase 2 scope
+
+- Git Integration under `/git`
+- Apply validated patch onto isolated `ai/task-{taskId}` branch; one commit; no merge/push/delete
+- Branch, commit hash, patch hash, status badge, timeline, copy actions
+- GIT_* permission helper (Platform API only)
+
 ## Sprint 3 Phase 1 scope
 
 - Patch Agent under `/patch`
