@@ -2,6 +2,15 @@
 
 Angular 20 administration portal for organizations, projects, agents, feedback, policies, usage, and settings.
 
+## Sprint 1 Phase 9 scope
+
+- Organization model providers under `/model-providers`
+- Model catalog under provider routes
+- Project models, agent primary/fallback assignments, routing policies, usage dashboard
+- Playground selected provider/model, fallback and attempt indicators
+- Credential **references** only (never raw API keys; never store secrets in browser storage)
+- Typed model-gateway services and permission helper (Platform API only)
+
 ## Sprint 1 Phase 8 scope
 
 - Project knowledge bases under `/projects/:projectId/knowledge-bases`

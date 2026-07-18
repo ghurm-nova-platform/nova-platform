@@ -31,6 +31,15 @@ public final class ExecutionDtos {
     public record TokenUsage(int input, int output, int total) {
     }
 
+    public record ExecutionModelMetadata(
+            UUID providerId,
+            String providerName,
+            UUID modelId,
+            String modelName,
+            boolean fallbackUsed,
+            int attemptCount) {
+    }
+
     public record ExecuteResponse(
             UUID executionId,
             ExecutionStatus status,
@@ -41,7 +50,8 @@ public final class ExecutionDtos {
             String errorMessage,
             Boolean awaitingApproval,
             UUID pendingToolCallId,
-            List<KnowledgeCitationResponse> citations) {
+            List<KnowledgeCitationResponse> citations,
+            ExecutionModelMetadata model) {
     }
 
     public record ExecutionSummaryResponse(

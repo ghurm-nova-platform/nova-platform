@@ -1,0 +1,99 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <h1>{{ editMode() ? 'Edit model' : 'Create model' }}</h1>
+      <p>Administrative cost metadata only — never trusted from execution clients.</p>
+    </div>
+    <div class="page__actions">
+      <a mat-stroked-button [routerLink]="['/model-providers', providerId(), 'models']">Back to models</a>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to manage models.</p>
+    </div>
+  } @else if (loading()) {
+    <div class="page__loading" role="status"><mat-spinner diameter="36" /></div>
+  } @else {
+    @if (error()) {
+      <p class="page__error" role="alert">{{ error() }}</p>
+    }
+
+    @if (currentModel(); as current) {
+      <p>
+        <span [class]="statusClass(current.status)">{{ current.status }}</span>
+        · version {{ current.version }}
+      </p>
+    }
+
+    <form class="page__form" [formGroup]="form" (ngSubmit)="save()">
+      <mat-form-field appearance="outline">
+        <mat-label>Model key</mat-label>
+        <input matInput formControlName="modelKey" aria-label="Model key" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Provider model ID</mat-label>
+        <input matInput formControlName="providerModelId" aria-label="Provider model ID" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Display name</mat-label>
+        <input matInput formControlName="displayName" aria-label="Display name" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Description</mat-label>
+        <textarea matInput rows="3" formControlName="description" aria-label="Description"></textarea>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Model type</mat-label>
+        <mat-select formControlName="modelType" aria-label="Model type">
+          @for (type of types; track type) {
+            <mat-option [value]="type">{{ type }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Context window tokens</mat-label>
+        <input matInput type="number" formControlName="contextWindowTokens" aria-label="Context window tokens" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Max output tokens</mat-label>
+        <input matInput type="number" formControlName="maxOutputTokens" aria-label="Max output tokens" />
+      </mat-form-field>
+      <mat-checkbox formControlName="supportsTools">Supports tools</mat-checkbox>
+      <mat-checkbox formControlName="supportsKnowledgeContext">Supports knowledge context</mat-checkbox>
+      <mat-checkbox formControlName="supportsJsonOutput">Supports JSON output</mat-checkbox>
+      <mat-checkbox formControlName="supportsStreaming">Supports streaming</mat-checkbox>
+      <mat-checkbox formControlName="supportsSystemMessages">Supports system messages</mat-checkbox>
+      <mat-form-field appearance="outline">
+        <mat-label>Input cost per million</mat-label>
+        <input matInput formControlName="inputCostPerMillion" aria-label="Input cost per million" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Output cost per million</mat-label>
+        <input matInput formControlName="outputCostPerMillion" aria-label="Output cost per million" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Currency code</mat-label>
+        <input matInput formControlName="currencyCode" aria-label="Currency code" />
+      </mat-form-field>
+
+      <div class="page__form-actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="saving() || form.invalid">
+          {{ saving() ? 'Saving…' : editMode() ? 'Save changes' : 'Create model' }}
+        </button>
+        @if (editMode() && permissions.canActivateModel() && currentModel()?.status === 'DRAFT') {
+          <button mat-stroked-button type="button" (click)="activate()">Activate</button>
+        }
+        @if (editMode() && permissions.canDisableModel() && currentModel()?.status === 'ACTIVE') {
+          <button mat-stroked-button type="button" (click)="disable()">Disable</button>
+        }
+        @if (editMode() && permissions.canArchiveModel() && currentModel()?.status !== 'ARCHIVED') {
+          <button mat-button color="warn" type="button" (click)="archive()">Archive</button>
+        }
+      </div>
+    </form>
+  }
+</section>

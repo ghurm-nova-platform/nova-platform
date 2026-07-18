@@ -34,6 +34,9 @@
         <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents', agentId(), 'knowledge-bases']">
           Knowledge
         </a>
+        <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents', agentId(), 'models']">
+          Models
+        </a>
         <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents']">All agents</a>
       </div>
     </header>
@@ -292,6 +295,19 @@
             <span class="playground__metric-label">Tokens (in / out / total)</span>
             <span>{{ formatTokens(activeTokens()) }}</span>
           </div>
+          @if (activeModelMetadata(); as modelMeta) {
+            <div>
+              <span class="playground__metric-label">Selected model</span>
+              <span>{{ modelMeta.providerName }} / {{ modelMeta.modelName }}</span>
+            </div>
+            <div>
+              <span class="playground__metric-label">Routing</span>
+              <span>
+                {{ modelMeta.fallbackUsed ? 'Fallback used' : 'Primary' }}
+                · {{ modelMeta.attemptCount }} attempt(s)
+              </span>
+            </div>
+          }
         </div>
 
         @if (activeError()) {

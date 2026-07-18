@@ -1,0 +1,377 @@
+export type AiProviderStatus = 'DRAFT' | 'ACTIVE' | 'DISABLED' | 'ARCHIVED';
+
+export type AiProviderType =
+  | 'DETERMINISTIC_LOCAL'
+  | 'OPENAI'
+  | 'AZURE_OPENAI'
+  | 'ANTHROPIC'
+  | 'GOOGLE_GEMINI'
+  | 'AWS_BEDROCK'
+  | 'CUSTOM_MANAGED';
+
+export type AiModelStatus = 'DRAFT' | 'ACTIVE' | 'DISABLED' | 'ARCHIVED';
+
+export type AiModelType =
+  | 'TEXT_GENERATION'
+  | 'CHAT'
+  | 'REASONING'
+  | 'EMBEDDING'
+  | 'MULTIMODAL';
+
+export type AssignmentRole = 'PRIMARY' | 'FALLBACK';
+
+export type RoutingPolicyStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+
+export type RoutingStrategy = 'FIXED_PRIMARY' | 'PRIORITY_FALLBACK' | 'CAPABILITY_BASED';
+
+export const AI_PROVIDER_STATUSES: AiProviderStatus[] = ['DRAFT', 'ACTIVE', 'DISABLED', 'ARCHIVED'];
+
+export const AI_PROVIDER_TYPES: AiProviderType[] = [
+  'DETERMINISTIC_LOCAL',
+  'OPENAI',
+  'AZURE_OPENAI',
+  'ANTHROPIC',
+  'GOOGLE_GEMINI',
+  'AWS_BEDROCK',
+  'CUSTOM_MANAGED',
+];
+
+export const AI_MODEL_STATUSES: AiModelStatus[] = ['DRAFT', 'ACTIVE', 'DISABLED', 'ARCHIVED'];
+
+export const AI_MODEL_TYPES: AiModelType[] = [
+  'TEXT_GENERATION',
+  'CHAT',
+  'REASONING',
+  'EMBEDDING',
+  'MULTIMODAL',
+];
+
+export const ASSIGNMENT_ROLES: AssignmentRole[] = ['PRIMARY', 'FALLBACK'];
+
+export const ROUTING_POLICY_STATUSES: RoutingPolicyStatus[] = ['DRAFT', 'ACTIVE', 'ARCHIVED'];
+
+export const ROUTING_STRATEGIES: RoutingStrategy[] = [
+  'FIXED_PRIMARY',
+  'PRIORITY_FALLBACK',
+  'CAPABILITY_BASED',
+];
+
+export interface ModelProvider {
+  id: string;
+  organizationId: string;
+  providerKey: string;
+  name: string;
+  description: string | null;
+  providerType: AiProviderType;
+  adapterKey: string;
+  credentialReference: string | null;
+  region: string | null;
+  status: AiProviderStatus;
+  requestTimeoutSeconds: number;
+  maxConcurrentRequests: number;
+  maxRetries: number;
+  retryBackoffMs: number;
+  version: number;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ModelProviderCreateRequest {
+  providerKey: string;
+  name: string;
+  description?: string | null;
+  providerType: AiProviderType;
+  adapterKey: string;
+  credentialReference?: string | null;
+  region?: string | null;
+  requestTimeoutSeconds: number;
+  maxConcurrentRequests: number;
+  maxRetries: number;
+  retryBackoffMs: number;
+}
+
+export interface ModelProviderUpdateRequest {
+  version: number;
+  name: string;
+  description?: string | null;
+  credentialReference?: string | null;
+  region?: string | null;
+  requestTimeoutSeconds: number;
+  maxConcurrentRequests: number;
+  maxRetries: number;
+  retryBackoffMs: number;
+}
+
+export interface ModelProviderListParams {
+  search?: string;
+  status?: AiProviderStatus;
+  providerType?: AiProviderType;
+  page?: number;
+  size?: number;
+  sort?: string;
+}
+
+export interface AdapterKeysResponse {
+  adapterKeys: string[];
+}
+
+export interface AiModel {
+  id: string;
+  organizationId: string;
+  providerId: string;
+  modelKey: string;
+  providerModelId: string;
+  displayName: string;
+  description: string | null;
+  modelType: AiModelType;
+  status: AiModelStatus;
+  contextWindowTokens: number;
+  maxOutputTokens: number;
+  supportsTools: boolean;
+  supportsKnowledgeContext: boolean;
+  supportsJsonOutput: boolean;
+  supportsStreaming: boolean;
+  supportsSystemMessages: boolean;
+  inputCostPerMillion: number | null;
+  outputCostPerMillion: number | null;
+  currencyCode: string | null;
+  version: number;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiModelCreateRequest {
+  modelKey: string;
+  providerModelId: string;
+  displayName: string;
+  description?: string | null;
+  modelType: AiModelType;
+  contextWindowTokens: number;
+  maxOutputTokens: number;
+  supportsTools: boolean;
+  supportsKnowledgeContext: boolean;
+  supportsJsonOutput: boolean;
+  supportsStreaming: boolean;
+  supportsSystemMessages: boolean;
+  inputCostPerMillion?: number | null;
+  outputCostPerMillion?: number | null;
+  currencyCode?: string | null;
+}
+
+export interface AiModelUpdateRequest {
+  version: number;
+  displayName: string;
+  description?: string | null;
+  providerModelId: string;
+  contextWindowTokens: number;
+  maxOutputTokens: number;
+  supportsTools: boolean;
+  supportsKnowledgeContext: boolean;
+  supportsJsonOutput: boolean;
+  supportsStreaming: boolean;
+  supportsSystemMessages: boolean;
+  inputCostPerMillion?: number | null;
+  outputCostPerMillion?: number | null;
+  currencyCode?: string | null;
+}
+
+export interface AiModelListParams {
+  search?: string;
+  status?: AiModelStatus;
+  modelType?: AiModelType;
+  page?: number;
+  size?: number;
+  sort?: string;
+}
+
+export interface ProjectModelAssignment {
+  id: string;
+  projectId: string;
+  modelId: string;
+  modelKey: string;
+  displayName: string;
+  providerId: string;
+  providerName: string;
+  modelStatus: AiModelStatus;
+  enabled: boolean;
+  isDefault: boolean;
+  maximumInputTokensOverride: number | null;
+  maximumOutputTokensOverride: number | null;
+  dailyRequestLimit: number | null;
+  monthlyRequestLimit: number | null;
+  version: number;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectModelAssignRequest {
+  modelId: string;
+  enabled?: boolean;
+  isDefault?: boolean;
+  maximumInputTokensOverride?: number | null;
+  maximumOutputTokensOverride?: number | null;
+  dailyRequestLimit?: number | null;
+  monthlyRequestLimit?: number | null;
+}
+
+export interface ProjectModelUpdateRequest {
+  version: number;
+  enabled: boolean;
+  isDefault: boolean;
+  maximumInputTokensOverride?: number | null;
+  maximumOutputTokensOverride?: number | null;
+  dailyRequestLimit?: number | null;
+  monthlyRequestLimit?: number | null;
+}
+
+export interface AgentModelAssignment {
+  id: string;
+  agentId: string;
+  modelId: string;
+  modelKey: string;
+  displayName: string;
+  providerId: string;
+  providerName: string;
+  modelStatus: AiModelStatus;
+  priority: number;
+  assignmentRole: AssignmentRole;
+  enabled: boolean;
+  temperatureOverride: number | null;
+  maximumOutputTokensOverride: number | null;
+  version: number;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AgentModelAssignRequest {
+  modelId: string;
+  assignmentRole: AssignmentRole;
+  priority: number;
+  enabled?: boolean;
+  temperatureOverride?: number | null;
+  maximumOutputTokensOverride?: number | null;
+}
+
+export interface AgentModelUpdateRequest {
+  version: number;
+  priority: number;
+  enabled: boolean;
+  temperatureOverride?: number | null;
+  maximumOutputTokensOverride?: number | null;
+}
+
+export interface ModelRoutingPolicy {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  agentId: string | null;
+  policyKey: string;
+  name: string;
+  description: string | null;
+  status: RoutingPolicyStatus;
+  strategy: RoutingStrategy;
+  fallbackEnabled: boolean;
+  retryEnabled: boolean;
+  maximumProviderAttempts: number;
+  maximumTotalDurationMs: number;
+  requireToolSupport: boolean;
+  requireKnowledgeSupport: boolean;
+  version: number;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ModelRoutingPolicyCreateRequest {
+  policyKey: string;
+  name: string;
+  description?: string | null;
+  agentId?: string | null;
+  strategy: RoutingStrategy;
+  fallbackEnabled: boolean;
+  retryEnabled: boolean;
+  maximumProviderAttempts: number;
+  maximumTotalDurationMs: number;
+  requireToolSupport: boolean;
+  requireKnowledgeSupport: boolean;
+}
+
+export interface ModelRoutingPolicyUpdateRequest {
+  version: number;
+  name: string;
+  description?: string | null;
+  agentId?: string | null;
+  strategy: RoutingStrategy;
+  fallbackEnabled: boolean;
+  retryEnabled: boolean;
+  maximumProviderAttempts: number;
+  maximumTotalDurationMs: number;
+  requireToolSupport: boolean;
+  requireKnowledgeSupport: boolean;
+}
+
+export interface ModelRoutingPolicyListParams {
+  search?: string;
+  status?: RoutingPolicyStatus;
+  agentId?: string;
+  page?: number;
+  size?: number;
+  sort?: string;
+}
+
+export interface ModelUsageDaily {
+  id: string;
+  projectId: string;
+  providerId: string;
+  providerName: string;
+  modelId: string;
+  modelKey: string;
+  displayName: string;
+  usageDate: string;
+  requestCount: number;
+  successfulRequestCount: number;
+  failedRequestCount: number;
+  inputTokens: number;
+  outputTokens: number;
+  estimatedCost: number | null;
+  currencyCode: string | null;
+  updatedAt: string;
+}
+
+export interface ModelUsageListParams {
+  from?: string;
+  to?: string;
+  providerId?: string;
+  modelId?: string;
+  page?: number;
+  size?: number;
+  sort?: string;
+}
+
+export interface ModelUsageSummary {
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  estimatedCost: number | null;
+  currencyCode: string | null;
+}
+
+export interface ModelUsageResponse {
+  summary: ModelUsageSummary;
+  daily: ModelUsageDaily[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}

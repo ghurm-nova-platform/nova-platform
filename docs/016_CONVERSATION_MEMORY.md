@@ -94,6 +94,8 @@ PR #38 lifecycle is preserved:
 - Retrieved knowledge chunks are never appended as conversation messages.
   Citations may appear in the assistant response and execute metadata
   (see [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md)).
+- Model gateway invocations never store conversation content in `model_invocations`
+  (see [`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md)).
 
 ## RBAC
 

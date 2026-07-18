@@ -5,8 +5,10 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import ai.nova.platform.agent.runtime.RuntimeModelMetadata;
 import ai.nova.platform.execution.dto.ExecutionDtos.ExecutionDetailResponse;
 import ai.nova.platform.execution.dto.ExecutionDtos.ExecutionMessageResponse;
+import ai.nova.platform.execution.dto.ExecutionDtos.ExecutionModelMetadata;
 import ai.nova.platform.execution.dto.ExecutionDtos.ExecutionSummaryResponse;
 import ai.nova.platform.execution.dto.ExecutionDtos.ExecuteResponse;
 import ai.nova.platform.execution.dto.ExecutionDtos.TokenUsage;
@@ -63,7 +65,7 @@ public class ExecutionMapper {
 
     public ExecuteResponse toExecuteResponse(
             AgentExecution execution, String response, String renderedPrompt) {
-        return toExecuteResponse(execution, response, renderedPrompt, false, null, List.of());
+        return toExecuteResponse(execution, response, renderedPrompt, false, null, List.of(), null);
     }
 
     public ExecuteResponse toExecuteResponse(
@@ -71,7 +73,7 @@ public class ExecutionMapper {
             String response,
             String renderedPrompt,
             List<KnowledgeCitationResponse> citations) {
-        return toExecuteResponse(execution, response, renderedPrompt, false, null, citations);
+        return toExecuteResponse(execution, response, renderedPrompt, false, null, citations, null);
     }
 
     public ExecuteResponse toExecuteResponse(
@@ -81,7 +83,7 @@ public class ExecutionMapper {
             boolean awaitingApproval,
             UUID pendingToolCallId) {
         return toExecuteResponse(
-                execution, response, renderedPrompt, awaitingApproval, pendingToolCallId, List.of());
+                execution, response, renderedPrompt, awaitingApproval, pendingToolCallId, List.of(), null);
     }
 
     public ExecuteResponse toExecuteResponse(
@@ -91,6 +93,18 @@ public class ExecutionMapper {
             boolean awaitingApproval,
             UUID pendingToolCallId,
             List<KnowledgeCitationResponse> citations) {
+        return toExecuteResponse(
+                execution, response, renderedPrompt, awaitingApproval, pendingToolCallId, citations, null);
+    }
+
+    public ExecuteResponse toExecuteResponse(
+            AgentExecution execution,
+            String response,
+            String renderedPrompt,
+            boolean awaitingApproval,
+            UUID pendingToolCallId,
+            List<KnowledgeCitationResponse> citations,
+            RuntimeModelMetadata modelMetadata) {
         TokenUsage tokens = execution.getTotalTokens() != null
                 ? new TokenUsage(
                         execution.getInputTokens() != null ? execution.getInputTokens() : 0,
@@ -107,6 +121,20 @@ public class ExecutionMapper {
                 execution.getErrorMessage(),
                 awaitingApproval ? Boolean.TRUE : null,
                 pendingToolCallId,
-                citations == null ? List.of() : citations);
+                citations == null ? List.of() : citations,
+                toModelMetadata(modelMetadata));
+    }
+
+    private ExecutionModelMetadata toModelMetadata(RuntimeModelMetadata metadata) {
+        if (metadata == null) {
+            return null;
+        }
+        return new ExecutionModelMetadata(
+                metadata.providerId(),
+                metadata.providerName(),
+                metadata.modelId(),
+                metadata.modelName(),
+                metadata.fallbackUsed(),
+                metadata.attemptCount());
     }
 }

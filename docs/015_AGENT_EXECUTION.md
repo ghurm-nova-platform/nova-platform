@@ -41,6 +41,9 @@ Rules:
   ([`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md)).
   Runtime receives only server-authorized `RuntimeKnowledgeContext`; citations are
   returned on the execute response without exposing embeddings.
+- Model selection uses the AI Model Gateway
+  ([`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md)): routing, allowlisted
+  providers, privacy-safe invocation metadata, and safe model fields on execute responses.
 
 ## Endpoints
 

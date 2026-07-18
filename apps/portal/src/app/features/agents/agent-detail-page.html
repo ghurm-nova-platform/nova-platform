@@ -45,6 +45,13 @@
           <mat-icon>menu_book</mat-icon>
           Knowledge
         </a>
+        <a
+          mat-stroked-button
+          [routerLink]="['/projects', projectId(), 'agents', agentId(), 'models']"
+        >
+          <mat-icon>model_training</mat-icon>
+          Models
+        </a>
         @if (permissions.canUpdate() && current.status !== 'ARCHIVED') {
           <button mat-stroked-button type="button" (click)="edit()">Edit</button>
         }

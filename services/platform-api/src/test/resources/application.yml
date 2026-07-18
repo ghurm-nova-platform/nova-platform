@@ -69,3 +69,22 @@ nova:
     max-retrieved-characters: 20000
     max-query-characters: 10000
     retrieval-enabled: true
+  model-gateway:
+    enabled: true
+    max-input-characters: 200000
+    max-system-characters: 50000
+    max-message-characters: 100000
+    max-messages: 200
+    max-output-characters: 200000
+    maximum-output-tokens: 32768
+    default-timeout-seconds: 60
+    maximum-timeout-seconds: 300
+    max-provider-attempts: 5
+    max-total-duration-ms: 300000
+    max-concurrent-requests-per-provider: 100
+    invoke-executor-pool-size: 32
+    invoke-executor-queue-capacity: 32
+    invoke-cancel-grace-ms: 5000
+    retry-backoff-maximum-ms: 10000
+    usage-enabled: true
+    cost-estimation-enabled: true

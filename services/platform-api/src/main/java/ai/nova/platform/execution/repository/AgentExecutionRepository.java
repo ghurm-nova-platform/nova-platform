@@ -6,16 +6,23 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import ai.nova.platform.execution.entity.AgentExecution;
 import ai.nova.platform.execution.entity.ExecutionStatus;
 
+import jakarta.persistence.LockModeType;
+
 public interface AgentExecutionRepository extends JpaRepository<AgentExecution, UUID> {
 
     Optional<AgentExecution> findByIdAndProjectIdAndOrganizationId(
             UUID id, UUID projectId, UUID organizationId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT e FROM AgentExecution e WHERE e.id = :id")
+    Optional<AgentExecution> findByIdForUpdate(@Param("id") UUID id);
 
     long countByConversationId(UUID conversationId);
 

@@ -7,18 +7,31 @@ public final class RuntimeTurnResult {
 
     private final RuntimeFinalResponse finalResponse;
     private final RuntimeToolCallBatch toolCallBatch;
+    private final RuntimeModelMetadata modelMetadata;
 
-    private RuntimeTurnResult(RuntimeFinalResponse finalResponse, RuntimeToolCallBatch toolCallBatch) {
+    private RuntimeTurnResult(
+            RuntimeFinalResponse finalResponse,
+            RuntimeToolCallBatch toolCallBatch,
+            RuntimeModelMetadata modelMetadata) {
         this.finalResponse = finalResponse;
         this.toolCallBatch = toolCallBatch;
+        this.modelMetadata = modelMetadata;
     }
 
     public static RuntimeTurnResult finalResponse(RuntimeFinalResponse response) {
-        return new RuntimeTurnResult(response, null);
+        return new RuntimeTurnResult(response, null, null);
+    }
+
+    public static RuntimeTurnResult finalResponse(RuntimeFinalResponse response, RuntimeModelMetadata modelMetadata) {
+        return new RuntimeTurnResult(response, null, modelMetadata);
     }
 
     public static RuntimeTurnResult toolCalls(RuntimeToolCallBatch batch) {
-        return new RuntimeTurnResult(null, batch);
+        return new RuntimeTurnResult(null, batch, null);
+    }
+
+    public static RuntimeTurnResult toolCalls(RuntimeToolCallBatch batch, RuntimeModelMetadata modelMetadata) {
+        return new RuntimeTurnResult(null, batch, modelMetadata);
     }
 
     public boolean isFinal() {
@@ -35,5 +48,9 @@ public final class RuntimeTurnResult {
 
     public RuntimeToolCallBatch toolCallBatch() {
         return toolCallBatch;
+    }
+
+    public RuntimeModelMetadata modelMetadata() {
+        return modelMetadata;
     }
 }

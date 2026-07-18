@@ -52,6 +52,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Conversation Memory](docs/016_CONVERSATION_MEMORY.md)
 - [Tool Registry and Calling](docs/017_TOOL_REGISTRY_AND_CALLING.md)
 - [Knowledge Bases and RAG](docs/018_KNOWLEDGE_BASE_AND_RAG.md)
+- [AI Model Gateway](docs/019_AI_MODEL_GATEWAY.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
@@ -67,4 +68,4 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 
 ## Current status
 
-Sprint 1 Phase 8 — secure knowledge bases and RAG retrieval on Platform API.
+Sprint 1 Phase 9 — secure AI model gateway and routing policies on Platform API.

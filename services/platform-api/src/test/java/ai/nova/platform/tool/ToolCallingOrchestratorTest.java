@@ -3,6 +3,7 @@ package ai.nova.platform.tool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -157,9 +158,10 @@ class ToolCallingOrchestratorTest {
         completed.setStatus(ExecutionStatus.COMPLETED);
         when(lifecycleService.completeIfRunning(eq(EXECUTION_ID), any(RuntimeFinalResponse.class)))
                 .thenReturn(completed);
-        when(executionMapper.toExecuteResponse(eq(completed), eq("hello"), eq("prompt"), any()))
+        when(executionMapper.toExecuteResponse(
+                        eq(completed), eq("hello"), eq("prompt"), eq(false), isNull(), any(), isNull()))
                 .thenReturn(new ExecuteResponse(
-                        EXECUTION_ID, ExecutionStatus.COMPLETED, "hello", 10L, null, "prompt", null, null, null, List.of()));
+                        EXECUTION_ID, ExecutionStatus.COMPLETED, "hello", 10L, null, "prompt", null, null, null, List.of(), null));
 
         ExecuteResponse response = orchestrator.orchestrate(new OrchestrationRequest(
                 EXECUTION_ID, agent, user, PROJECT_ID, AGENT_ID, "prompt", List.of(), null, null));
@@ -217,7 +219,7 @@ class ToolCallingOrchestratorTest {
                         eq(toolCallId),
                         any()))
                 .thenReturn(new ExecuteResponse(
-                        EXECUTION_ID, ExecutionStatus.RUNNING, null, 0L, null, null, null, true, toolCallId, List.of()));
+                        EXECUTION_ID, ExecutionStatus.RUNNING, null, 0L, null, null, null, true, toolCallId, List.of(), null));
 
         ExecuteResponse response = orchestrator.orchestrate(new OrchestrationRequest(
                 EXECUTION_ID, agent, user, PROJECT_ID, AGENT_ID, "prompt", List.of(), null, null));
@@ -271,9 +273,10 @@ class ToolCallingOrchestratorTest {
         completed.setStatus(ExecutionStatus.COMPLETED);
         when(lifecycleService.completeIfRunning(eq(EXECUTION_ID), any(RuntimeFinalResponse.class)))
                 .thenReturn(completed);
-        when(executionMapper.toExecuteResponse(eq(completed), eq("done"), eq("prompt"), any()))
+        when(executionMapper.toExecuteResponse(
+                        eq(completed), eq("done"), eq("prompt"), eq(false), isNull(), any(), isNull()))
                 .thenReturn(new ExecuteResponse(
-                        EXECUTION_ID, ExecutionStatus.COMPLETED, "done", 5L, null, "prompt", null, null, null, List.of()));
+                        EXECUTION_ID, ExecutionStatus.COMPLETED, "done", 5L, null, "prompt", null, null, null, List.of(), null));
 
         ExecuteResponse response = orchestrator.orchestrate(new OrchestrationRequest(
                 EXECUTION_ID,

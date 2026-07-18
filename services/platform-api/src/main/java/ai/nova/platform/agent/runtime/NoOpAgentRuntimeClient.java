@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  */
 @Component
 @ConditionalOnProperty(name = "nova.agent-runtime.enabled", havingValue = "false", matchIfMissing = true)
+@ConditionalOnProperty(name = "nova.model-gateway.enabled", havingValue = "false", matchIfMissing = true)
 public class NoOpAgentRuntimeClient implements AgentRuntimeClient {
 
     private static final Logger log = LoggerFactory.getLogger(NoOpAgentRuntimeClient.class);
@@ -135,7 +136,7 @@ public class NoOpAgentRuntimeClient implements AgentRuntimeClient {
         log.debug("Skipping Agent Runtime cancel for execution {} (runtime disabled)", executionId);
     }
 
-    static String lastUserMessage(List<RuntimeMessage> messages) {
+    public static String lastUserMessage(List<RuntimeMessage> messages) {
         if (messages == null || messages.isEmpty()) {
             return "";
         }

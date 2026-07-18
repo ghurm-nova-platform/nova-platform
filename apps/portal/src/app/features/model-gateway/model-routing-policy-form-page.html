@@ -1,0 +1,84 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <h1>{{ editMode() ? 'Edit routing policy' : 'Create routing policy' }}</h1>
+      <p>Agent-scoped ACTIVE policies override project policies.</p>
+    </div>
+    <div class="page__actions">
+      <a mat-stroked-button [routerLink]="['/projects', projectId(), 'model-routing-policies']">Back to policies</a>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to manage routing policies.</p>
+    </div>
+  } @else if (loading()) {
+    <div class="page__loading" role="status"><mat-spinner diameter="36" /></div>
+  } @else {
+    @if (error()) {
+      <p class="page__error" role="alert">{{ error() }}</p>
+    }
+
+    @if (currentPolicy(); as current) {
+      <p>
+        <span [class]="statusClass(current.status)">{{ current.status }}</span>
+        · version {{ current.version }}
+      </p>
+    }
+
+    <form class="page__form" [formGroup]="form" (ngSubmit)="save()">
+      <mat-form-field appearance="outline">
+        <mat-label>Policy key</mat-label>
+        <input matInput formControlName="policyKey" aria-label="Policy key" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Name</mat-label>
+        <input matInput formControlName="name" aria-label="Policy name" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Description</mat-label>
+        <textarea matInput rows="3" formControlName="description" aria-label="Description"></textarea>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Agent ID (optional)</mat-label>
+        <input matInput formControlName="agentId" aria-label="Agent ID" />
+        <mat-hint>Leave empty for project-wide policy.</mat-hint>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Strategy</mat-label>
+        <mat-select formControlName="strategy" aria-label="Routing strategy">
+          @for (strategy of strategies; track strategy) {
+            <mat-option [value]="strategy">{{ strategy }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-checkbox formControlName="fallbackEnabled">Fallback enabled</mat-checkbox>
+      <mat-checkbox formControlName="retryEnabled">Retry enabled</mat-checkbox>
+      <mat-form-field appearance="outline">
+        <mat-label>Max provider attempts</mat-label>
+        <input matInput type="number" formControlName="maximumProviderAttempts" aria-label="Max provider attempts" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Max total duration (ms)</mat-label>
+        <input matInput type="number" formControlName="maximumTotalDurationMs" aria-label="Max total duration" />
+      </mat-form-field>
+      <mat-checkbox formControlName="requireToolSupport">Require tool support</mat-checkbox>
+      <mat-checkbox formControlName="requireKnowledgeSupport">Require knowledge support</mat-checkbox>
+
+      <div class="page__form-actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="saving() || form.invalid">
+          {{ saving() ? 'Saving…' : editMode() ? 'Save changes' : 'Create policy' }}
+        </button>
+        @if (editMode() && permissions.canManageRoutingPolicies() && currentPolicy()?.status === 'DRAFT') {
+          <button mat-stroked-button type="button" (click)="activate()">Activate</button>
+        }
+        @if (editMode() && permissions.canManageRoutingPolicies() && currentPolicy()?.status !== 'ARCHIVED') {
+          <button mat-button color="warn" type="button" (click)="archive()">Archive</button>
+        }
+      </div>
+    </form>
+  }
+</section>
