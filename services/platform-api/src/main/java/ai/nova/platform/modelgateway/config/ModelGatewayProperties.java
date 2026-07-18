@@ -25,11 +25,6 @@ public class ModelGatewayProperties {
     private long invokeCancelGraceMs = 5000L;
     private boolean usageEnabled = true;
     private boolean costEstimationEnabled = true;
-    /**
-     * When false (production default), localhost/127.0.0.1 base-url overrides are rejected.
-     * Enable only in automated tests via test application.yml — never in production.
-     */
-    private boolean allowLocalhostOverrides = false;
     private final Providers providers = new Providers();
 
     public boolean isEnabled() {
@@ -174,14 +169,6 @@ public class ModelGatewayProperties {
 
     public void setCostEstimationEnabled(boolean costEstimationEnabled) {
         this.costEstimationEnabled = costEstimationEnabled;
-    }
-
-    public boolean isAllowLocalhostOverrides() {
-        return allowLocalhostOverrides;
-    }
-
-    public void setAllowLocalhostOverrides(boolean allowLocalhostOverrides) {
-        this.allowLocalhostOverrides = allowLocalhostOverrides;
     }
 
     public Providers getProviders() {

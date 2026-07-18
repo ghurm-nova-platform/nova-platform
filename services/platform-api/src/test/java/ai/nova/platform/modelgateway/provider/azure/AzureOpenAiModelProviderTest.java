@@ -21,6 +21,7 @@ import ai.nova.platform.modelgateway.provider.ProviderInvokeResult;
 import ai.nova.platform.modelgateway.provider.error.UnifiedProviderErrorMapper;
 import ai.nova.platform.modelgateway.provider.http.ProviderHostAllowlist;
 import ai.nova.platform.modelgateway.provider.http.ProviderRestClientFactory;
+import ai.nova.platform.modelgateway.provider.http.TestLocalhostEndpointOverrideGate;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -35,11 +36,11 @@ class AzureOpenAiModelProviderTest {
         server = new MockWebServer();
         server.start();
         ModelGatewayProperties properties = new ModelGatewayProperties();
-        properties.setAllowLocalhostOverrides(true);
         String base = server.url("/").toString().replaceAll("/$", "");
         properties.getProviders().getAzureOpenai().setBaseUrlTemplate(base);
         provider = new AzureOpenAiModelProvider(
-                new ProviderRestClientFactory(properties, new ProviderHostAllowlist()),
+                new ProviderRestClientFactory(
+                        properties, new ProviderHostAllowlist(), new TestLocalhostEndpointOverrideGate()),
                 new UnifiedProviderErrorMapper(),
                 new ObjectMapper(),
                 properties);

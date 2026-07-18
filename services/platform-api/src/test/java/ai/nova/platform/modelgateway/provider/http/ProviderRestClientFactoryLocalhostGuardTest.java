@@ -3,8 +3,6 @@ package ai.nova.platform.modelgateway.provider.http;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.net.URI;
-
 import org.junit.jupiter.api.Test;
 
 import ai.nova.platform.modelgateway.config.ModelGatewayProperties;
@@ -13,11 +11,11 @@ import ai.nova.platform.web.error.ApiException;
 class ProviderRestClientFactoryLocalhostGuardTest {
 
     @Test
-    void rejectsLocalhostOverrideWhenFlagDisabled() {
+    void nonTestGateAlwaysRejectsLocalhostRegardlessOfBaseUrlSetting() {
         ModelGatewayProperties properties = new ModelGatewayProperties();
-        properties.setAllowLocalhostOverrides(false);
         properties.getProviders().getOpenai().setBaseUrl("http://127.0.0.1:18080");
-        ProviderRestClientFactory factory = new ProviderRestClientFactory(properties, new ProviderHostAllowlist());
+        ProviderRestClientFactory factory = new ProviderRestClientFactory(
+                properties, new ProviderHostAllowlist(), new DenyLocalhostEndpointOverrideGate());
 
         assertThatThrownBy(factory::resolveOpenAiBaseUrl)
                 .isInstanceOf(ApiException.class)
@@ -26,16 +24,12 @@ class ProviderRestClientFactoryLocalhostGuardTest {
     }
 
     @Test
-    void allowsLocalhostOverrideOnlyWhenFlagEnabled() {
+    void testGateAllowsLocalhostForMockWebServer() {
         ModelGatewayProperties properties = new ModelGatewayProperties();
-        properties.setAllowLocalhostOverrides(true);
         properties.getProviders().getOpenai().setBaseUrl("http://127.0.0.1:18080");
-        ProviderRestClientFactory factory = new ProviderRestClientFactory(properties, new ProviderHostAllowlist());
+        ProviderRestClientFactory factory = new ProviderRestClientFactory(
+                properties, new ProviderHostAllowlist(), new TestLocalhostEndpointOverrideGate());
 
-        assertThatCode(() -> {
-                    URI uri = factory.resolveOpenAiBaseUrl();
-                    assertThatCode(() -> factory.create(uri, 5)).doesNotThrowAnyException();
-                })
-                .doesNotThrowAnyException();
+        assertThatCode(() -> factory.create(factory.resolveOpenAiBaseUrl(), 5)).doesNotThrowAnyException();
     }
 }

@@ -83,13 +83,13 @@ Activation of OPENAI / AZURE_OPENAI requires a registered adapter, valid endpoin
 - Cross-host redirects are not followed.
 - HTTP uses Spring-managed bounded clients with provider timeouts.
 - Non-allowlisted host strings are rejected before connect.
-- Localhost / `127.0.0.1` overrides are **disabled by default** (`nova.model-gateway.allow-localhost-overrides=false`). They are enabled only in the test `application.yml` for MockWebServer — never rely on this in production.
+- Localhost / `127.0.0.1` overrides are allowed **only** when the Spring `test` profile is active (`TestLocalhostEndpointOverrideGate`). Non-test profiles always use `DenyLocalhostEndpointOverrideGate`. There is **no** production property that can disable SSRF / allowlist checks.
 
 ## Connection testing
 
 `POST /api/model-providers/{providerId}/connection-test` requires `PROVIDER_CONNECTION_TEST`.
 
-Loads provider metadata in a short read transaction, runs the HTTP probe **outside** any database transaction, then persists status in a short write transaction.
+Loads a probe snapshot (provider version + credential/endpoint fields) in a short read transaction, runs the HTTP probe **outside** any database transaction, then persists status in a short write transaction **only if** the current provider still matches that snapshot. If credential or endpoint settings changed during the probe, the result is discarded (`NEVER` + `CONNECTION_TEST_STALE`).
 
 Resolves credentials, probes an allowlisted lightweight endpoint, and updates:
 

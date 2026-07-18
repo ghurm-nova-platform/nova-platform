@@ -18,10 +18,15 @@ public class ProviderRestClientFactory {
 
     private final ModelGatewayProperties properties;
     private final ProviderHostAllowlist hostAllowlist;
+    private final LocalhostEndpointOverrideGate localhostOverrideGate;
 
-    public ProviderRestClientFactory(ModelGatewayProperties properties, ProviderHostAllowlist hostAllowlist) {
+    public ProviderRestClientFactory(
+            ModelGatewayProperties properties,
+            ProviderHostAllowlist hostAllowlist,
+            LocalhostEndpointOverrideGate localhostOverrideGate) {
         this.properties = properties;
         this.hostAllowlist = hostAllowlist;
+        this.localhostOverrideGate = localhostOverrideGate;
     }
 
     public RestClient create(URI baseUri, int timeoutSeconds) {
@@ -78,12 +83,12 @@ public class ProviderRestClientFactory {
     }
 
     /**
-     * Localhost overrides require an explicit test-only flag (false in production).
-     * Production paths always go through the allowlist (no localhost).
+     * Localhost is allowed only when the active Spring profile supplies a permissive gate
+     * ({@code @Profile("test")}). Production has no configuration switch to enable this.
      */
     private void validateOrAllowTestOverride(URI uri) {
         if (isLocalhostOverride(uri)) {
-            if (!properties.isAllowLocalhostOverrides()) {
+            if (!localhostOverrideGate.allowsLocalhostOverrides()) {
                 throw new ApiException(
                         HttpStatus.BAD_REQUEST,
                         "PROVIDER_HOST_REJECTED",

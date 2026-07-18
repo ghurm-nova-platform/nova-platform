@@ -1,4 +1,6 @@
 spring:
+  profiles:
+    active: test
   datasource:
     url: jdbc:h2:mem:nova;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
     username: sa
@@ -88,8 +90,6 @@ nova:
     retry-backoff-maximum-ms: 10000
     usage-enabled: true
     cost-estimation-enabled: true
-    # Test-only: allow MockWebServer on localhost. Never enable in production.
-    allow-localhost-overrides: true
     providers:
       openai:
         base-url: ${NOVA_OPENAI_BASE_URL:}

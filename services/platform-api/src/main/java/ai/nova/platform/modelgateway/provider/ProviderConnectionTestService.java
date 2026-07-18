@@ -2,6 +2,7 @@ package ai.nova.platform.modelgateway.provider;
 
 import java.net.URI;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 import org.springframework.http.MediaType;
@@ -52,63 +53,69 @@ public class ProviderConnectionTestService {
     }
 
     /**
-     * External HTTP probe runs outside any database transaction. Persistence is a short follow-up TX.
+     * External HTTP probe runs outside any database transaction. Persistence is a short follow-up TX
+     * that applies only when provider configuration still matches the probed snapshot.
      */
     public ConnectionTestResponse testConnection(UUID providerId, AuthenticatedUser user) {
         authorizationService.require(user, ModelGatewayAuthorizationService.PROVIDER_CONNECTION_TEST);
-        ConnectionProbeContext context = transactionTemplate.execute(status -> loadProbeContext(providerId, user.getOrganizationId()));
+        ConnectionProbeContext context =
+                transactionTemplate.execute(status -> loadProbeContext(providerId, user.getOrganizationId()));
         Instant testedAt = Instant.now();
 
         if (context.providerType() == AiProviderType.DETERMINISTIC_LOCAL) {
-            return persistResult(providerId, user, ConnectionTestStatus.SUCCESS, null, testedAt);
+            return persistResult(context, user, ConnectionTestStatus.SUCCESS, null, testedAt);
         }
         if (context.providerType() != AiProviderType.OPENAI
                 && context.providerType() != AiProviderType.AZURE_OPENAI) {
-            return persistResult(providerId, user, ConnectionTestStatus.FAILED, "PROVIDER_TYPE_UNSUPPORTED", testedAt);
+            return persistResult(context, user, ConnectionTestStatus.FAILED, "PROVIDER_TYPE_UNSUPPORTED", testedAt);
         }
 
         String credential = credentialResolver
                 .resolve(context.credentialReference(), context.organizationId())
                 .orElse(null);
         if (credential == null || credential.isBlank()) {
-            return persistResult(providerId, user, ConnectionTestStatus.FAILED, "CREDENTIAL_UNRESOLVABLE", testedAt);
+            return persistResult(context, user, ConnectionTestStatus.FAILED, "CREDENTIAL_UNRESOLVABLE", testedAt);
         }
 
         try {
             // Intentionally outside any DB transaction.
             probe(context, credential);
-            return persistResult(providerId, user, ConnectionTestStatus.SUCCESS, null, testedAt);
+            return persistResult(context, user, ConnectionTestStatus.SUCCESS, null, testedAt);
         } catch (ProviderException ex) {
-            return persistResult(providerId, user, ConnectionTestStatus.FAILED, ex.errorCode(), testedAt);
+            return persistResult(context, user, ConnectionTestStatus.FAILED, ex.errorCode(), testedAt);
         } catch (ApiException ex) {
-            return persistResult(providerId, user, ConnectionTestStatus.FAILED, ex.getCode(), testedAt);
+            return persistResult(context, user, ConnectionTestStatus.FAILED, ex.getCode(), testedAt);
         } catch (Exception ex) {
             ProviderException mapped = errorMapper.mapTransport(ex);
-            return persistResult(providerId, user, ConnectionTestStatus.FAILED, mapped.errorCode(), testedAt);
+            return persistResult(context, user, ConnectionTestStatus.FAILED, mapped.errorCode(), testedAt);
         }
     }
 
     private ConnectionProbeContext loadProbeContext(UUID providerId, UUID organizationId) {
         AiProvider provider = providerService.requireProvider(providerId, organizationId);
-        return new ConnectionProbeContext(
-                provider.getId(),
-                provider.getOrganizationId(),
-                provider.getProviderType(),
-                provider.getCredentialReference(),
-                provider.getEndpointProfile(),
-                provider.getAzureResourceName(),
-                provider.getAzureApiVersion(),
-                provider.getRequestTimeoutSeconds() != null ? provider.getRequestTimeoutSeconds() : 30);
+        return ConnectionProbeContext.from(provider);
     }
 
     private ConnectionTestResponse persistResult(
-            UUID providerId,
+            ConnectionProbeContext context,
             AuthenticatedUser user,
             ConnectionTestStatus status,
             String errorCode,
             Instant testedAt) {
         return transactionTemplate.execute(tx -> {
-            AiProvider provider = providerService.requireProvider(providerId, user.getOrganizationId());
+            AiProvider provider =
+                    providerService.requireProvider(context.providerId(), user.getOrganizationId());
+            if (!context.matchesCurrent(provider)) {
+                // Configuration changed during the probe — never apply a stale SUCCESS/FAILED.
+                provider.setLastConnectionTestAt(testedAt);
+                provider.setLastConnectionTestStatus(ConnectionTestStatus.NEVER);
+                provider.setLastConnectionTestErrorCode("CONNECTION_TEST_STALE");
+                provider.setUpdatedBy(user.getUserId());
+                provider.setUpdatedAt(testedAt);
+                providerRepository.save(provider);
+                return new ConnectionTestResponse(
+                        ConnectionTestStatus.NEVER, "CONNECTION_TEST_STALE", testedAt);
+            }
             provider.setLastConnectionTestAt(testedAt);
             provider.setLastConnectionTestStatus(status);
             provider.setLastConnectionTestErrorCode(errorCode);
@@ -165,14 +172,37 @@ public class ProviderConnectionTestService {
         }
     }
 
-    private record ConnectionProbeContext(
+    record ConnectionProbeContext(
             UUID providerId,
             UUID organizationId,
+            Integer providerVersion,
             AiProviderType providerType,
             String credentialReference,
             EndpointProfile endpointProfile,
             String azureResourceName,
             String azureApiVersion,
             int timeoutSeconds) {
+
+        static ConnectionProbeContext from(AiProvider provider) {
+            return new ConnectionProbeContext(
+                    provider.getId(),
+                    provider.getOrganizationId(),
+                    provider.getVersion(),
+                    provider.getProviderType(),
+                    provider.getCredentialReference(),
+                    provider.getEndpointProfile(),
+                    provider.getAzureResourceName(),
+                    provider.getAzureApiVersion(),
+                    provider.getRequestTimeoutSeconds() != null ? provider.getRequestTimeoutSeconds() : 30);
+        }
+
+        boolean matchesCurrent(AiProvider provider) {
+            return Objects.equals(providerVersion, provider.getVersion())
+                    && Objects.equals(credentialReference, provider.getCredentialReference())
+                    && Objects.equals(endpointProfile, provider.getEndpointProfile())
+                    && Objects.equals(azureResourceName, provider.getAzureResourceName())
+                    && Objects.equals(azureApiVersion, provider.getAzureApiVersion())
+                    && providerType == provider.getProviderType();
+        }
     }
 }

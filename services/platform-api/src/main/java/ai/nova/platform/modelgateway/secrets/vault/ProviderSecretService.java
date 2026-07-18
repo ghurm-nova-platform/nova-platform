@@ -27,7 +27,8 @@ import ai.nova.platform.web.error.ApiException;
 public class ProviderSecretService {
 
     public static final String CREDENTIAL_REFERENCE_PREFIX = "vault:provider-secret:";
-    private static final Pattern SECRET_KEY_PATTERN = Pattern.compile("^[A-Z][A-Z0-9_]*$");
+    private static final Pattern SECRET_KEY_PATTERN = Pattern.compile("^[A-Z][A-Z0-9_]{0,99}$");
+    private static final int SECRET_KEY_MAX_LENGTH = 100;
 
     private final ProviderSecretRepository secretRepository;
     private final AiProviderRepository providerRepository;
@@ -78,7 +79,7 @@ public class ProviderSecretService {
                     "Deterministic local providers cannot store secrets");
         }
         String key = request.secretKey().trim().toUpperCase();
-        if (!SECRET_KEY_PATTERN.matcher(key).matches()) {
+        if (key.length() > SECRET_KEY_MAX_LENGTH || !SECRET_KEY_PATTERN.matcher(key).matches()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "SECRET_KEY_INVALID", "Invalid secret key");
         }
         if (secretRepository.existsByOrganizationIdAndSecretKey(user.getOrganizationId(), key)) {
@@ -119,8 +120,7 @@ public class ProviderSecretService {
 
         String originalKey = previous.getSecretKey();
         Instant now = Instant.now();
-        String retiredKey = originalKey + "__ROTATED_" + previous.getId().toString().replace("-", "").substring(0, 8)
-                .toUpperCase();
+        String retiredKey = retiredSecretKey(originalKey, previous.getId());
         previous.setSecretKey(retiredKey);
         previous.setStatus(ProviderSecretStatus.ROTATED);
         previous.setRotatedAt(now);
@@ -239,6 +239,23 @@ public class ProviderSecretService {
         secret.setCreatedAt(now);
         secret.setUpdatedAt(now);
         return secret;
+    }
+
+    /**
+     * Builds a retired key that always fits VARCHAR(100): prefix truncated if needed before
+     * {@code __ROTATED_<8hex>}.
+     */
+    static String retiredSecretKey(String originalKey, UUID previousId) {
+        String idHex = previousId.toString().replace("-", "").substring(0, 8).toUpperCase();
+        String suffix = "__ROTATED_" + idHex;
+        if (originalKey.length() + suffix.length() <= SECRET_KEY_MAX_LENGTH) {
+            return originalKey + suffix;
+        }
+        int keep = SECRET_KEY_MAX_LENGTH - suffix.length();
+        if (keep < 1) {
+            return suffix.substring(0, SECRET_KEY_MAX_LENGTH);
+        }
+        return originalKey.substring(0, keep) + suffix;
     }
 
     private ProviderSecret requireSecret(UUID secretId, UUID organizationId) {
