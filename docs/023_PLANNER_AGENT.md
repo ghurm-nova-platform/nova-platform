@@ -11,7 +11,7 @@ Given a user objective, the Planner:
 3. Parses structured JSON into an `ExecutionPlan`
 4. Validates the DAG (keys, cycles, roles, modes)
 5. Estimates complexity, tokens, duration, cost, and risk
-6. Optionally imports the plan into a **DRAFT** orchestration run
+Optional imports the plan into a **DRAFT** orchestration run via `PlannerPlanImporter` (single `@Transactional` boundary for run + tasks + dependencies). External planning calls stay outside that transaction.
 
 The Planner never starts orchestration, never invokes tools, shell, git, browser, or MCP.
 
