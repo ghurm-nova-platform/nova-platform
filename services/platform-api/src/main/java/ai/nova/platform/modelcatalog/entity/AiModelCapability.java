@@ -1,0 +1,22 @@
+package ai.nova.platform.modelcatalog.entity;
+
+public enum AiModelCapability {
+    CHAT,
+    EMBEDDINGS,
+    VISION,
+    IMAGE_GENERATION,
+    IMAGE_UNDERSTANDING,
+    AUDIO_INPUT,
+    AUDIO_OUTPUT,
+    TRANSCRIPTION,
+    TEXT_TO_SPEECH,
+    FUNCTION_CALLING,
+    TOOL_CALLING,
+    PARALLEL_TOOL_CALLING,
+    JSON_MODE,
+    STRUCTURED_OUTPUT,
+    REASONING,
+    STREAMING,
+    BATCH,
+    FINE_TUNING
+}

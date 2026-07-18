@@ -4,5 +4,6 @@ public enum AiModelStatus {
     DRAFT,
     ACTIVE,
     DISABLED,
+    DEPRECATED,
     ARCHIVED
 }

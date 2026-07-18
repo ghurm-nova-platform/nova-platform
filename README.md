@@ -54,6 +54,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Knowledge Bases and RAG](docs/018_KNOWLEDGE_BASE_AND_RAG.md)
 - [AI Model Gateway](docs/019_AI_MODEL_GATEWAY.md)
 - [Secure Provider Integration](docs/020_SECURE_PROVIDER_INTEGRATION.md)
+- [Model Catalog](docs/021_MODEL_CATALOG.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles

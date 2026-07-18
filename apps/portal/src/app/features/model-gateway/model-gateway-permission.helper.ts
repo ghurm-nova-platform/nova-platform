@@ -25,6 +25,13 @@ const MODEL_GATEWAY_PERMISSIONS = {
   providerSecretRotate: 'PROVIDER_SECRET_ROTATE',
   providerSecretRevoke: 'PROVIDER_SECRET_REVOKE',
   providerConnectionTest: 'PROVIDER_CONNECTION_TEST',
+  catalogRead: 'MODEL_CATALOG_READ',
+  catalogCreate: 'MODEL_CATALOG_CREATE',
+  catalogUpdate: 'MODEL_CATALOG_UPDATE',
+  catalogDelete: 'MODEL_CATALOG_DELETE',
+  catalogSync: 'MODEL_CATALOG_SYNC',
+  aliasManage: 'MODEL_ALIAS_MANAGE',
+  capabilityManage: 'MODEL_CAPABILITY_MANAGE',
 } as const;
 
 @Injectable({ providedIn: 'root' })
@@ -117,6 +124,34 @@ export class ModelGatewayPermissionHelper {
 
   canTestProviderConnection(): boolean {
     return this.has(MODEL_GATEWAY_PERMISSIONS.providerConnectionTest);
+  }
+
+  canReadCatalog(): boolean {
+    return this.has(MODEL_GATEWAY_PERMISSIONS.catalogRead);
+  }
+
+  canCreateCatalog(): boolean {
+    return this.has(MODEL_GATEWAY_PERMISSIONS.catalogCreate);
+  }
+
+  canUpdateCatalog(): boolean {
+    return this.has(MODEL_GATEWAY_PERMISSIONS.catalogUpdate);
+  }
+
+  canDeleteCatalog(): boolean {
+    return this.has(MODEL_GATEWAY_PERMISSIONS.catalogDelete);
+  }
+
+  canSyncCatalog(): boolean {
+    return this.has(MODEL_GATEWAY_PERMISSIONS.catalogSync);
+  }
+
+  canManageAliases(): boolean {
+    return this.has(MODEL_GATEWAY_PERMISSIONS.aliasManage);
+  }
+
+  canManageCapabilities(): boolean {
+    return this.has(MODEL_GATEWAY_PERMISSIONS.capabilityManage);
   }
 
   private has(permission: string): boolean {

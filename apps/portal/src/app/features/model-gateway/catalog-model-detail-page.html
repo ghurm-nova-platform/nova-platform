@@ -1,0 +1,170 @@
+<section class="page">
+  @if (loading()) {
+    <div class="page__loading"><mat-spinner diameter="36" /></div>
+  } @else if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to view the AI model catalog.</p>
+    </div>
+  } @else if (error() && !model()) {
+    <p class="page__error" role="alert">{{ error() }}</p>
+  } @else if (model(); as current) {
+    <header class="page__header">
+      <div>
+        <h1>{{ current.displayName }}</h1>
+        <p>
+          <span [class]="statusClass(current.status)">{{ current.status }}</span>
+          · <code>{{ current.modelKey }}</code>
+          · {{ current.source }}
+        </p>
+      </div>
+      <div class="page__actions">
+        <a mat-stroked-button routerLink="/ai-models">Back</a>
+        @if (permissions.canUpdateCatalog() && current.status !== 'ARCHIVED') {
+          <button mat-stroked-button type="button" (click)="edit()">Edit</button>
+        }
+        @if (permissions.canUpdateCatalog() && (current.status === 'DRAFT' || current.status === 'DISABLED' || current.status === 'DEPRECATED')) {
+          <button mat-flat-button color="primary" type="button" (click)="activate()">Activate</button>
+        }
+        @if (permissions.canUpdateCatalog() && current.status === 'ACTIVE') {
+          <button mat-stroked-button type="button" (click)="disable()">Disable</button>
+        }
+        @if (permissions.canUpdateCatalog() && current.status !== 'ARCHIVED' && current.status !== 'DEPRECATED') {
+          <button mat-stroked-button type="button" (click)="deprecate()">Deprecate</button>
+        }
+        @if (permissions.canDeleteCatalog() && current.status !== 'ARCHIVED') {
+          <button mat-button color="warn" type="button" (click)="archive()">Archive</button>
+        }
+      </div>
+    </header>
+
+    @if (error()) {
+      <p class="page__error" role="alert">{{ error() }}</p>
+    }
+
+    <dl class="details">
+      <div>
+        <dt>Provider</dt>
+        <dd>{{ current.providerName }}</dd>
+      </div>
+      <div>
+        <dt>Provider model ID</dt>
+        <dd><code>{{ current.providerModelId }}</code></dd>
+      </div>
+      <div>
+        <dt>Description</dt>
+        <dd>{{ current.description || '—' }}</dd>
+      </div>
+      <div>
+        <dt>Type / family / version</dt>
+        <dd>
+          {{ current.modelType }}
+          · {{ current.modelFamily || '—' }}
+          · {{ current.modelVersion || '—' }}
+        </dd>
+      </div>
+      <div>
+        <dt>Tokens</dt>
+        <dd>
+          context {{ current.contextWindowTokens }}
+          · max input {{ current.maxInputTokens ?? '—' }}
+          · max output {{ current.maxOutputTokens }}
+        </dd>
+      </div>
+      <div>
+        <dt>Defaults</dt>
+        <dd>
+          temperature {{ current.defaultTemperature ?? '—' }}
+          · top_p {{ current.defaultTopP ?? '—' }}
+          · max output {{ current.defaultMaxOutputTokens ?? '—' }}
+        </dd>
+      </div>
+      <div>
+        <dt>Pricing</dt>
+        <dd>
+          in {{ current.inputCostPerMillion ?? '—' }}
+          / out {{ current.outputCostPerMillion ?? '—' }}
+          {{ current.currency || '' }}
+        </dd>
+      </div>
+      <div>
+        <dt>Last synced</dt>
+        <dd>{{ current.lastSyncedAt ? (current.lastSyncedAt | date: 'medium') : '—' }}</dd>
+      </div>
+      <div>
+        <dt>Updated</dt>
+        <dd>{{ current.updatedAt | date: 'medium' }} · version {{ current.version }}</dd>
+      </div>
+    </dl>
+
+    <section class="page__section">
+      <header class="page__header">
+        <div>
+          <h2>Capabilities</h2>
+          <p>Enabled capabilities used for routing and activation checks.</p>
+        </div>
+        @if (permissions.canManageCapabilities() && current.status !== 'ARCHIVED') {
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            [disabled]="savingCapabilities()"
+            (click)="saveCapabilities()"
+          >
+            {{ savingCapabilities() ? 'Saving…' : 'Save capabilities' }}
+          </button>
+        }
+      </header>
+      <div class="capability-grid">
+        @for (capability of allCapabilities; track capability) {
+          <mat-checkbox
+            [checked]="isCapabilitySelected(capability)"
+            [disabled]="!permissions.canManageCapabilities() || current.status === 'ARCHIVED'"
+            (change)="toggleCapability(capability, $event.checked)"
+          >
+            {{ capability }}
+          </mat-checkbox>
+        }
+      </div>
+    </section>
+
+    <section class="page__section">
+      <header class="page__header">
+        <div>
+          <h2>Aliases</h2>
+          <p>Stable names that resolve to this catalog model.</p>
+        </div>
+      </header>
+
+      @if (permissions.canManageAliases() && current.status !== 'ARCHIVED') {
+        <form class="page__assign" [formGroup]="aliasForm" (ngSubmit)="createAlias()">
+          <mat-form-field appearance="outline">
+            <mat-label>New alias</mat-label>
+            <input matInput formControlName="alias" aria-label="New alias" />
+          </mat-form-field>
+          <button mat-stroked-button type="submit" [disabled]="savingAlias() || aliasForm.invalid">
+            {{ savingAlias() ? 'Adding…' : 'Add alias' }}
+          </button>
+        </form>
+      }
+
+      @if (aliases().length === 0) {
+        <p class="hint">No aliases yet.</p>
+      } @else {
+        <ul class="alias-list">
+          @for (alias of aliases(); track alias.id) {
+            <li>
+              <code>{{ alias.alias }}</code>
+              @if (permissions.canManageAliases()) {
+                <button mat-icon-button type="button" aria-label="Delete alias" (click)="deleteAlias(alias)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+</section>

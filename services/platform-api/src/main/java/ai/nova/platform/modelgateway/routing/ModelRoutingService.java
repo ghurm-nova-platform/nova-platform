@@ -13,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ai.nova.platform.modelcatalog.entity.AiModelCapability;
+import ai.nova.platform.modelcatalog.service.ModelCapabilityMatcher;
 import ai.nova.platform.modelgateway.entity.AgentModelAssignment;
 import ai.nova.platform.modelgateway.entity.AiModel;
 import ai.nova.platform.modelgateway.entity.AiModelStatus;
@@ -47,6 +49,7 @@ public class ModelRoutingService {
     private final ProjectModelRepository projectModelRepository;
     private final ModelRoutingPolicyRepository policyRepository;
     private final AiModelProviderRegistry providerRegistry;
+    private final ModelCapabilityMatcher capabilityMatcher;
 
     public ModelRoutingService(
             AgentModelAssignmentRepository assignmentRepository,
@@ -54,13 +57,15 @@ public class ModelRoutingService {
             AiProviderRepository providerRepository,
             ProjectModelRepository projectModelRepository,
             ModelRoutingPolicyRepository policyRepository,
-            AiModelProviderRegistry providerRegistry) {
+            AiModelProviderRegistry providerRegistry,
+            ModelCapabilityMatcher capabilityMatcher) {
         this.assignmentRepository = assignmentRepository;
         this.modelRepository = modelRepository;
         this.providerRepository = providerRepository;
         this.projectModelRepository = projectModelRepository;
         this.policyRepository = policyRepository;
         this.providerRegistry = providerRegistry;
+        this.capabilityMatcher = capabilityMatcher;
     }
 
     @Transactional(readOnly = true)
@@ -170,7 +175,11 @@ public class ModelRoutingService {
             if (projectModel == null || !projectModel.isEnabled()) {
                 continue;
             }
-            if (requireTools && !model.isSupportsTools()) {
+            if (requireTools
+                    && !model.isSupportsTools()
+                    && !capabilityMatcher.hasAnyCapability(
+                            model.getId(),
+                            List.of(AiModelCapability.TOOL_CALLING, AiModelCapability.FUNCTION_CALLING))) {
                 continue;
             }
             if (requireKnowledge && !model.isSupportsKnowledgeContext()) {

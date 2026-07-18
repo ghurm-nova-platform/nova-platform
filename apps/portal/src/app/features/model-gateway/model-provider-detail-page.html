@@ -30,6 +30,12 @@
             {{ testing() ? 'Testing…' : 'Test connection' }}
           </button>
         }
+        @if (permissions.canSyncCatalog()) {
+          <button mat-stroked-button type="button" [disabled]="!canSyncModels() || syncing()" (click)="syncModels()">
+            <mat-icon>sync</mat-icon>
+            {{ syncing() ? 'Syncing…' : 'Sync models' }}
+          </button>
+        }
         @if (permissions.canUpdateProvider() && current.status !== 'ARCHIVED') {
           <button mat-stroked-button type="button" (click)="edit()">Edit</button>
         }
@@ -97,6 +103,20 @@
           @if (lastTest(); as test) {
             <p class="hint">Latest result: {{ test.status }}{{ test.errorCode ? ' · ' + test.errorCode : '' }}</p>
           }
+        </dd>
+      </div>
+      <div>
+        <dt>Last model sync</dt>
+        <dd>
+          @if (current.lastModelSyncStatus) {
+            <span [class]="statusClass(current.lastModelSyncStatus)">{{ current.lastModelSyncStatus }}</span>
+            @if (current.lastModelSyncAt) {
+              · {{ current.lastModelSyncAt | date: 'medium' }}
+            }
+          } @else {
+            —
+          }
+          <p class="hint">{{ syncSummary(current, lastSync()) }}</p>
         </dd>
       </div>
       <div>

@@ -2,6 +2,13 @@
 
 Angular 20 administration portal for organizations, projects, agents, feedback, policies, usage, and settings.
 
+## Sprint 1 Phase 11 scope
+
+- Organization AI model catalog under `/ai-models`
+- Capabilities and aliases management
+- Provider model sync from provider detail
+- Catalog RBAC (`MODEL_CATALOG_*`, `MODEL_ALIAS_MANAGE`, `MODEL_CAPABILITY_MANAGE`)
+
 ## Sprint 1 Phase 10 scope
 
 - Provider secret metadata under organization credential vault routes

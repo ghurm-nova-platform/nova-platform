@@ -295,6 +295,8 @@ class AiModelGatewayTimeoutPermitTest {
         return new AiModelGateway(
                 properties,
                 routingService,
+                mock(ai.nova.platform.modelcatalog.service.ModelReferenceResolver.class),
+                mock(ai.nova.platform.modelcatalog.service.ModelCapabilityMatcher.class),
                 persistenceService,
                 usageRecorder,
                 providerRegistry,

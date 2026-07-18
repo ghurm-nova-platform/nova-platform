@@ -79,6 +79,7 @@ Identity Projects     Agent Runtime   Feedback    Audit/Usage
 - Tool Registry (allowlisted executors orchestrated by Platform API)
 - Knowledge Bases and RAG (allowlisted embeddings + vector store owned by Platform API)
 - AI Model Gateway (allowlisted providers, routing, usage owned by Platform API)
+- Model Catalog (capabilities, aliases, provider sync owned by Platform API)
 - Provider Secret Vault (AES-256-GCM credentials; OpenAI / Azure OpenAI adapters)
 - Agent Runtime
 - Workflows and Events

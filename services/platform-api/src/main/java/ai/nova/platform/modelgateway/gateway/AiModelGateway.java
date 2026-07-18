@@ -18,6 +18,10 @@ import org.springframework.stereotype.Service;
 
 import ai.nova.platform.agent.runtime.RuntimeModelMetadata;
 import ai.nova.platform.agent.runtime.RuntimeTurnResult;
+import ai.nova.platform.modelcatalog.entity.AiModelCapability;
+import ai.nova.platform.modelcatalog.service.ModelCapabilityMatcher;
+import ai.nova.platform.modelcatalog.service.ModelReferenceResolver;
+import ai.nova.platform.modelcatalog.service.ModelReferenceResolver.ResolvedModel;
 import ai.nova.platform.modelgateway.config.ModelGatewayProperties;
 import ai.nova.platform.modelgateway.entity.InvocationStatus;
 import ai.nova.platform.modelgateway.entity.ModelInvocation;
@@ -49,6 +53,8 @@ public class AiModelGateway {
 
     private final ModelGatewayProperties properties;
     private final ModelRoutingService routingService;
+    private final ModelReferenceResolver modelReferenceResolver;
+    private final ModelCapabilityMatcher capabilityMatcher;
     private final ModelInvocationPersistenceService persistenceService;
     private final ModelUsageRecorder usageRecorder;
     private final AiModelProviderRegistry providerRegistry;
@@ -61,6 +67,8 @@ public class AiModelGateway {
     public AiModelGateway(
             ModelGatewayProperties properties,
             ModelRoutingService routingService,
+            ModelReferenceResolver modelReferenceResolver,
+            ModelCapabilityMatcher capabilityMatcher,
             ModelInvocationPersistenceService persistenceService,
             ModelUsageRecorder usageRecorder,
             AiModelProviderRegistry providerRegistry,
@@ -71,6 +79,8 @@ public class AiModelGateway {
             @Qualifier("modelGatewayInvokeExecutor") ExecutorService invokeExecutor) {
         this.properties = properties;
         this.routingService = routingService;
+        this.modelReferenceResolver = modelReferenceResolver;
+        this.capabilityMatcher = capabilityMatcher;
         this.persistenceService = persistenceService;
         this.usageRecorder = usageRecorder;
         this.providerRegistry = providerRegistry;
@@ -87,7 +97,7 @@ public class AiModelGateway {
         }
         inputValidator.validate(request);
 
-        ResolvedRouting routing = routingService.resolve(request);
+        ResolvedRouting routing = resolveRouting(request);
         ModelRoutingPolicy policy = routing.policy();
         int maxAttempts = resolveMaxAttempts(policy);
         long deadlineMs = System.currentTimeMillis() + resolveMaxDurationMs(policy);
@@ -177,10 +187,10 @@ public class AiModelGateway {
                 .orElse(null);
 
         int maxOutput = candidate.model().getMaxOutputTokens();
-        if (candidate.assignment().getMaximumOutputTokensOverride() != null) {
+        if (candidate.assignment() != null && candidate.assignment().getMaximumOutputTokensOverride() != null) {
             maxOutput = candidate.assignment().getMaximumOutputTokensOverride();
         }
-        if (candidate.projectModel().getMaximumOutputTokensOverride() != null) {
+        if (candidate.projectModel() != null && candidate.projectModel().getMaximumOutputTokensOverride() != null) {
             maxOutput = candidate.projectModel().getMaximumOutputTokensOverride();
         }
         maxOutput = Math.min(maxOutput, properties.getMaximumOutputTokens());
@@ -293,6 +303,35 @@ public class AiModelGateway {
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    private ResolvedRouting resolveRouting(ModelGatewayRequest request) {
+        if (request.modelReference() != null && !request.modelReference().isBlank()) {
+            ResolvedModel resolved =
+                    modelReferenceResolver.resolve(request.organizationId(), request.modelReference());
+            if (!providerRegistry.isRegistered(resolved.provider().getAdapterKey())) {
+                throw new ApiException(
+                        HttpStatus.CONFLICT, "PROVIDER_ADAPTER_UNAVAILABLE", "Provider adapter is not available");
+            }
+            if (request.requiresTools()
+                    && !capabilityMatcher.hasAnyCapability(
+                            resolved.model().getId(),
+                            java.util.List.of(AiModelCapability.TOOL_CALLING, AiModelCapability.FUNCTION_CALLING))
+                    && !resolved.model().isSupportsTools()) {
+                throw new ApiException(
+                        HttpStatus.CONFLICT, "MODEL_CAPABILITY_MISSING", "Model does not support tools");
+            }
+            if (request.requiresKnowledge() && !resolved.model().isSupportsKnowledgeContext()) {
+                throw new ApiException(
+                        HttpStatus.CONFLICT,
+                        "MODEL_CAPABILITY_MISSING",
+                        "Model does not support knowledge context");
+            }
+            RoutedModelCandidate candidate =
+                    new RoutedModelCandidate(null, resolved.model(), resolved.provider(), null, false);
+            return new ResolvedRouting(null, java.util.List.of(candidate));
+        }
+        return routingService.resolve(request);
     }
 
     private RuntimeModelMetadata toMetadata(

@@ -5,7 +5,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
-import { ConnectionTestResponse, ConnectionTestStatus, ModelProvider } from './model-gateway.models';
+import { ConnectionTestResponse, ConnectionTestStatus, CatalogSyncResult, ModelProvider } from './model-gateway.models';
+import { CatalogModelService } from './catalog-model.service';
 import { ModelGatewayPermissionHelper } from './model-gateway-permission.helper';
 import { ModelProviderService } from './model-provider.service';
 
@@ -19,15 +20,18 @@ export class ModelProviderDetailPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly providersApi = inject(ModelProviderService);
+  private readonly catalogApi = inject(CatalogModelService);
   readonly permissions = inject(ModelGatewayPermissionHelper);
 
   readonly providerId = signal('');
   readonly loading = signal(true);
   readonly testing = signal(false);
+  readonly syncing = signal(false);
   readonly error = signal<string | null>(null);
   readonly unauthorized = signal(false);
   readonly provider = signal<ModelProvider | null>(null);
   readonly lastTest = signal<ConnectionTestResponse | null>(null);
+  readonly lastSync = signal<CatalogSyncResult | null>(null);
 
   ngOnInit(): void {
     this.providerId.set(this.route.snapshot.paramMap.get('providerId') ?? '');
@@ -108,7 +112,68 @@ export class ModelProviderDetailPage implements OnInit {
     });
   }
 
-  statusClass(status: ModelProvider['status'] | ConnectionTestStatus): string {
+  canSyncModels(): boolean {
+    const current = this.provider();
+    return (
+      !!current &&
+      current.status === 'ACTIVE' &&
+      current.lastConnectionTestStatus === 'SUCCESS' &&
+      this.permissions.canSyncCatalog()
+    );
+  }
+
+  syncModels(): void {
+    const current = this.provider();
+    if (!current || !this.canSyncModels() || this.syncing()) {
+      return;
+    }
+    this.syncing.set(true);
+    this.error.set(null);
+    this.catalogApi.syncModels(current.id).subscribe({
+      next: (result) => {
+        this.syncing.set(false);
+        this.lastSync.set(result);
+        this.provider.update((provider) =>
+          provider
+            ? {
+                ...provider,
+                lastModelSyncAt: result.syncedAt,
+                lastModelSyncStatus: result.status,
+                lastModelSyncErrorCode: result.errorCode,
+                lastModelSyncDiscoveredCount: result.discoveredCount,
+                lastModelSyncCreatedCount: result.createdCount,
+                lastModelSyncUpdatedCount: result.updatedCount,
+                lastModelSyncUnchangedCount: result.unchangedCount,
+              }
+            : provider,
+        );
+      },
+      error: (err: { status?: number; error?: { message?: string } }) => {
+        this.syncing.set(false);
+        if (err.status === 403) {
+          this.unauthorized.set(true);
+          return;
+        }
+        this.error.set(err.error?.message ?? 'Unable to sync provider models.');
+      },
+    });
+  }
+
+  syncSummary(provider: ModelProvider, sync: CatalogSyncResult | null = null): string {
+    const status = sync?.status ?? provider.lastModelSyncStatus;
+    if (!status) {
+      return 'Never synced';
+    }
+    const discovered = sync?.discoveredCount ?? provider.lastModelSyncDiscoveredCount ?? 0;
+    const created = sync?.createdCount ?? provider.lastModelSyncCreatedCount ?? 0;
+    const updated = sync?.updatedCount ?? provider.lastModelSyncUpdatedCount ?? 0;
+    const unchanged = sync?.unchangedCount ?? provider.lastModelSyncUnchangedCount ?? 0;
+    const errorCode = sync?.errorCode ?? provider.lastModelSyncErrorCode;
+    const base = `${status}: discovered ${discovered}, created ${created}, updated ${updated}, unchanged ${unchanged}`;
+    return errorCode ? `${base} · ${errorCode}` : base;
+  }
+
+  statusClass(status: ModelProvider['status'] | ConnectionTestStatus | string): string {
     return `status status--${status.toLowerCase()}`;
   }
 

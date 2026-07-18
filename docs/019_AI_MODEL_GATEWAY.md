@@ -117,6 +117,11 @@ Tenant isolation, RBAC, no arbitrary URLs, no secrets in Angular, no prompt/comp
 Phase 10 adds allowlisted `OPENAI` and `AZURE_OPENAI` adapters, the provider secret vault, and connection testing.
 See [`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md) and ADR-0010.
 
+## Model catalog
+
+Phase 11 evolves `ai_models` with capabilities, aliases, provider sync, and optional gateway `modelReference` resolution.
+See [`021_MODEL_CATALOG.md`](021_MODEL_CATALOG.md) and ADR-0011.
+
 ## Future work
 
 Streaming, distributed concurrency, external KMS, additional vendors, billing reconciliation.

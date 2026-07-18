@@ -114,6 +114,12 @@ See [`docs/020_SECURE_PROVIDER_INTEGRATION.md`](../../docs/020_SECURE_PROVIDER_I
 Migrations: `V23`–`V25`. Executable adapters: `DETERMINISTIC_LOCAL`, `OPENAI`, `AZURE_OPENAI`.
 Credential references: `vault:provider-secret:<uuid>` or `env:NOVA_PROVIDER_*` — never plaintext secrets in persistence or API responses after create/rotate.
 
+## Model catalog
+
+See [`docs/021_MODEL_CATALOG.md`](../../docs/021_MODEL_CATALOG.md).
+
+Migrations: `V26`–`V28`. Catalog CRUD, capabilities, aliases, provider sync, optional gateway `modelReference`.
+
 Local demo user (Flyway seed, local only):
 
 - `admin@nova.local` / `ChangeMe123!`

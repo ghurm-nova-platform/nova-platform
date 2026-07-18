@@ -9,7 +9,9 @@ export type AiProviderType =
   | 'AWS_BEDROCK'
   | 'CUSTOM_MANAGED';
 
-export type AiModelStatus = 'DRAFT' | 'ACTIVE' | 'DISABLED' | 'ARCHIVED';
+export type AiModelStatus = 'DRAFT' | 'ACTIVE' | 'DISABLED' | 'DEPRECATED' | 'ARCHIVED';
+
+export type AiModelSource = 'MANUAL' | 'PROVIDER_SYNC';
 
 export type AiModelType =
   | 'TEXT_GENERATION'
@@ -17,6 +19,26 @@ export type AiModelType =
   | 'REASONING'
   | 'EMBEDDING'
   | 'MULTIMODAL';
+
+export type AiModelCapability =
+  | 'CHAT'
+  | 'EMBEDDINGS'
+  | 'VISION'
+  | 'IMAGE_GENERATION'
+  | 'IMAGE_UNDERSTANDING'
+  | 'AUDIO_INPUT'
+  | 'AUDIO_OUTPUT'
+  | 'TRANSCRIPTION'
+  | 'TEXT_TO_SPEECH'
+  | 'FUNCTION_CALLING'
+  | 'TOOL_CALLING'
+  | 'PARALLEL_TOOL_CALLING'
+  | 'JSON_MODE'
+  | 'STRUCTURED_OUTPUT'
+  | 'REASONING'
+  | 'STREAMING'
+  | 'BATCH'
+  | 'FINE_TUNING';
 
 export type AssignmentRole = 'PRIMARY' | 'FALLBACK';
 
@@ -27,6 +49,8 @@ export type RoutingStrategy = 'FIXED_PRIMARY' | 'PRIORITY_FALLBACK' | 'CAPABILIT
 export type EndpointProfile = 'OPENAI_PUBLIC' | 'AZURE_OPENAI_RESOURCE';
 
 export type ConnectionTestStatus = 'NEVER' | 'SUCCESS' | 'FAILED';
+
+export type ModelSyncStatus = 'SUCCESS' | 'STALE' | 'FAILED' | 'UNSUPPORTED';
 
 export type ProviderSecretStatus = 'ACTIVE' | 'ROTATED' | 'REVOKED' | 'ARCHIVED';
 
@@ -50,7 +74,15 @@ export const PROVIDER_SECRET_STATUSES: ProviderSecretStatus[] = ['ACTIVE', 'ROTA
 
 export const ENDPOINT_PROFILES: EndpointProfile[] = ['OPENAI_PUBLIC', 'AZURE_OPENAI_RESOURCE'];
 
-export const AI_MODEL_STATUSES: AiModelStatus[] = ['DRAFT', 'ACTIVE', 'DISABLED', 'ARCHIVED'];
+export const AI_MODEL_STATUSES: AiModelStatus[] = [
+  'DRAFT',
+  'ACTIVE',
+  'DISABLED',
+  'DEPRECATED',
+  'ARCHIVED',
+];
+
+export const AI_MODEL_SOURCES: AiModelSource[] = ['MANUAL', 'PROVIDER_SYNC'];
 
 export const AI_MODEL_TYPES: AiModelType[] = [
   'TEXT_GENERATION',
@@ -58,6 +90,27 @@ export const AI_MODEL_TYPES: AiModelType[] = [
   'REASONING',
   'EMBEDDING',
   'MULTIMODAL',
+];
+
+export const AI_MODEL_CAPABILITIES: AiModelCapability[] = [
+  'CHAT',
+  'EMBEDDINGS',
+  'VISION',
+  'IMAGE_GENERATION',
+  'IMAGE_UNDERSTANDING',
+  'AUDIO_INPUT',
+  'AUDIO_OUTPUT',
+  'TRANSCRIPTION',
+  'TEXT_TO_SPEECH',
+  'FUNCTION_CALLING',
+  'TOOL_CALLING',
+  'PARALLEL_TOOL_CALLING',
+  'JSON_MODE',
+  'STRUCTURED_OUTPUT',
+  'REASONING',
+  'STREAMING',
+  'BATCH',
+  'FINE_TUNING',
 ];
 
 export const ASSIGNMENT_ROLES: AssignmentRole[] = ['PRIMARY', 'FALLBACK'];
@@ -86,6 +139,13 @@ export interface ModelProvider {
   lastConnectionTestStatus?: ConnectionTestStatus;
   lastConnectionTestAt?: string | null;
   lastConnectionTestErrorCode?: string | null;
+  lastModelSyncAt?: string | null;
+  lastModelSyncStatus?: ModelSyncStatus | null;
+  lastModelSyncErrorCode?: string | null;
+  lastModelSyncDiscoveredCount?: number | null;
+  lastModelSyncCreatedCount?: number | null;
+  lastModelSyncUpdatedCount?: number | null;
+  lastModelSyncUnchangedCount?: number | null;
   status: AiProviderStatus;
   requestTimeoutSeconds: number;
   maxConcurrentRequests: number;
@@ -459,4 +519,131 @@ export interface ModelUsageResponse {
   totalPages: number;
   size: number;
   number: number;
+}
+
+export interface CatalogModelCapability {
+  capability: AiModelCapability;
+  enabled: boolean;
+  metadataJson: string | null;
+  createdAt: string;
+}
+
+export interface CatalogModelAlias {
+  id: string;
+  modelId: string;
+  alias: string;
+  normalizedAlias: string;
+  createdAt: string;
+}
+
+export interface CatalogModel {
+  id: string;
+  providerId: string;
+  providerName: string;
+  modelKey: string;
+  providerModelId: string;
+  displayName: string;
+  description: string | null;
+  modelType: AiModelType;
+  status: AiModelStatus;
+  source: AiModelSource;
+  modelFamily: string | null;
+  modelVersion: string | null;
+  contextWindowTokens: number;
+  contextWindow: number | null;
+  maxInputTokens: number | null;
+  maxOutputTokens: number;
+  defaultTemperature: number | null;
+  defaultTopP: number | null;
+  defaultMaxOutputTokens: number | null;
+  supportsTools: boolean;
+  supportsKnowledgeContext: boolean;
+  supportsJsonOutput: boolean;
+  supportsStreaming: boolean;
+  supportsSystemMessages: boolean;
+  inputCostPerMillion: number | null;
+  outputCostPerMillion: number | null;
+  currency: string | null;
+  discoveredAt: string | null;
+  lastSyncedAt: string | null;
+  lastSeenAt: string | null;
+  capabilities: CatalogModelCapability[];
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CatalogModelCreateRequest {
+  providerId: string;
+  modelKey: string;
+  providerModelId: string;
+  displayName: string;
+  description?: string | null;
+  modelType: AiModelType;
+  modelFamily?: string | null;
+  modelVersion?: string | null;
+  contextWindowTokens: number;
+  maxInputTokens?: number | null;
+  maxOutputTokens: number;
+  defaultTemperature?: number | null;
+  defaultTopP?: number | null;
+  defaultMaxOutputTokens?: number | null;
+  supportsKnowledgeContext?: boolean;
+  supportsSystemMessages?: boolean;
+  inputCostPerMillion?: number | null;
+  outputCostPerMillion?: number | null;
+  currency?: string | null;
+  capabilities?: AiModelCapability[];
+}
+
+export interface CatalogModelUpdateRequest {
+  displayName: string;
+  description?: string | null;
+  modelFamily?: string | null;
+  modelVersion?: string | null;
+  contextWindowTokens: number;
+  maxInputTokens?: number | null;
+  maxOutputTokens: number;
+  defaultTemperature?: number | null;
+  defaultTopP?: number | null;
+  defaultMaxOutputTokens?: number | null;
+  supportsKnowledgeContext?: boolean;
+  supportsSystemMessages?: boolean;
+  inputCostPerMillion?: number | null;
+  outputCostPerMillion?: number | null;
+  currency?: string | null;
+  version: number;
+}
+
+export interface CatalogCapabilityInput {
+  capability: AiModelCapability;
+  enabled?: boolean;
+  metadataJson?: string | null;
+}
+
+export interface CatalogModelListParams {
+  search?: string;
+  status?: AiModelStatus;
+  source?: AiModelSource;
+  capability?: AiModelCapability;
+  providerId?: string;
+  page?: number;
+  size?: number;
+  sort?: string;
+}
+
+export interface CatalogSyncResult {
+  providerId: string;
+  discoveredCount: number;
+  createdCount: number;
+  updatedCount: number;
+  unchangedCount: number;
+  stale: boolean;
+  status: ModelSyncStatus;
+  errorCode: string | null;
+  syncedAt: string;
+}
+
+export interface CatalogAliasCreateRequest {
+  alias: string;
 }

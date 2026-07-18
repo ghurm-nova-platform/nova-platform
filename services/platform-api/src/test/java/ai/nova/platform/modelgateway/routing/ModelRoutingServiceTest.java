@@ -42,7 +42,7 @@ class ModelRoutingServiceTest {
 
         ResolvedRouting routing = routingService.resolve(request);
         assertThat(routing.candidates()).isNotEmpty();
-        assertThat(routing.candidates().getFirst().model().getModelKey()).isEqualTo("DETERMINISTIC_CHAT_V1");
+        assertThat(routing.candidates().getFirst().model().getModelKey()).isEqualTo("deterministic-chat-v1");
         assertThat(routing.policy()).isNotNull();
         assertThat(routing.policy().getStrategy().name()).isEqualTo("PRIORITY_FALLBACK");
     }

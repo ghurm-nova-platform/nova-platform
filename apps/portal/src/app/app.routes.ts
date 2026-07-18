@@ -32,6 +32,26 @@ export const routes: Routes = [
           import('./features/model-gateway/model-providers-list-page').then((m) => m.ModelProvidersListPage),
       },
       {
+        path: 'ai-models',
+        loadComponent: () =>
+          import('./features/model-gateway/catalog-models-list-page').then((m) => m.CatalogModelsListPage),
+      },
+      {
+        path: 'ai-models/new',
+        loadComponent: () =>
+          import('./features/model-gateway/catalog-model-form-page').then((m) => m.CatalogModelFormPage),
+      },
+      {
+        path: 'ai-models/:modelId/edit',
+        loadComponent: () =>
+          import('./features/model-gateway/catalog-model-form-page').then((m) => m.CatalogModelFormPage),
+      },
+      {
+        path: 'ai-models/:modelId',
+        loadComponent: () =>
+          import('./features/model-gateway/catalog-model-detail-page').then((m) => m.CatalogModelDetailPage),
+      },
+      {
         path: 'provider-secrets',
         loadComponent: () =>
           import('./features/model-gateway/provider-secrets-list-page').then((m) => m.ProviderSecretsListPage),

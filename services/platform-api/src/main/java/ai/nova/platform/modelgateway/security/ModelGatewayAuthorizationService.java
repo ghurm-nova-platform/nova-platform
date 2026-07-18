@@ -32,6 +32,13 @@ public class ModelGatewayAuthorizationService {
     public static final String PROVIDER_SECRET_ROTATE = "PROVIDER_SECRET_ROTATE";
     public static final String PROVIDER_SECRET_REVOKE = "PROVIDER_SECRET_REVOKE";
     public static final String PROVIDER_CONNECTION_TEST = "PROVIDER_CONNECTION_TEST";
+    public static final String MODEL_CATALOG_READ = "MODEL_CATALOG_READ";
+    public static final String MODEL_CATALOG_CREATE = "MODEL_CATALOG_CREATE";
+    public static final String MODEL_CATALOG_UPDATE = "MODEL_CATALOG_UPDATE";
+    public static final String MODEL_CATALOG_DELETE = "MODEL_CATALOG_DELETE";
+    public static final String MODEL_CATALOG_SYNC = "MODEL_CATALOG_SYNC";
+    public static final String MODEL_ALIAS_MANAGE = "MODEL_ALIAS_MANAGE";
+    public static final String MODEL_CAPABILITY_MANAGE = "MODEL_CAPABILITY_MANAGE";
 
     public void require(AuthenticatedUser user, String permission) {
         if (user.getRoles().contains("ORG_ADMIN")) {
