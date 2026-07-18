@@ -313,6 +313,13 @@ public class AiModelGateway {
                 throw new ApiException(
                         HttpStatus.CONFLICT, "PROVIDER_ADAPTER_UNAVAILABLE", "Provider adapter is not available");
             }
+            // Text/chat invocation path requires an enabled CHAT capability. REASONING alone is not enough.
+            if (!capabilityMatcher.hasCapability(resolved.model().getId(), AiModelCapability.CHAT)) {
+                throw new ApiException(
+                        HttpStatus.CONFLICT,
+                        "MODEL_CAPABILITY_MISSING",
+                        "Model does not support chat generation");
+            }
             if (request.requiresTools()
                     && !capabilityMatcher.hasAnyCapability(
                             resolved.model().getId(),

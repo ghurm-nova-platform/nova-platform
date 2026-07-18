@@ -76,7 +76,10 @@ Upsert rules:
 
 - Key: `provider_id + provider_model_id`
 - New rows: `DRAFT`, `PROVIDER_SYNC`, `discovered_at` set once
-- Update `last_synced_at` / `last_seen_at`
+- Before HTTP, snapshot existing model ids + optimistic `version` + `source`
+- On apply: if a matching model’s version changed during discovery, skip field overwrites (preserve operator edit)
+- `source=MANUAL` (and operator-managed rows): never overwrite display/family/context/capabilities; only sync visibility timestamps when version is unchanged
+- Update `last_synced_at` / `last_seen_at` for eligible provider-sync rows
 - Never delete missing models
 - Never auto-activate
 - Do not replace manual aliases
@@ -96,14 +99,15 @@ If metadata is incomplete or discovery is not safely supported → `MODEL_SYNC_U
 
 `ModelGatewayRequest.modelReference` (optional):
 
-- When set → resolve via catalog (key or alias) → ACTIVE model + ACTIVE provider → capability checks → invoke with `provider_model_id`
+- When set → resolve via catalog (key or alias) → ACTIVE model + ACTIVE provider → require enabled `CHAT` capability → additional capability checks → invoke with `provider_model_id`
 - When absent → existing agent-assignment routing
 
-Capability gates:
+Capability gates on the direct `modelReference` path:
 
+- Chat generation → enabled `CHAT` (embeddings-only / image-generation-only models are rejected; `REASONING` alone is not accepted)
 - Tools → `TOOL_CALLING` or `FUNCTION_CALLING`
-- JSON / structured → `JSON_MODE` or `STRUCTURED_OUTPUT` when requested
-- Vision inputs → `VISION` or `IMAGE_UNDERSTANDING`
+- JSON / structured → `JSON_MODE` or `STRUCTURED_OUTPUT` when requested (future request-shape work if not yet on the invoke DTO)
+- Vision inputs → `VISION` or `IMAGE_UNDERSTANDING` when requested (same)
 
 Streaming capability may be recorded; production streaming is out of scope.
 

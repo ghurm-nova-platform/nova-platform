@@ -1,8 +1,10 @@
 package ai.nova.platform.modelcatalog.sync;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -152,10 +154,11 @@ public class ModelCatalogSyncService {
                 createSyncedModel(provider, descriptor, user, syncedAt);
                 created++;
             } else {
-                if (updateSyncedModel(existing.get(), descriptor, user, syncedAt)) {
-                    updated++;
-                } else {
-                    unchanged++;
+                ModelRowSnapshot snapshot = context.modelSnapshots().get(descriptor.providerModelId());
+                UpdateOutcome outcome = updateSyncedModel(existing.get(), snapshot, descriptor, user, syncedAt);
+                switch (outcome) {
+                    case UPDATED -> updated++;
+                    case UNCHANGED, SKIPPED_STALE, SKIPPED_MANUAL -> unchanged++;
                 }
             }
         }
@@ -239,40 +242,91 @@ public class ModelCatalogSyncService {
         }
     }
 
-    private boolean updateSyncedModel(
-            AiModel model, DiscoveredModelDescriptor descriptor, AuthenticatedUser user, Instant syncedAt) {
+    /**
+     * Applies discovery to an existing row only when the optimistic version still matches the pre-HTTP
+     * snapshot. MANUAL / operator-managed rows never have display/family/context/capabilities overwritten;
+     * only sync visibility timestamps may move when the version is unchanged.
+     */
+    private UpdateOutcome updateSyncedModel(
+            AiModel model,
+            ModelRowSnapshot snapshot,
+            DiscoveredModelDescriptor descriptor,
+            AuthenticatedUser user,
+            Instant syncedAt) {
+        AiModel current = modelRepository
+                .findByIdAndOrganizationId(model.getId(), model.getOrganizationId())
+                .orElse(model);
+
+        if (snapshot == null || !Objects.equals(snapshot.version(), current.getVersion())) {
+            // Operator (or another sync) changed the row after our snapshot — preserve newer config.
+            return UpdateOutcome.SKIPPED_STALE;
+        }
+
+        if (current.getSource() == AiModelSource.MANUAL || snapshot.source() == AiModelSource.MANUAL) {
+            boolean touched = false;
+            if (!Objects.equals(current.getLastSeenAt(), syncedAt)) {
+                current.setLastSeenAt(syncedAt);
+                touched = true;
+            }
+            if (!Objects.equals(current.getLastSyncedAt(), syncedAt)) {
+                current.setLastSyncedAt(syncedAt);
+                touched = true;
+            }
+            if (!touched) {
+                return UpdateOutcome.SKIPPED_MANUAL;
+            }
+            current.setUpdatedBy(user.getUserId());
+            current.setUpdatedAt(syncedAt);
+            modelRepository.save(current);
+            return UpdateOutcome.UNCHANGED;
+        }
+
         boolean changed = false;
-        model.setLastSeenAt(syncedAt);
-        model.setLastSyncedAt(syncedAt);
-        if (model.getDiscoveredAt() == null) {
-            model.setDiscoveredAt(syncedAt);
+        current.setLastSeenAt(syncedAt);
+        current.setLastSyncedAt(syncedAt);
+        if (current.getDiscoveredAt() == null) {
+            current.setDiscoveredAt(syncedAt);
             changed = true;
         }
-        if (descriptor.displayName() != null && !descriptor.displayName().equals(model.getDisplayName())) {
-            model.setDisplayName(descriptor.displayName());
+        if (descriptor.displayName() != null && !descriptor.displayName().equals(current.getDisplayName())) {
+            current.setDisplayName(descriptor.displayName());
             changed = true;
         }
-        if (descriptor.modelFamily() != null && !Objects.equals(descriptor.modelFamily(), model.getModelFamily())) {
-            model.setModelFamily(descriptor.modelFamily());
+        if (descriptor.modelFamily() != null && !Objects.equals(descriptor.modelFamily(), current.getModelFamily())) {
+            current.setModelFamily(descriptor.modelFamily());
             changed = true;
         }
         if (descriptor.contextWindow() != null
                 && descriptor.contextWindow() > 0
-                && !Objects.equals(descriptor.contextWindow(), model.getContextWindow())) {
-            model.setContextWindow(descriptor.contextWindow());
-            model.setContextWindowTokens(descriptor.contextWindow());
+                && !Objects.equals(descriptor.contextWindow(), current.getContextWindow())) {
+            current.setContextWindow(descriptor.contextWindow());
+            current.setContextWindowTokens(descriptor.contextWindow());
             changed = true;
         }
-        List<AiModelCapabilityEntity> existingCaps = capabilityRepository.findByIdModelId(model.getId());
+        List<AiModelCapabilityEntity> existingCaps = capabilityRepository.findByIdModelId(current.getId());
         if (existingCaps.isEmpty() && !descriptor.capabilities().isEmpty()) {
-            writeCapabilities(model, descriptor.capabilities(), syncedAt);
-            catalogService.syncBooleanCache(model, capabilityRepository.findByIdModelId(model.getId()));
+            writeCapabilities(current, descriptor.capabilities(), syncedAt);
+            catalogService.syncBooleanCache(current, capabilityRepository.findByIdModelId(current.getId()));
             changed = true;
         }
-        model.setUpdatedBy(user.getUserId());
-        model.setUpdatedAt(syncedAt);
-        modelRepository.save(model);
-        return changed;
+        if (!changed) {
+            // Timestamps alone do not count as an "updated" catalog mutation for sync metrics.
+            current.setUpdatedBy(user.getUserId());
+            current.setUpdatedAt(syncedAt);
+            modelRepository.save(current);
+            return UpdateOutcome.UNCHANGED;
+        }
+        current.setUpdatedBy(user.getUserId());
+        current.setUpdatedAt(syncedAt);
+        modelRepository.save(current);
+        return UpdateOutcome.UPDATED;
+    }
+
+    enum UpdateOutcome {
+        UPDATED,
+        UNCHANGED,
+        SKIPPED_STALE,
+        SKIPPED_MANUAL
     }
 
     private void writeCapabilities(AiModel model, java.util.Set<AiModelCapability> capabilities, Instant now) {
@@ -352,7 +406,14 @@ public class ModelCatalogSyncService {
 
     private SyncContext loadContext(UUID providerId, UUID organizationId) {
         AiProvider provider = providerService.requireProvider(providerId, organizationId);
-        return SyncContext.from(provider);
+        List<AiModel> existing = modelRepository.findByProviderIdAndOrganizationId(providerId, organizationId);
+        Map<String, ModelRowSnapshot> snapshots = new HashMap<>();
+        for (AiModel model : existing) {
+            snapshots.put(
+                    model.getProviderModelId(),
+                    new ModelRowSnapshot(model.getId(), model.getVersion(), model.getSource()));
+        }
+        return SyncContext.from(provider, snapshots);
     }
 
     private static AiProvider toProbeProvider(SyncContext context) {
@@ -369,6 +430,9 @@ public class ModelCatalogSyncService {
         return provider;
     }
 
+    record ModelRowSnapshot(UUID modelId, Integer version, AiModelSource source) {
+    }
+
     record SyncContext(
             UUID providerId,
             UUID organizationId,
@@ -380,9 +444,10 @@ public class ModelCatalogSyncService {
             String azureResourceName,
             String azureApiVersion,
             ConnectionTestStatus lastConnectionTestStatus,
-            int timeoutSeconds) {
+            int timeoutSeconds,
+            Map<String, ModelRowSnapshot> modelSnapshots) {
 
-        static SyncContext from(AiProvider provider) {
+        static SyncContext from(AiProvider provider, Map<String, ModelRowSnapshot> modelSnapshots) {
             return new SyncContext(
                     provider.getId(),
                     provider.getOrganizationId(),
@@ -394,7 +459,8 @@ public class ModelCatalogSyncService {
                     provider.getAzureResourceName(),
                     provider.getAzureApiVersion(),
                     provider.getLastConnectionTestStatus(),
-                    provider.getRequestTimeoutSeconds() != null ? provider.getRequestTimeoutSeconds() : 30);
+                    provider.getRequestTimeoutSeconds() != null ? provider.getRequestTimeoutSeconds() : 30,
+                    Map.copyOf(modelSnapshots));
         }
 
         boolean matchesCurrent(AiProvider provider) {

@@ -69,4 +69,6 @@ public interface AiModelRepository extends JpaRepository<AiModel, UUID> {
     List<AiModel> findByIdInAndOrganizationId(List<UUID> ids, UUID organizationId);
 
     List<AiModel> findByOrganizationIdAndStatus(UUID organizationId, AiModelStatus status);
+
+    List<AiModel> findByProviderIdAndOrganizationId(UUID providerId, UUID organizationId);
 }

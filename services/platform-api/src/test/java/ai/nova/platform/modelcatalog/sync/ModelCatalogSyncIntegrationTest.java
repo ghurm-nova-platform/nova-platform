@@ -239,4 +239,114 @@ class ModelCatalogSyncIntegrationTest {
 
         assertThat(modelRepository.findByProviderIdAndProviderModelId(providerId, "gpt-4o")).isEmpty();
     }
+
+    @Test
+    void syncDoesNotOverwriteOperatorEditMadeDuringDiscovery() throws Exception {
+        MvcResult secretResult = mockMvc.perform(post("/api/provider-secrets")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "secretKey":"SYNC2_%s",
+                                  "name":"Sync2",
+                                  "providerType":"OPENAI",
+                                  "secret":"sync-test-key-bbbb"
+                                }
+                                """.formatted(UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase())))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String credentialReference = objectMapper
+                .readTree(secretResult.getResponse().getContentAsString())
+                .get("credentialReference")
+                .asText();
+
+        String providerKey =
+                "OPENAI_SYNC2_" + UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
+        MvcResult createProvider = mockMvc.perform(post("/api/model-providers")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "providerKey":"%s",
+                                  "name":"OpenAI Sync2",
+                                  "providerType":"OPENAI",
+                                  "adapterKey":"OPENAI",
+                                  "credentialReference":"%s",
+                                  "endpointProfile":"OPENAI_PUBLIC"
+                                }
+                                """.formatted(providerKey, credentialReference)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        UUID providerId = UUID.fromString(
+                objectMapper.readTree(createProvider.getResponse().getContentAsString()).get("id").asText());
+
+        AiProvider provider = providerRepository.findById(providerId).orElseThrow();
+        provider.setLastConnectionTestStatus(ConnectionTestStatus.SUCCESS);
+        provider.setLastConnectionTestAt(java.time.Instant.now());
+        providerRepository.save(provider);
+        mockMvc.perform(post("/api/model-providers/" + providerId + "/activate")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+
+        server.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"data\":[{\"id\":\"gpt-4o-mini\"}]}"));
+        mockMvc.perform(post("/api/model-providers/" + providerId + "/models/sync")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.createdCount").value(1));
+        server.takeRequest(2, TimeUnit.SECONDS);
+
+        var existing = modelRepository.findByProviderIdAndProviderModelId(providerId, "gpt-4o-mini").orElseThrow();
+        UUID modelId = existing.getId();
+        int modelVersion = existing.getVersion();
+        String originalDisplayName = existing.getDisplayName();
+
+        server.enqueue(new MockResponse()
+                .setBodyDelay(1500, TimeUnit.MILLISECONDS)
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("""
+                        {"data":[{"id":"gpt-4o-mini","owned_by":"openai"}]}
+                        """));
+
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newSingleThreadExecutor();
+        try {
+            java.util.concurrent.Future<MvcResult> syncFuture = pool.submit(() -> mockMvc.perform(
+                            post("/api/model-providers/" + providerId + "/models/sync")
+                                    .header("Authorization", "Bearer " + accessToken))
+                    .andReturn());
+
+            assertThat(server.takeRequest(5, TimeUnit.SECONDS)).isNotNull();
+
+            mockMvc.perform(put("/api/ai-models/" + modelId)
+                            .header("Authorization", "Bearer " + accessToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "displayName":"Operator Locked Name",
+                                      "description":"edited during sync",
+                                      "contextWindowTokens":8192,
+                                      "maxOutputTokens":2048,
+                                      "version":%d
+                                    }
+                                    """.formatted(modelVersion)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.displayName").value("Operator Locked Name"));
+
+            MvcResult syncResult = syncFuture.get(10, TimeUnit.SECONDS);
+            assertThat(syncResult.getResponse().getStatus()).isEqualTo(200);
+            JsonNode syncBody = objectMapper.readTree(syncResult.getResponse().getContentAsString());
+            assertThat(syncBody.get("status").asText()).isEqualTo("SUCCESS");
+            assertThat(syncBody.get("stale").asBoolean()).isFalse();
+
+            var after = modelRepository.findById(modelId).orElseThrow();
+            assertThat(after.getDisplayName()).isEqualTo("Operator Locked Name");
+            assertThat(after.getDisplayName()).isNotEqualTo(originalDisplayName);
+            assertThat(after.getDescription()).isEqualTo("edited during sync");
+        } finally {
+            pool.shutdownNow();
+        }
+    }
 }
