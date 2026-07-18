@@ -80,6 +80,7 @@ Identity Projects     Agent Runtime   Feedback    Audit/Usage
 - Knowledge Bases and RAG (allowlisted embeddings + vector store owned by Platform API)
 - AI Model Gateway (allowlisted providers, routing, usage owned by Platform API)
 - Model Catalog (capabilities, aliases, provider sync owned by Platform API)
+- Multi-agent orchestration foundation and Planner Agent (plan → draft run import)
 - Multi-agent orchestration foundation (durable runs, graphs, claim/execute)
 - Provider Secret Vault (AES-256-GCM credentials; OpenAI / Azure OpenAI adapters)
 - Agent Runtime

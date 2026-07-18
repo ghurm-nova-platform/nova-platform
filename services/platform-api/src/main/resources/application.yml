@@ -114,6 +114,14 @@ nova:
     worker-id: platform-api
     max-json-chars: 100000
     max-objective-length: 4000
+  planner:
+    enabled: true
+    max-objective-length: 4000
+    max-tasks: 50
+    max-dependencies: 200
+    cost-per-thousand-tokens-usd: 0.002
+    default-provider: LOCAL
+    default-model: planner-local
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 

@@ -1,0 +1,182 @@
+<section class="page planner-page">
+  <header class="page-header">
+    <div>
+      <h1>AI Planner</h1>
+      <p>Generate a validated execution plan. Planning never starts workflow execution.</p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">You do not have permission to use the planner.</p>
+  } @else {
+    <form class="card form-grid" [formGroup]="form" (ngSubmit)="generatePlan()">
+      <mat-form-field appearance="outline">
+        <mat-label>Project</mat-label>
+        <mat-select formControlName="projectId">
+          @for (project of projects(); track project.id) {
+            <mat-option [value]="project.id">{{ project.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Template</mat-label>
+        <mat-select formControlName="templateId">
+          <mat-option value="">Default</mat-option>
+          @for (template of templates(); track template.id) {
+            <mat-option [value]="template.id">{{ template.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>Objective</mat-label>
+        <textarea matInput rows="4" formControlName="objective"></textarea>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Draft run name (optional)</mat-label>
+        <input matInput formControlName="runName" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>Metadata JSON (optional)</mat-label>
+        <textarea matInput rows="3" formControlName="metadataJson"></textarea>
+      </mat-form-field>
+
+      <div class="actions full">
+        <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
+          @if (loading()) {
+            <mat-spinner diameter="18"></mat-spinner>
+          } @else {
+            Generate plan
+          }
+        </button>
+      </div>
+    </form>
+
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    @if (plannerResult(); as result) {
+      <section class="estimate-strip">
+        <div>
+          <span class="label">Complexity</span>
+          <strong>{{ result.estimate.complexity }}</strong>
+        </div>
+        <div>
+          <span class="label">Risk</span>
+          <strong>{{ result.estimate.riskLevel }}</strong>
+        </div>
+        <div>
+          <span class="label">Tokens</span>
+          <strong>{{ result.estimate.estimatedTokens }}</strong>
+        </div>
+        <div>
+          <span class="label">Duration</span>
+          <strong>{{ result.estimate.estimatedDurationSeconds }}s</strong>
+        </div>
+        <div>
+          <span class="label">Est. cost</span>
+          <strong>${{ result.estimate.estimatedCostUsd | number: '1.2-4' }}</strong>
+        </div>
+      </section>
+
+      <section class="dag-panel card">
+        <div class="dag-toolbar">
+          <h2>DAG preview</h2>
+          <div class="legend">
+            @for (entry of taskColors | keyvalue; track entry.key) {
+              <span><i [style.background]="entry.value"></i>{{ entry.key }}</span>
+            }
+          </div>
+          <div class="view-actions">
+            <button mat-stroked-button type="button" (click)="zoomOut()">Zoom out</button>
+            <button mat-stroked-button type="button" (click)="zoomIn()">Zoom in</button>
+            <button mat-stroked-button type="button" (click)="resetView()">Reset</button>
+          </div>
+        </div>
+        <svg
+          class="dag-canvas"
+          viewBox="0 0 900 420"
+          (wheel)="onPan($event)"
+        >
+          <defs>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L6,3 L0,6 Z" fill="#64748b"></path>
+            </marker>
+          </defs>
+          <g [attr.transform]="'translate(' + panX() + ' ' + panY() + ') scale(' + zoom() + ')'">
+            @for (dep of dagEdges(); track dep.from + dep.to) {
+              <path class="edge" [attr.d]="edgePath(dep)" marker-end="url(#arrow)"></path>
+            }
+            @for (node of dagNodes(); track node.task.taskKey) {
+              <g [attr.transform]="'translate(' + node.x + ' ' + node.y + ')'">
+                <rect
+                  width="180"
+                  height="56"
+                  rx="8"
+                  [attr.fill]="taskColors[node.task.taskType]"
+                  opacity="0.92"
+                ></rect>
+                <text x="12" y="24" fill="#fff" font-size="13">{{ node.task.displayName }}</text>
+                <text x="12" y="42" fill="#e2e8f0" font-size="11">
+                  {{ node.task.taskKey }} · {{ node.task.agentRole }}
+                </text>
+              </g>
+            }
+          </g>
+        </svg>
+        <p class="hint">Shift + scroll to pan. Use zoom controls for scale.</p>
+      </section>
+
+      <section class="card">
+        <h2>Tasks</h2>
+        <table mat-table [dataSource]="result.plan.tasks" class="task-table">
+          <ng-container matColumnDef="taskKey">
+            <th mat-header-cell *matHeaderCellDef>Key</th>
+            <td mat-cell *matCellDef="let row">{{ row.taskKey }}</td>
+          </ng-container>
+          <ng-container matColumnDef="displayName">
+            <th mat-header-cell *matHeaderCellDef>Name</th>
+            <td mat-cell *matCellDef="let row">{{ row.displayName }}</td>
+          </ng-container>
+          <ng-container matColumnDef="taskType">
+            <th mat-header-cell *matHeaderCellDef>Type</th>
+            <td mat-cell *matCellDef="let row">{{ row.taskType }}</td>
+          </ng-container>
+          <ng-container matColumnDef="agentRole">
+            <th mat-header-cell *matHeaderCellDef>Role</th>
+            <td mat-cell *matCellDef="let row">{{ row.agentRole }}</td>
+          </ng-container>
+          <ng-container matColumnDef="priority">
+            <th mat-header-cell *matHeaderCellDef>Priority</th>
+            <td mat-cell *matCellDef="let row">{{ row.priority }}</td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="taskColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: taskColumns"></tr>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>Edit plan JSON</h2>
+        <textarea
+          class="json-editor"
+          rows="16"
+          [value]="editablePlanJson()"
+          (input)="editablePlanJson.set($any($event.target).value)"
+        ></textarea>
+        <div class="actions">
+          <button mat-stroked-button type="button" (click)="applyEditedPlan()">Apply edits</button>
+          @if (permissions.canImport()) {
+            <button mat-flat-button color="primary" type="button" (click)="createDraftRun()" [disabled]="creating()">
+              Create draft run
+            </button>
+          }
+          <a mat-button routerLink="/orchestration-runs">Open orchestration</a>
+        </div>
+      </section>
+    }
+  }
+</section>

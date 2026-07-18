@@ -124,6 +124,10 @@ Migrations: `V26`–`V28`. Catalog CRUD, capabilities, aliases, provider sync, o
 
 See [`docs/022_MULTI_AGENT_ORCHESTRATION_FOUNDATION.md`](../../docs/022_MULTI_AGENT_ORCHESTRATION_FOUNDATION.md).
 
+## Planner Agent
+
+See [`docs/023_PLANNER_AGENT.md`](../../docs/023_PLANNER_AGENT.md) and ADR-0013.
+
 Migrations: `V29`–`V32`. Durable runs, tasks, dependencies, attempts, events; claim leases; TX1/external/TX2 execution.
 
 Local demo user (Flyway seed, local only):

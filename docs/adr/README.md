@@ -26,3 +26,4 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0010](ADR-0010-provider-secret-vault.md) | Provider secret vault and production OpenAI / Azure adapters | Accepted |
 | [ADR-0011](ADR-0011-model-catalog.md) | Database-driven model catalog, capabilities, aliases, and sync | Accepted |
 | [ADR-0012](ADR-0012-durable-agent-orchestration.md) | Durable multi-agent orchestration foundation | Accepted |
+| [ADR-0013](ADR-0013-planner-agent.md) | Planner Agent and dynamic workflow generation | Accepted |
