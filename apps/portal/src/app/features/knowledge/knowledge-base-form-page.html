@@ -1,0 +1,112 @@
+<section class="page">
+  @if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to {{ editMode() ? 'edit' : 'create' }} knowledge bases.</p>
+      <a mat-stroked-button [routerLink]="['/projects', projectId(), 'knowledge-bases']">Back to knowledge bases</a>
+    </div>
+  } @else if (loading()) {
+    <div class="page__loading" role="status"><mat-spinner diameter="36" /></div>
+  } @else {
+    <header class="page__header">
+      <div>
+        <h1>{{ editMode() ? 'Edit knowledge base' : 'Create knowledge base' }}</h1>
+        <p>
+          @if (currentKnowledgeBase(); as kb) {
+            <span [class]="statusClass(kb.status)">{{ kb.status }}</span>
+            · version {{ kb.version }}
+          } @else {
+            Define a project knowledge base through Platform API.
+          }
+        </p>
+      </div>
+      <div class="page__actions">
+        <a mat-stroked-button [routerLink]="['/projects', projectId(), 'knowledge-bases']">Back to knowledge bases</a>
+        @if (editMode() && permissions.canReadDocuments() && knowledgeBaseId()) {
+          <a
+            mat-stroked-button
+            [routerLink]="['/projects', projectId(), 'knowledge-bases', knowledgeBaseId(), 'documents']"
+          >
+            <mat-icon>description</mat-icon>
+            Documents
+          </a>
+        }
+        @if (editMode() && permissions.canActivate() && currentKnowledgeBase()?.status === 'DRAFT') {
+          <button mat-stroked-button type="button" (click)="activate()">Activate</button>
+        }
+        @if (editMode() && permissions.canArchive() && currentKnowledgeBase()?.status !== 'ARCHIVED') {
+          <button mat-button color="warn" type="button" (click)="archive()">Archive</button>
+        }
+      </div>
+    </header>
+
+    @if (error()) {
+      <p class="page__error" role="alert">{{ error() }}</p>
+    }
+
+    <form class="form" [formGroup]="form" (ngSubmit)="save()">
+      <div class="form__row">
+        <mat-form-field appearance="outline">
+          <mat-label>Knowledge key</mat-label>
+          <input matInput formControlName="knowledgeKey" aria-label="Knowledge key" placeholder="PRODUCT_DOCS" />
+          @if (editMode()) {
+            <mat-hint>Knowledge key cannot be changed after creation.</mat-hint>
+          }
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Name</mat-label>
+          <input matInput formControlName="name" aria-label="Knowledge base name" />
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Description</mat-label>
+        <textarea matInput rows="2" formControlName="description" aria-label="Knowledge base description"></textarea>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Embedding provider</mat-label>
+        <mat-select formControlName="embeddingProviderKey" aria-label="Embedding provider">
+          @for (provider of providers(); track provider.providerKey) {
+            <mat-option [value]="provider.providerKey">{{ providerLabel(provider) }}</mat-option>
+          }
+        </mat-select>
+        <mat-hint>Only providers from the Platform allowlist are permitted.</mat-hint>
+      </mat-form-field>
+
+      <div class="form__row">
+        <mat-form-field appearance="outline">
+          <mat-label>Chunk size</mat-label>
+          <input matInput type="number" formControlName="chunkSize" aria-label="Chunk size" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Chunk overlap</mat-label>
+          <input matInput type="number" formControlName="chunkOverlap" aria-label="Chunk overlap" />
+        </mat-form-field>
+      </div>
+
+      <div class="form__row">
+        <mat-form-field appearance="outline">
+          <mat-label>Default top K</mat-label>
+          <input matInput type="number" formControlName="defaultTopK" aria-label="Default top K" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Minimum score (optional)</mat-label>
+          <input matInput formControlName="minimumScore" aria-label="Minimum score" placeholder="-1 to 1" />
+        </mat-form-field>
+      </div>
+
+      <div class="form__actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="saving() || form.invalid">
+          @if (saving()) {
+            Saving…
+          } @else {
+            {{ editMode() ? 'Save changes' : 'Create knowledge base' }}
+          }
+        </button>
+        <a mat-button [routerLink]="['/projects', projectId(), 'knowledge-bases']">Cancel</a>
+      </div>
+    </form>
+  }
+</section>

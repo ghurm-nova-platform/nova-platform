@@ -111,6 +111,19 @@ public class NoOpAgentRuntimeClient implements AgentRuntimeClient {
         String responseText =
                 "NoOp runtime response for agent " + request.agentId() + ": " + userPreview;
 
+        RuntimeKnowledgeContext knowledgeContext = request.knowledgeContext();
+        if (knowledgeContext != null && !knowledgeContext.isEmpty()) {
+            RuntimeKnowledgeCitation first = knowledgeContext.citations().isEmpty()
+                    ? null
+                    : knowledgeContext.citations().getFirst();
+            String firstLabel = first != null ? first.label() : "K1";
+            responseText = responseText
+                    + " knowledgeCitations="
+                    + knowledgeContext.citations().size()
+                    + " firstCitation="
+                    + firstLabel;
+        }
+
         int inputTokens = estimateInputTokens(request);
         int outputTokens = wordCount(responseText);
         return RuntimeTurnResult.finalResponse(new RuntimeFinalResponse(

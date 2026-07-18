@@ -31,6 +31,9 @@
         <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents', agentId(), 'tools']">
           Tools
         </a>
+        <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents', agentId(), 'knowledge-bases']">
+          Knowledge
+        </a>
         <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents']">All agents</a>
       </div>
     </header>
@@ -221,6 +224,34 @@
           </div>
         }
 
+        @if (knowledgePermissions.canRead()) {
+          <div class="playground__assigned-tools">
+            <h3>Assigned knowledge bases</h3>
+            @if (assignedKnowledgeBasesLoading()) {
+              <mat-spinner diameter="20" />
+            } @else if (assignedKnowledgeBases().length === 0) {
+              <p class="playground__hint">
+                No knowledge bases assigned.
+                <a [routerLink]="['/projects', projectId(), 'agents', agentId(), 'knowledge-bases']">
+                  Manage agent knowledge
+                </a>
+              </p>
+            } @else {
+              <ul class="tool-chip-list">
+                @for (kb of assignedKnowledgeBases(); track kb.id) {
+                  <li>
+                    <strong>{{ kb.knowledgeBaseName }}</strong>
+                    <code>{{ kb.knowledgeKey }}</code>
+                    <span [class]="assignedKnowledgeStatusClass(kb.knowledgeBaseStatus)">
+                      {{ kb.knowledgeBaseStatus }}
+                    </span>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        }
+
         @if (permissions.canExecute()) {
           <button
             mat-flat-button
@@ -265,6 +296,33 @@
 
         @if (activeError()) {
           <p class="page__error" role="alert">{{ activeError() }}</p>
+        }
+
+        @if (retrievalUsed()) {
+          <div class="playground__retrieval-banner" role="status">
+            <mat-icon>menu_book</mat-icon>
+            <div>
+              <strong>Knowledge retrieval used</strong>
+              <p>{{ activeCitations().length }} citation(s) grounded this response.</p>
+            </div>
+          </div>
+        }
+
+        @if (activeCitations().length > 0) {
+          <div class="playground__citations">
+            <h3>Citations</h3>
+            <ul class="citation-list">
+              @for (citation of activeCitations(); track citation.label) {
+                <li>
+                  <strong>{{ citation.label }}</strong>
+                  <span>{{ citation.knowledgeBaseName }}</span>
+                  <span>{{ citation.documentName }}</span>
+                  <span>chunk #{{ citation.chunkIndex }}</span>
+                  <span>score {{ citation.score }}</span>
+                </li>
+              }
+            </ul>
+          </div>
         }
 
         @if (awaitingApproval()) {

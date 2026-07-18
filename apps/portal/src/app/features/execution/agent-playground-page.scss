@@ -205,6 +205,44 @@
   margin: 0.25rem 0 0;
 }
 
+.playground__retrieval-banner {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, #1565c0 14%, transparent);
+}
+
+.playground__retrieval-banner p {
+  margin: 0.25rem 0 0;
+}
+
+.playground__citations h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.citation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.citation-list li {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 0.85rem;
+  padding: 0.5rem;
+  border-radius: 0.4rem;
+  background: color-mix(in srgb, currentColor 5%, transparent);
+}
+
 .playground__reject-reason {
   width: min(100%, 280px);
 }

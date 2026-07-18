@@ -90,6 +90,13 @@
             >
               <mat-icon>build</mat-icon>
             </a>
+            <a
+              mat-icon-button
+              [routerLink]="['/projects', row.id, 'knowledge-bases']"
+              aria-label="Open project knowledge bases"
+            >
+              <mat-icon>menu_book</mat-icon>
+            </a>
             <button mat-icon-button type="button" aria-label="Edit project" (click)="edit(row)">
               <mat-icon>edit</mat-icon>
             </button>

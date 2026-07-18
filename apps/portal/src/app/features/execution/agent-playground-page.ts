@@ -36,6 +36,10 @@ import { ExecutionService } from './execution.service';
 import { AgentToolAssignment, ExecutionToolCall, ToolCallStatus } from '../tools/tool.models';
 import { ToolPermissionHelper } from '../tools/tool-permission.helper';
 import { ToolService } from '../tools/tool.service';
+import { AgentKnowledgeAssignment } from '../knowledge/knowledge.models';
+import { KnowledgePermissionHelper } from '../knowledge/knowledge-permission.helper';
+import { KnowledgeService } from '../knowledge/knowledge.service';
+import { Citation } from './execution.models';
 
 const POLLING_TOOL_STATUSES: ToolCallStatus[] = [
   'REQUESTED',
@@ -78,9 +82,11 @@ export class AgentPlaygroundPage implements OnInit, OnDestroy {
   private readonly executionsApi = inject(ExecutionService);
   private readonly conversationsApi = inject(ConversationService);
   private readonly toolsApi = inject(ToolService);
+  private readonly knowledgeApi = inject(KnowledgeService);
   readonly permissions = inject(ExecutionPermissionHelper);
   readonly conversationPermissions = inject(ConversationPermissionHelper);
   readonly toolPermissions = inject(ToolPermissionHelper);
+  readonly knowledgePermissions = inject(KnowledgePermissionHelper);
 
   readonly projectId = signal('');
   readonly agentId = signal('');
@@ -129,6 +135,8 @@ export class AgentPlaygroundPage implements OnInit, OnDestroy {
 
   readonly assignedTools = signal<AgentToolAssignment[]>([]);
   readonly assignedToolsLoading = signal(false);
+  readonly assignedKnowledgeBases = signal<AgentKnowledgeAssignment[]>([]);
+  readonly assignedKnowledgeBasesLoading = signal(false);
   readonly toolCalls = signal<ExecutionToolCall[]>([]);
   readonly toolCallsLoading = signal(false);
   readonly toolActionError = signal<string | null>(null);
@@ -144,6 +152,7 @@ export class AgentPlaygroundPage implements OnInit, OnDestroy {
     this.agentId.set(this.route.snapshot.paramMap.get('agentId') ?? '');
     this.loadAgent();
     this.loadAssignedTools();
+    this.loadAssignedKnowledgeBases();
     this.loadHistory();
   }
 
@@ -590,6 +599,35 @@ export class AgentPlaygroundPage implements OnInit, OnDestroy {
 
   assignedToolStatusClass(status: AgentToolAssignment['toolStatus']): string {
     return `status status--${status.toLowerCase()}`;
+  }
+
+  assignedKnowledgeStatusClass(status: AgentKnowledgeAssignment['knowledgeBaseStatus']): string {
+    return `status status--${status.toLowerCase()}`;
+  }
+
+  activeCitations(): Citation[] {
+    return this.lastResult()?.citations ?? [];
+  }
+
+  retrievalUsed(): boolean {
+    return this.activeCitations().length > 0;
+  }
+
+  private loadAssignedKnowledgeBases(): void {
+    if (!this.knowledgePermissions.canRead()) {
+      this.assignedKnowledgeBases.set([]);
+      return;
+    }
+    this.assignedKnowledgeBasesLoading.set(true);
+    this.knowledgeApi.listAgentKnowledgeBases(this.projectId(), this.agentId()).subscribe({
+      next: (rows) => {
+        this.assignedKnowledgeBases.set(rows);
+        this.assignedKnowledgeBasesLoading.set(false);
+      },
+      error: () => {
+        this.assignedKnowledgeBasesLoading.set(false);
+      },
+    });
   }
 
   private loadAssignedTools(): void {

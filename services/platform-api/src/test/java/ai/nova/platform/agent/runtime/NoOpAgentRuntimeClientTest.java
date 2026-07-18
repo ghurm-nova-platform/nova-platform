@@ -32,7 +32,8 @@ class NoOpAgentRuntimeClientTest {
                 messages,
                 null,
                 List.of(),
-                List.of()));
+                List.of(),
+                null));
 
         assertThat(result.isFinal()).isTrue();
         RuntimeFinalResponse finalResponse = result.finalResponse();
@@ -65,7 +66,8 @@ class NoOpAgentRuntimeClientTest {
                 messages,
                 UUID.randomUUID(),
                 List.of(),
-                List.of()));
+                List.of(),
+                null));
 
         assertThat(result.finalResponse().responseText()).contains("follow up question");
     }
@@ -91,7 +93,8 @@ class NoOpAgentRuntimeClientTest {
                 List.of(new RuntimeMessage("USER", NoOpAgentRuntimeClient.MARKER_CALCULATOR)),
                 null,
                 List.of(calculator),
-                List.of()));
+                List.of(),
+                null));
 
         assertThat(result.isToolCalls()).isTrue();
         assertThat(result.toolCallBatch().toolCalls()).hasSize(1);
@@ -120,7 +123,8 @@ class NoOpAgentRuntimeClientTest {
                 List.of(new RuntimeMessage("USER", "done")),
                 null,
                 List.of(),
-                List.of(toolResult)));
+                List.of(toolResult),
+                null));
 
         assertThat(result.isFinal()).isTrue();
         assertThat(result.finalResponse().responseText()).contains("1 tool result");

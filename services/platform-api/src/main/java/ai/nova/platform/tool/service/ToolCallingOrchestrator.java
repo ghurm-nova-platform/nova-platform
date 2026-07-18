@@ -29,6 +29,8 @@ import ai.nova.platform.agent.repository.AgentRepository;
 import ai.nova.platform.agent.runtime.AgentRuntimeClient;
 import ai.nova.platform.agent.runtime.ExecutionRequest;
 import ai.nova.platform.agent.runtime.RuntimeFinalResponse;
+import ai.nova.platform.agent.runtime.RuntimeKnowledgeCitation;
+import ai.nova.platform.agent.runtime.RuntimeKnowledgeContext;
 import ai.nova.platform.agent.runtime.RuntimeMessage;
 import ai.nova.platform.agent.runtime.RuntimeToolCallBatch;
 import ai.nova.platform.agent.runtime.RuntimeToolCallRequest;
@@ -46,6 +48,11 @@ import ai.nova.platform.execution.mapper.ExecutionMapper;
 import ai.nova.platform.execution.repository.AgentExecutionRepository;
 import ai.nova.platform.execution.repository.ExecutionMessageRepository;
 import ai.nova.platform.execution.service.ExecutionLifecycleService;
+import ai.nova.platform.knowledge.config.KnowledgeProperties;
+import ai.nova.platform.knowledge.dto.KnowledgeDtos.KnowledgeCitationResponse;
+import ai.nova.platform.knowledge.service.ExecutionKnowledgeSnapshotService;
+import ai.nova.platform.knowledge.service.KnowledgeRetrievalService;
+import ai.nova.platform.knowledge.service.KnowledgeRetrievalService.RetrievalResult;
 import ai.nova.platform.security.AuthenticatedUser;
 import ai.nova.platform.tool.config.ToolProperties;
 import ai.nova.platform.tool.entity.ExecutionToolCall;
@@ -85,6 +92,9 @@ public class ToolCallingOrchestrator {
     private final ConversationProperties conversationProperties;
     private final ObjectMapper objectMapper;
     private final ExecutorService toolExecutionExecutor;
+    private final KnowledgeRetrievalService knowledgeRetrievalService;
+    private final KnowledgeProperties knowledgeProperties;
+    private final ExecutionKnowledgeSnapshotService knowledgeSnapshotService;
 
     public ToolCallingOrchestrator(
             AgentRuntimeClient agentRuntimeClient,
@@ -103,7 +113,10 @@ public class ToolCallingOrchestrator {
             ConversationService conversationService,
             ConversationProperties conversationProperties,
             ObjectMapper objectMapper,
-            @Qualifier("toolExecutionExecutor") ExecutorService toolExecutionExecutor) {
+            @Qualifier("toolExecutionExecutor") ExecutorService toolExecutionExecutor,
+            KnowledgeRetrievalService knowledgeRetrievalService,
+            KnowledgeProperties knowledgeProperties,
+            ExecutionKnowledgeSnapshotService knowledgeSnapshotService) {
         this.agentRuntimeClient = agentRuntimeClient;
         this.agentToolAssignmentService = agentToolAssignmentService;
         this.assignmentRepository = assignmentRepository;
@@ -121,6 +134,9 @@ public class ToolCallingOrchestrator {
         this.conversationProperties = conversationProperties;
         this.objectMapper = objectMapper;
         this.toolExecutionExecutor = toolExecutionExecutor;
+        this.knowledgeRetrievalService = knowledgeRetrievalService;
+        this.knowledgeProperties = knowledgeProperties;
+        this.knowledgeSnapshotService = knowledgeSnapshotService;
     }
 
     public record OrchestrationRequest(
@@ -131,24 +147,105 @@ public class ToolCallingOrchestrator {
             UUID agentId,
             String renderedPrompt,
             List<RuntimeMessage> messages,
-            UUID conversationId) {
+            UUID conversationId,
+            RuntimeKnowledgeContext knowledgeContext) {
     }
 
     public ExecuteResponse orchestrate(OrchestrationRequest request) {
+        ExecuteResponse cancelled = cancelledResponseIfNeeded(request.executionId(), request.renderedPrompt());
+        if (cancelled != null) {
+            return cancelled;
+        }
+
+        RuntimeKnowledgeContext knowledgeContext = request.knowledgeContext();
+        if (knowledgeContext == null) {
+            knowledgeContext = retrieveKnowledge(request);
+            cancelled = cancelledResponseIfNeeded(request.executionId(), request.renderedPrompt());
+            if (cancelled != null) {
+                return cancelled;
+            }
+        }
+        knowledgeSnapshotService.saveIfAbsent(
+                request.executionId(),
+                request.user().getOrganizationId(),
+                request.projectId(),
+                knowledgeContext);
+
+        OrchestrationRequest enriched = new OrchestrationRequest(
+                request.executionId(),
+                request.agent(),
+                request.user(),
+                request.projectId(),
+                request.agentId(),
+                request.renderedPrompt(),
+                request.messages(),
+                request.conversationId(),
+                knowledgeContext);
+
         List<ToolDefinition> assignedTools = agentToolAssignmentService.loadAssignedActiveTools(
-                request.projectId(), request.agentId(), request.user().getOrganizationId());
+                enriched.projectId(), enriched.agentId(), enriched.user().getOrganizationId());
         Map<String, ToolDefinition> toolsByKey = assignedTools.stream()
                 .collect(Collectors.toMap(
                         ToolDefinition::getToolKey, tool -> tool, (left, right) -> left, LinkedHashMap::new));
         List<RuntimeToolSpec> availableTools = toRuntimeToolSpecs(assignedTools);
 
         return runLoop(
-                request,
+                enriched,
                 availableTools,
                 toolsByKey,
-                request.messages(),
+                enriched.messages(),
                 List.of(),
                 0);
+    }
+
+    private RuntimeKnowledgeContext retrieveKnowledge(OrchestrationRequest request) {
+        if (!knowledgeProperties.isRetrievalEnabled()) {
+            return RuntimeKnowledgeContext.empty();
+        }
+        if (!knowledgeRetrievalService.hasEnabledAssignments(
+                request.projectId(), request.agentId(), request.user().getOrganizationId())) {
+            return RuntimeKnowledgeContext.empty();
+        }
+        String query = lastUserContent(request.messages());
+        RetrievalResult result = knowledgeRetrievalService.retrieve(
+                request.projectId(),
+                request.agentId(),
+                query,
+                request.executionId(),
+                request.conversationId(),
+                request.user());
+        return result.context();
+    }
+
+    private static String lastUserContent(List<RuntimeMessage> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return "";
+        }
+        String last = "";
+        for (RuntimeMessage message : messages) {
+            if ("USER".equals(message.role())) {
+                last = message.content();
+            }
+        }
+        return last;
+    }
+
+    private static List<KnowledgeCitationResponse> toCitationDtos(RuntimeKnowledgeContext context) {
+        if (context == null || context.citations().isEmpty()) {
+            return List.of();
+        }
+        List<KnowledgeCitationResponse> citations = new ArrayList<>();
+        for (RuntimeKnowledgeCitation citation : context.citations()) {
+            citations.add(new KnowledgeCitationResponse(
+                    citation.label(),
+                    citation.knowledgeBaseId(),
+                    citation.knowledgeBaseName(),
+                    citation.documentId(),
+                    citation.documentName(),
+                    citation.chunkIndex(),
+                    citation.score()));
+        }
+        return citations;
     }
 
     public ExecuteResponse continueAfterApproval(
@@ -166,6 +263,8 @@ public class ToolCallingOrchestrator {
                         ToolDefinition::getToolKey, tool -> tool, (left, right) -> left, LinkedHashMap::new));
         List<RuntimeToolSpec> availableTools = toRuntimeToolSpecs(assignedTools);
         List<RuntimeMessage> messages = loadRuntimeMessages(executionId);
+        RuntimeKnowledgeContext knowledgeContext = knowledgeSnapshotService.load(
+                executionId, projectId, user.getOrganizationId());
 
         List<ExecutionToolCall> approvedCalls = toolCallService
                 .findByExecutionAndStatuses(executionId, projectId, user.getOrganizationId(), List.of(ToolCallStatus.APPROVED));
@@ -179,13 +278,13 @@ public class ToolCallingOrchestrator {
             ToolProcessOutcome outcome = processApprovedCall(
                     approvedCall, toolsByKey, execution, agent, user, projectId, execution.getConversationId());
             if (outcome.awaitingApproval()) {
-                return outcome.response();
+                return withCitations(outcome.response(), knowledgeContext);
             }
             if (outcome.failed()) {
-                return outcome.response();
+                return withCitations(outcome.response(), knowledgeContext);
             }
             if (outcome.cancelled()) {
-                return outcome.response();
+                return withCitations(outcome.response(), knowledgeContext);
             }
             toolResults.add(outcome.result());
         }
@@ -198,7 +297,8 @@ public class ToolCallingOrchestrator {
                 execution.getAgentId(),
                 renderedPrompt,
                 messages,
-                execution.getConversationId());
+                execution.getConversationId(),
+                knowledgeContext);
 
         return runLoop(request, availableTools, toolsByKey, messages, toolResults, 0);
     }
@@ -233,13 +333,15 @@ public class ToolCallingOrchestrator {
                         messages,
                         request.conversationId(),
                         availableTools,
-                        toolResults));
+                        toolResults,
+                        request.knowledgeContext()));
             } catch (RuntimeException ex) {
                 log.warn(
                         "Execution {} runtime call failed (details omitted from persistence)",
                         request.executionId());
                 AgentExecution failed = lifecycleService.failIfRunning(request.executionId());
-                return executionMapper.toExecuteResponse(failed, null, request.renderedPrompt());
+                return executionMapper.toExecuteResponse(
+                        failed, null, request.renderedPrompt(), toCitationDtos(request.knowledgeContext()));
             }
 
             if (turn.isFinal()) {
@@ -249,7 +351,11 @@ public class ToolCallingOrchestrator {
                 String responseText = completed.getStatus() == ExecutionStatus.COMPLETED
                         ? finalResponse.responseText()
                         : null;
-                return executionMapper.toExecuteResponse(completed, responseText, request.renderedPrompt());
+                return executionMapper.toExecuteResponse(
+                        completed,
+                        responseText,
+                        request.renderedPrompt(),
+                        toCitationDtos(request.knowledgeContext()));
             }
 
             if (!turn.isToolCalls()) {
@@ -274,7 +380,8 @@ public class ToolCallingOrchestrator {
                         request.user(),
                         request.projectId(),
                         request.agentId(),
-                        request.conversationId());
+                        request.conversationId(),
+                        request.knowledgeContext());
                 if (outcome.awaitingApproval()) {
                     return outcome.response();
                 }
@@ -304,11 +411,13 @@ public class ToolCallingOrchestrator {
             AuthenticatedUser user,
             UUID projectId,
             UUID agentId,
-            UUID conversationId) {
+            UUID conversationId,
+            RuntimeKnowledgeContext knowledgeContext) {
         Optional<ExecutionToolCall> existing =
                 toolCallService.findByExecutionAndRuntimeCallId(executionId, call.runtimeCallId());
         if (existing.isPresent()) {
-            return handleExistingToolCall(existing.get(), call, user, projectId, conversationId);
+            return handleExistingToolCall(
+                    existing.get(), call, user, projectId, conversationId, knowledgeContext);
         }
 
         ToolDefinition tool = toolsByKey.get(call.toolKey());
@@ -357,7 +466,8 @@ public class ToolCallingOrchestrator {
             Optional<ExecutionToolCall> raced = toolCallService.findByExecutionAndRuntimeCallId(
                     executionId, call.runtimeCallId());
             if (raced.isPresent()) {
-                return handleExistingToolCall(raced.get(), call, user, projectId, conversationId);
+                return handleExistingToolCall(
+                        raced.get(), call, user, projectId, conversationId, knowledgeContext);
             }
             throw ex;
         }
@@ -365,7 +475,12 @@ public class ToolCallingOrchestrator {
         if (toolCallRecord.getStatus() == ToolCallStatus.APPROVAL_REQUIRED) {
             AgentExecution execution = executionRepository.findById(executionId).orElseThrow();
             ExecuteResponse response = executionMapper.toExecuteResponse(
-                    execution, null, null, true, toolCallRecord.getId());
+                    execution,
+                    null,
+                    null,
+                    true,
+                    toolCallRecord.getId(),
+                    toCitationDtos(knowledgeContext));
             return ToolProcessOutcome.awaitingApproval(response);
         }
 
@@ -520,26 +635,56 @@ public class ToolCallingOrchestrator {
             RuntimeToolCallRequest call,
             AuthenticatedUser user,
             UUID projectId,
-            UUID conversationId) {
+            UUID conversationId,
+            RuntimeKnowledgeContext knowledgeContext) {
         if (existing.getStatus() == ToolCallStatus.COMPLETED) {
             return ToolProcessOutcome.success(toStoredResult(existing).orElseThrow());
         }
         if (existing.getStatus() == ToolCallStatus.FAILED) {
             AgentExecution failed = lifecycleService.failIfRunning(existing.getExecutionId(), "TOOL_EXECUTION_FAILED");
-            return ToolProcessOutcome.failed(executionMapper.toExecuteResponse(failed, null, null));
+            return ToolProcessOutcome.failed(executionMapper.toExecuteResponse(
+                    failed, null, null, toCitationDtos(knowledgeContext)));
         }
         if (existing.getStatus() == ToolCallStatus.APPROVAL_REQUIRED) {
             AgentExecution execution = executionRepository.findById(existing.getExecutionId()).orElseThrow();
             ExecuteResponse response = executionMapper.toExecuteResponse(
-                    execution, null, null, true, existing.getId());
+                    execution,
+                    null,
+                    null,
+                    true,
+                    existing.getId(),
+                    toCitationDtos(knowledgeContext));
             return ToolProcessOutcome.awaitingApproval(response);
         }
         if (existing.getStatus() == ToolCallStatus.RUNNING) {
             AgentExecution execution = executionRepository.findById(existing.getExecutionId()).orElseThrow();
-            return ToolProcessOutcome.failed(executionMapper.toExecuteResponse(execution, null, null));
+            return ToolProcessOutcome.failed(executionMapper.toExecuteResponse(
+                    execution, null, null, toCitationDtos(knowledgeContext)));
         }
         return ToolProcessOutcome.success(new RuntimeToolResultMessage(
                 call.runtimeCallId(), call.toolKey(), "FAILED", null, "TOOL_EXECUTION_FAILED"));
+    }
+
+    private ExecuteResponse withCitations(ExecuteResponse response, RuntimeKnowledgeContext knowledgeContext) {
+        if (response == null) {
+            return null;
+        }
+        List<KnowledgeCitationResponse> citations = toCitationDtos(knowledgeContext);
+        if (citations.isEmpty()
+                || (response.citations() != null && !response.citations().isEmpty())) {
+            return response;
+        }
+        return new ExecuteResponse(
+                response.executionId(),
+                response.status(),
+                response.response(),
+                response.latencyMs(),
+                response.tokens(),
+                response.renderedPrompt(),
+                response.errorMessage(),
+                response.awaitingApproval(),
+                response.pendingToolCallId(),
+                citations);
     }
 
     private ToolProcessOutcome failToolExecution(

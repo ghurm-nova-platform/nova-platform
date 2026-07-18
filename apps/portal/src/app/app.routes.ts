@@ -57,6 +57,38 @@ export const routes: Routes = [
           import('./features/execution/agent-playground-page').then((m) => m.AgentPlaygroundPage),
       },
       {
+        path: 'projects/:projectId/knowledge-bases',
+        loadComponent: () =>
+          import('./features/knowledge/knowledge-bases-list-page').then((m) => m.KnowledgeBasesListPage),
+      },
+      {
+        path: 'projects/:projectId/knowledge-bases/new',
+        loadComponent: () =>
+          import('./features/knowledge/knowledge-base-form-page').then((m) => m.KnowledgeBaseFormPage),
+      },
+      {
+        path: 'projects/:projectId/knowledge-bases/:knowledgeBaseId/documents/:documentId',
+        loadComponent: () =>
+          import('./features/knowledge/knowledge-document-detail-page').then(
+            (m) => m.KnowledgeDocumentDetailPage,
+          ),
+      },
+      {
+        path: 'projects/:projectId/knowledge-bases/:knowledgeBaseId/documents',
+        loadComponent: () =>
+          import('./features/knowledge/knowledge-documents-page').then((m) => m.KnowledgeDocumentsPage),
+      },
+      {
+        path: 'projects/:projectId/knowledge-bases/:knowledgeBaseId',
+        loadComponent: () =>
+          import('./features/knowledge/knowledge-base-form-page').then((m) => m.KnowledgeBaseFormPage),
+      },
+      {
+        path: 'projects/:projectId/agents/:agentId/knowledge-bases',
+        loadComponent: () =>
+          import('./features/knowledge/agent-knowledge-page').then((m) => m.AgentKnowledgePage),
+      },
+      {
         path: 'projects/:projectId/tools',
         loadComponent: () =>
           import('./features/tools/tools-list-page').then((m) => m.ToolsListPage),

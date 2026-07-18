@@ -290,7 +290,15 @@ public class ExecutionService {
 
         try {
             return toolCallingOrchestrator.orchestrate(new OrchestrationRequest(
-                    executionId, agent, user, projectId, agentId, renderedPrompt, messages, conversationId));
+                    executionId,
+                    agent,
+                    user,
+                    projectId,
+                    agentId,
+                    renderedPrompt,
+                    messages,
+                    conversationId,
+                    null));
         } catch (RuntimeException ex) {
             log.warn(
                     "Execution {} failed for agent {} (details omitted from persistence)",

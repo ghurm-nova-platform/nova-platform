@@ -44,6 +44,9 @@ import ai.nova.platform.execution.mapper.ExecutionMapper;
 import ai.nova.platform.execution.repository.AgentExecutionRepository;
 import ai.nova.platform.execution.repository.ExecutionMessageRepository;
 import ai.nova.platform.execution.service.ExecutionLifecycleService;
+import ai.nova.platform.knowledge.config.KnowledgeProperties;
+import ai.nova.platform.knowledge.service.ExecutionKnowledgeSnapshotService;
+import ai.nova.platform.knowledge.service.KnowledgeRetrievalService;
 import ai.nova.platform.security.AuthenticatedUser;
 import ai.nova.platform.tool.config.ToolProperties;
 import ai.nova.platform.tool.entity.ExecutionToolCall;
@@ -94,6 +97,10 @@ class ToolCallingOrchestratorTest {
     private AgentRepository agentRepository;
     @Mock
     private ConversationService conversationService;
+    @Mock
+    private KnowledgeRetrievalService knowledgeRetrievalService;
+    @Mock
+    private ExecutionKnowledgeSnapshotService knowledgeSnapshotService;
 
     private ToolCallingOrchestrator orchestrator;
     private ObjectMapper objectMapper;
@@ -106,6 +113,8 @@ class ToolCallingOrchestratorTest {
         ToolProperties toolProperties = new ToolProperties();
         toolProperties.setMaxOrchestrationRounds(5);
         ConversationProperties conversationProperties = new ConversationProperties();
+        KnowledgeProperties knowledgeProperties = new KnowledgeProperties();
+        knowledgeProperties.setRetrievalEnabled(false);
         orchestrator = new ToolCallingOrchestrator(
                 agentRuntimeClient,
                 agentToolAssignmentService,
@@ -123,7 +132,10 @@ class ToolCallingOrchestratorTest {
                 conversationService,
                 conversationProperties,
                 objectMapper,
-                executorService);
+                executorService,
+                knowledgeRetrievalService,
+                knowledgeProperties,
+                knowledgeSnapshotService);
     }
 
     @AfterEach
@@ -145,12 +157,12 @@ class ToolCallingOrchestratorTest {
         completed.setStatus(ExecutionStatus.COMPLETED);
         when(lifecycleService.completeIfRunning(eq(EXECUTION_ID), any(RuntimeFinalResponse.class)))
                 .thenReturn(completed);
-        when(executionMapper.toExecuteResponse(completed, "hello", "prompt"))
+        when(executionMapper.toExecuteResponse(eq(completed), eq("hello"), eq("prompt"), any()))
                 .thenReturn(new ExecuteResponse(
-                        EXECUTION_ID, ExecutionStatus.COMPLETED, "hello", 10L, null, "prompt", null, null, null));
+                        EXECUTION_ID, ExecutionStatus.COMPLETED, "hello", 10L, null, "prompt", null, null, null, List.of()));
 
         ExecuteResponse response = orchestrator.orchestrate(new OrchestrationRequest(
-                EXECUTION_ID, agent, user, PROJECT_ID, AGENT_ID, "prompt", List.of(), null));
+                EXECUTION_ID, agent, user, PROJECT_ID, AGENT_ID, "prompt", List.of(), null, null));
 
         assertThat(response.status()).isEqualTo(ExecutionStatus.COMPLETED);
         assertThat(response.response()).isEqualTo("hello");
@@ -198,12 +210,17 @@ class ToolCallingOrchestratorTest {
                         any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(pending);
         when(executionMapper.toExecuteResponse(
-                        any(AgentExecution.class), eq(null), eq(null), eq(true), eq(toolCallId)))
+                        any(AgentExecution.class),
+                        eq(null),
+                        eq(null),
+                        eq(true),
+                        eq(toolCallId),
+                        any()))
                 .thenReturn(new ExecuteResponse(
-                        EXECUTION_ID, ExecutionStatus.RUNNING, null, 0L, null, null, null, true, toolCallId));
+                        EXECUTION_ID, ExecutionStatus.RUNNING, null, 0L, null, null, null, true, toolCallId, List.of()));
 
         ExecuteResponse response = orchestrator.orchestrate(new OrchestrationRequest(
-                EXECUTION_ID, agent, user, PROJECT_ID, AGENT_ID, "prompt", List.of(), null));
+                EXECUTION_ID, agent, user, PROJECT_ID, AGENT_ID, "prompt", List.of(), null, null));
 
         assertThat(response.awaitingApproval()).isTrue();
         assertThat(response.pendingToolCallId()).isEqualTo(toolCallId);
@@ -254,9 +271,9 @@ class ToolCallingOrchestratorTest {
         completed.setStatus(ExecutionStatus.COMPLETED);
         when(lifecycleService.completeIfRunning(eq(EXECUTION_ID), any(RuntimeFinalResponse.class)))
                 .thenReturn(completed);
-        when(executionMapper.toExecuteResponse(completed, "done", "prompt"))
+        when(executionMapper.toExecuteResponse(eq(completed), eq("done"), eq("prompt"), any()))
                 .thenReturn(new ExecuteResponse(
-                        EXECUTION_ID, ExecutionStatus.COMPLETED, "done", 5L, null, "prompt", null, null, null));
+                        EXECUTION_ID, ExecutionStatus.COMPLETED, "done", 5L, null, "prompt", null, null, null, List.of()));
 
         ExecuteResponse response = orchestrator.orchestrate(new OrchestrationRequest(
                 EXECUTION_ID,
@@ -266,6 +283,7 @@ class ToolCallingOrchestratorTest {
                 AGENT_ID,
                 "prompt",
                 List.of(new RuntimeMessage("USER", "test")),
+                null,
                 null));
 
         assertThat(response.status()).isEqualTo(ExecutionStatus.COMPLETED);
