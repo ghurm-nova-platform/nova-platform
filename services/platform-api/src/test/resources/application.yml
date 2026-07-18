@@ -153,7 +153,8 @@ nova:
     base-ref: main
     author-name: Nova Git Agent
     author-email: git-agent@nova.local
-    allow-init-repository: true
+    allow-init-repository: false
+    cleanup-failed-workspaces: false
   secrets:
     # Test-only 32-byte AES key (all zeros). Never use in production.
     master-key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="

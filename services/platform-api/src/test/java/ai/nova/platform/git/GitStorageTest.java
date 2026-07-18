@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import ai.nova.platform.agent.runtime.AgentRuntimeClient;
 import ai.nova.platform.git.dto.GitDtos.GitOperation;
 import ai.nova.platform.git.dto.GitDtos.TimelineEvent;
+import ai.nova.platform.git.entity.GitStatus;
 import ai.nova.platform.git.repository.GitOperationRepository;
 import ai.nova.platform.git.service.GitStorageService;
 import ai.nova.platform.orchestration.repository.AgentOrchestrationTaskRepository;
@@ -76,48 +77,67 @@ class GitStorageTest {
     }
 
     @Test
-    void replaceResultIsLatestOnlyPerTask() throws Exception {
+    void pendingThenSucceededPersistsBranchAndCommit() throws Exception {
         UUID taskId = createTask("git-store-" + UUID.randomUUID());
         var task = taskRepository.findById(taskId).orElseThrow();
         Instant now = Instant.now();
+        UUID operationId = UUID.randomUUID();
         String branch = "ai/task-" + taskId;
 
-        gitStorageService.replaceSucceeded(
+        GitOperation pending = gitStorageService.startPending(
+                operationId,
                 task,
                 UUID.randomUUID(),
                 branch,
-                "aaa111",
                 "patchhash1",
-                "/tmp/repo",
+                "/tmp/operations/" + operationId + "/repo",
                 "main",
-                "msg1",
-                "Nova",
-                "nova@local",
-                now,
-                now,
                 now,
                 List.of(new TimelineEvent("STARTED", now, "start")));
+        assertThat(pending.status()).isEqualTo(GitStatus.PENDING);
 
-        GitOperation second = gitStorageService.replaceSucceeded(
-                task,
-                UUID.randomUUID(),
-                branch,
+        GitOperation succeeded = gitStorageService.markSucceeded(
+                operationId,
                 "bbb222",
-                "patchhash2",
-                "/tmp/repo",
-                "main",
                 "msg2",
                 "Nova",
                 "nova@local",
                 now,
                 now,
+                List.of());
+
+        assertThat(succeeded.commitHash()).isEqualTo("bbb222");
+        assertThat(succeeded.status()).isEqualTo(GitStatus.SUCCEEDED);
+        assertThat(succeeded.errorCode()).isNull();
+        assertThat(operationRepository.findById(operationId)).isPresent();
+        assertThat(gitStorageService.findLatest(taskId, task.getOrganizationId()).commitHash()).isEqualTo("bbb222");
+    }
+
+    @Test
+    void markFailedPersistsErrorCodeWithoutSuccessRows() throws Exception {
+        UUID taskId = createTask("git-store-fail-" + UUID.randomUUID());
+        var task = taskRepository.findById(taskId).orElseThrow();
+        Instant now = Instant.now();
+        UUID operationId = UUID.randomUUID();
+
+        gitStorageService.startPending(
+                operationId,
+                task,
+                UUID.randomUUID(),
+                "ai/task-" + taskId,
+                "patchhash",
+                "/tmp/operations/" + operationId + "/repo",
+                "main",
                 now,
                 List.of());
 
-        assertThat(second.commitHash()).isEqualTo("bbb222");
-        assertThat(operationRepository.findAll().stream().filter(o -> o.getTaskId().equals(taskId)).count())
-                .isEqualTo(1);
-        assertThat(gitStorageService.findLatest(taskId, task.getOrganizationId()).commitHash()).isEqualTo("bbb222");
+        GitOperation failed =
+                gitStorageService.markFailed(operationId, "GIT_APPLY_FAILED", "apply blew up", Instant.now());
+        assertThat(failed.status()).isEqualTo(GitStatus.FAILED);
+        assertThat(failed.errorCode()).isEqualTo("GIT_APPLY_FAILED");
+        assertThat(failed.commitHash()).isNull();
+        assertThat(failed.branches()).isEmpty();
+        assertThat(failed.commits()).isEmpty();
     }
 
     private UUID createTask(String name) throws Exception {

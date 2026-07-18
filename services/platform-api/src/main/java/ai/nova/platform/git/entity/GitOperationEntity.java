@@ -51,6 +51,9 @@ public class GitOperationEntity {
     @Column(name = "base_ref", nullable = false, length = 255)
     private String baseRef;
 
+    @Column(name = "error_code", length = 80)
+    private String errorCode;
+
     @Column(name = "validation_message", length = 2000)
     private String validationMessage;
 
@@ -79,6 +82,7 @@ public class GitOperationEntity {
             String patchHash,
             String repositoryPath,
             String baseRef,
+            String errorCode,
             String validationMessage,
             Instant startedAt,
             Instant completedAt,
@@ -95,10 +99,27 @@ public class GitOperationEntity {
         this.patchHash = patchHash;
         this.repositoryPath = repositoryPath;
         this.baseRef = baseRef;
+        this.errorCode = errorCode;
         this.validationMessage = validationMessage;
         this.startedAt = startedAt;
         this.completedAt = completedAt;
         this.createdAt = createdAt;
+    }
+
+    public void markSucceeded(String commitHash, String validationMessage, Instant completedAt) {
+        this.status = GitStatus.SUCCEEDED;
+        this.commitHash = commitHash;
+        this.errorCode = null;
+        this.validationMessage = validationMessage;
+        this.completedAt = completedAt;
+    }
+
+    public void markFailed(String errorCode, String validationMessage, Instant completedAt) {
+        this.status = GitStatus.FAILED;
+        this.errorCode = errorCode;
+        this.validationMessage = validationMessage;
+        this.completedAt = completedAt;
+        this.commitHash = null;
     }
 
     public UUID getId() {
@@ -147,6 +168,10 @@ public class GitOperationEntity {
 
     public String getBaseRef() {
         return baseRef;
+    }
+
+    public String getErrorCode() {
+        return errorCode;
     }
 
     public String getValidationMessage() {

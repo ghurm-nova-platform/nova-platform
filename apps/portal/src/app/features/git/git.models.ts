@@ -44,6 +44,7 @@ export interface GitOperation {
   patchHash: string;
   repositoryPath: string;
   baseRef: string;
+  errorCode: string | null;
   validation: GitValidation;
   applyResult: GitApplyResult;
   branches: GitBranch[];

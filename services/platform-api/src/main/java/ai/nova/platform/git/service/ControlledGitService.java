@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.List;
+import java.util.UUID;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
@@ -16,6 +16,7 @@ import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ import ai.nova.platform.web.error.ApiException;
 
 /**
  * Allowlisted Git operations via JGit only.
+ * Mutates only isolated per-operation workspaces cloned from an immutable project source.
  * Never merges, pushes, force-pushes, deletes branches, or runs shell commands.
  */
 @Service
@@ -38,52 +40,76 @@ public class ControlledGitService {
         this.branchStrategy = branchStrategy;
     }
 
-    public Path resolveRepositoryPath(java.util.UUID organizationId, java.util.UUID projectId) {
-        Path root = Path.of(properties.getWorkspaceRoot()).toAbsolutePath().normalize();
-        return root.resolve(organizationId.toString()).resolve(projectId.toString()).resolve("repo");
+    public Path resolveSourceRepositoryPath(UUID organizationId, UUID projectId) {
+        return projectRoot(organizationId, projectId).resolve("source");
     }
 
-    public void ensureBaseRepository(Path repoPath, String baseRef, List<SeedFile> seedFiles) {
+    public Path resolveOperationRepositoryPath(UUID organizationId, UUID projectId, UUID operationId) {
+        return projectRoot(organizationId, projectId)
+                .resolve("operations")
+                .resolve(operationId.toString())
+                .resolve("repo");
+    }
+
+    private Path projectRoot(UUID organizationId, UUID projectId) {
+        Path root = Path.of(properties.getWorkspaceRoot()).toAbsolutePath().normalize();
+        return root.resolve(organizationId.toString()).resolve(projectId.toString());
+    }
+
+    /**
+     * Validates that the immutable project source repository exists, is not bare, and has baseRef.
+     * Does not initialize or mutate the source.
+     */
+    public ObjectId requireSourceRepository(Path sourcePath, String baseRef) {
         branchStrategy.assertSafeBaseRef(baseRef);
-        try {
-            Files.createDirectories(repoPath);
-            Path gitDir = repoPath.resolve(".git");
-            if (!Files.exists(gitDir)) {
-                if (!properties.isAllowInitRepository()) {
-                    throw code("GIT_REPO_MISSING", "Git repository does not exist at " + repoPath);
-                }
-                try (Git git = Git.init().setDirectory(repoPath.toFile()).setInitialBranch(baseRef).call()) {
-                    writeSeeds(repoPath, seedFiles);
-                    git.add().addFilepattern(".").call();
-                    PersonIdent author = author();
-                    git.commit()
-                            .setMessage("Initial repository state for Nova Git Integration")
-                            .setAuthor(author)
-                            .setCommitter(author)
-                            .call();
-                }
-                return;
+        Path gitDir = sourcePath.resolve(".git");
+        if (!Files.isDirectory(gitDir)) {
+            throw code("GIT_REPO_MISSING", "Source git repository does not exist at " + sourcePath);
+        }
+        try (Repository repository = open(sourcePath)) {
+            if (repository.isBare()) {
+                throw code("GIT_REPO_INCONSISTENT", "Bare source repositories are not supported");
             }
-            try (Repository repository = open(repoPath); Git git = new Git(repository)) {
-                if (repository.resolve(baseRef) == null && repository.resolve(Constants.HEAD) != null) {
-                    // Existing repo without named baseRef — still usable if HEAD exists.
-                    return;
+            ObjectId base = resolveStrictBaseRef(repository, baseRef);
+            return base;
+        } catch (ApiException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw code("GIT_REPO_INCONSISTENT", "Failed to open source repository: " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Clones the project source into a dedicated operation workspace via JGit.
+     * The source working tree is never checked out for task branches.
+     */
+    public void cloneSourceToOperationWorkspace(Path sourcePath, Path operationRepoPath) {
+        if (Files.exists(operationRepoPath)) {
+            throw code("GIT_REPO_INCONSISTENT", "Operation workspace already exists: " + operationRepoPath);
+        }
+        try {
+            Files.createDirectories(operationRepoPath.getParent());
+            try (Git ignored = Git.cloneRepository()
+                    .setURI(sourcePath.toUri().toString())
+                    .setDirectory(operationRepoPath.toFile())
+                    .setCloneAllBranches(true)
+                    .setBare(false)
+                    .call()) {
+                // clone complete
+            }
+            try (Repository repository = open(operationRepoPath); Git git = new Git(repository)) {
+                Status status = git.status().call();
+                if (!status.isClean()) {
+                    throw code("GIT_REPO_INCONSISTENT", "Isolated workspace is not clean after clone");
                 }
-                if (repository.resolve(Constants.HEAD) == null) {
-                    writeSeeds(repoPath, seedFiles);
-                    git.add().addFilepattern(".").call();
-                    PersonIdent author = author();
-                    git.commit()
-                            .setMessage("Initial repository state for Nova Git Integration")
-                            .setAuthor(author)
-                            .setCommitter(author)
-                            .call();
+                if (repository.isBare()) {
+                    throw code("GIT_REPO_INCONSISTENT", "Operation workspace must not be bare");
                 }
             }
         } catch (ApiException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw code("GIT_REPO_INCONSISTENT", "Failed to prepare repository: " + ex.getMessage());
+            throw code("GIT_REPO_INCONSISTENT", "Failed to clone source into operation workspace: " + ex.getMessage());
         }
     }
 
@@ -99,19 +125,21 @@ public class ControlledGitService {
         }
     }
 
-    public Instant createIsolatedBranch(Path repoPath, String branchName, String baseRef) {
+    /**
+     * Creates ai/task-{taskId} from the resolved baseRef inside the isolated operation workspace only.
+     * Never falls back to HEAD when baseRef is missing.
+     */
+    public Instant createIsolatedBranch(Path operationRepoPath, String branchName, String baseRef) {
         branchStrategy.assertSafeBranchName(branchName);
         branchStrategy.assertSafeBaseRef(baseRef);
-        if (branchExists(repoPath, branchName)) {
+        if (branchExists(operationRepoPath, branchName)) {
             throw code("GIT_BRANCH_EXISTS", "Branch already exists: " + branchName);
         }
-        try (Repository repository = open(repoPath); Git git = new Git(repository)) {
-            ObjectId start = repository.resolve(baseRef);
-            if (start == null) {
-                start = repository.resolve(Constants.HEAD);
-            }
-            if (start == null) {
-                throw code("GIT_INVALID_BASE", "Base ref not found: " + baseRef);
+        try (Repository repository = open(operationRepoPath); Git git = new Git(repository)) {
+            ObjectId start = resolveStrictBaseRef(repository, baseRef);
+            Status before = git.status().call();
+            if (!before.isClean()) {
+                throw code("GIT_REPO_INCONSISTENT", "Isolated workspace must be clean before branch creation");
             }
             git.checkout()
                     .setCreateBranch(true)
@@ -149,7 +177,6 @@ public class ControlledGitService {
                 throw code("GIT_COMMIT_FAILED", "No changes to commit after applying patch");
             }
             git.add().addFilepattern(".").call();
-            // Stage deletions as well.
             for (String missing : status.getMissing()) {
                 git.rm().addFilepattern(missing).call();
             }
@@ -167,22 +194,61 @@ public class ControlledGitService {
         }
     }
 
-    public void verifyConsistent(Path repoPath) {
-        try (Repository repository = open(repoPath); Git git = new Git(repository)) {
+    /**
+     * Post-commit validation: clean tree, HEAD == commit, branch == expected, parent based on baseRef.
+     */
+    public void verifySuccessfulCommit(
+            Path operationRepoPath, String branchName, String commitHash, String baseRef) {
+        try (Repository repository = open(operationRepoPath); Git git = new Git(repository)) {
             Status status = git.status().call();
             if (!status.isClean()) {
                 throw code(
                         "GIT_REPO_INCONSISTENT",
                         "Repository has uncommitted or conflicting changes after commit");
             }
-            if (repository.resolve(Constants.HEAD) == null) {
+            ObjectId head = repository.resolve(Constants.HEAD);
+            if (head == null) {
                 throw code("GIT_REPO_INCONSISTENT", "Repository HEAD is missing");
+            }
+            if (!ObjectId.toString(head).equals(commitHash)) {
+                throw code("GIT_REPO_INCONSISTENT", "HEAD does not equal created commit");
+            }
+            String currentBranch = repository.getBranch();
+            if (!branchName.equals(currentBranch)) {
+                throw code(
+                        "GIT_REPO_INCONSISTENT",
+                        "Current branch is " + currentBranch + ", expected " + branchName);
+            }
+            ObjectId expectedBase = resolveStrictBaseRef(repository, baseRef);
+            try (RevWalk walk = new RevWalk(repository)) {
+                RevCommit commit = walk.parseCommit(head);
+                if (commit.getParentCount() < 1) {
+                    throw code("GIT_REPO_INCONSISTENT", "Commit has no parent; expected baseRef parent");
+                }
+                ObjectId parent = commit.getParent(0).getId();
+                if (!parent.equals(expectedBase)) {
+                    throw code(
+                            "GIT_REPO_INCONSISTENT",
+                            "Commit parent does not match resolved baseRef commit");
+                }
             }
         } catch (ApiException ex) {
             throw ex;
         } catch (Exception ex) {
             throw code("GIT_REPO_INCONSISTENT", "Repository consistency check failed: " + ex.getMessage());
         }
+    }
+
+    /** Strict baseRef resolution — never falls back to HEAD. */
+    public ObjectId resolveStrictBaseRef(Repository repository, String baseRef) throws IOException {
+        ObjectId resolved = repository.resolve(baseRef);
+        if (resolved == null) {
+            resolved = repository.resolve(Constants.R_HEADS + baseRef);
+        }
+        if (resolved == null) {
+            throw code("GIT_INVALID_BASE", "Base ref not found: " + baseRef);
+        }
+        return resolved;
     }
 
     private Repository open(Path repoPath) throws IOException {
@@ -197,26 +263,7 @@ public class ControlledGitService {
         return new PersonIdent(properties.getAuthorName(), properties.getAuthorEmail());
     }
 
-    private static void writeSeeds(Path repoPath, List<SeedFile> seedFiles) throws IOException {
-        if (seedFiles == null || seedFiles.isEmpty()) {
-            Path readme = repoPath.resolve("README.md");
-            Files.writeString(readme, "# Nova workspace\n", StandardCharsets.UTF_8);
-            return;
-        }
-        for (SeedFile seed : seedFiles) {
-            Path target = repoPath.resolve(seed.path()).normalize();
-            if (!target.startsWith(repoPath)) {
-                throw code("GIT_INVALID_PATH", "Seed path escapes repository: " + seed.path());
-            }
-            Files.createDirectories(target.getParent() == null ? repoPath : target.getParent());
-            Files.writeString(target, seed.content() == null ? "" : seed.content(), StandardCharsets.UTF_8);
-        }
-    }
-
     private static ApiException code(String code, String message) {
         return new ApiException(HttpStatus.BAD_REQUEST, code, message);
-    }
-
-    public record SeedFile(String path, String content) {
     }
 }

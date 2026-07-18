@@ -12,7 +12,10 @@ public class GitProperties {
     private String baseRef = "main";
     private String authorName = "Nova Git Agent";
     private String authorEmail = "git-agent@nova.local";
-    private boolean allowInitRepository = true;
+    /** Production default false. Source repos must already exist. Test fixtures may create sources explicitly. */
+    private boolean allowInitRepository = false;
+    /** When false (default), failed operation workspaces are preserved for diagnosis. */
+    private boolean cleanupFailedWorkspaces = false;
 
     public boolean isEnabled() {
         return enabled;
@@ -60,5 +63,13 @@ public class GitProperties {
 
     public void setAllowInitRepository(boolean allowInitRepository) {
         this.allowInitRepository = allowInitRepository;
+    }
+
+    public boolean isCleanupFailedWorkspaces() {
+        return cleanupFailedWorkspaces;
+    }
+
+    public void setCleanupFailedWorkspaces(boolean cleanupFailedWorkspaces) {
+        this.cleanupFailedWorkspaces = cleanupFailedWorkspaces;
     }
 }

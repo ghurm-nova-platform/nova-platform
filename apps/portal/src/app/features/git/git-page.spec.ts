@@ -22,6 +22,7 @@ describe('GitPage', () => {
     patchHash: 'a'.repeat(64),
     repositoryPath: '/tmp/repo',
     baseRef: 'main',
+    errorCode: null,
     validation: { valid: true, message: 'ok' },
     applyResult: { applied: true, details: 'Patch applied' },
     branches: [],

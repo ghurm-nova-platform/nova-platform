@@ -44,6 +44,7 @@ public final class GitDtos {
             String patchHash,
             String repositoryPath,
             String baseRef,
+            String errorCode,
             GitValidation validation,
             GitApplyResult applyResult,
             List<GitBranch> branches,

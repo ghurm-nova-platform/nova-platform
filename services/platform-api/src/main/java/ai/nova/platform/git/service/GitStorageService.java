@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import ai.nova.platform.git.repository.GitBranchRepository;
 import ai.nova.platform.git.repository.GitCommitRepository;
 import ai.nova.platform.git.repository.GitOperationRepository;
 import ai.nova.platform.orchestration.entity.AgentOrchestrationTask;
+import ai.nova.platform.web.error.ApiException;
 
 @Service
 public class GitStorageService {
@@ -40,24 +42,16 @@ public class GitStorageService {
     }
 
     @Transactional
-    public GitOperation replaceSucceeded(
+    public GitOperation startPending(
+            UUID operationId,
             AgentOrchestrationTask task,
             UUID patchResultId,
             String branchName,
-            String commitHash,
             String patchHash,
             String repositoryPath,
             String baseRef,
-            String commitMessage,
-            String authorName,
-            String authorEmail,
             Instant startedAt,
-            Instant branchCreatedAt,
-            Instant completedAt,
             List<TimelineEvent> timeline) {
-        operationRepository.deleteByTaskIdAndOrganizationId(task.getId(), task.getOrganizationId());
-
-        UUID operationId = UUID.randomUUID();
         Instant createdAt = Instant.now();
         GitOperationEntity operation = new GitOperationEntity(
                 operationId,
@@ -66,36 +60,60 @@ public class GitStorageService {
                 task.getRunId(),
                 task.getId(),
                 patchResultId,
-                GitStatus.SUCCEEDED,
+                GitStatus.PENDING,
                 branchName,
-                commitHash,
+                null,
                 patchHash,
                 repositoryPath,
                 baseRef,
-                "Git apply and commit succeeded",
+                null,
+                "Git operation workspace allocated",
                 startedAt,
-                completedAt,
+                null,
                 createdAt);
+        operationRepository.save(operation);
+        return toOperation(operation, List.of(), List.of(), timeline == null ? List.of() : timeline);
+    }
+
+    @Transactional
+    public GitOperation markSucceeded(
+            UUID operationId,
+            String commitHash,
+            String commitMessage,
+            String authorName,
+            String authorEmail,
+            Instant branchCreatedAt,
+            Instant completedAt,
+            List<TimelineEvent> timeline) {
+        GitOperationEntity operation = operationRepository
+                .findById(operationId)
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND, "GIT_NOT_FOUND", "Git operation not found: " + operationId));
+        if (operation.getStatus() != GitStatus.PENDING) {
+            throw new ApiException(
+                    HttpStatus.CONFLICT, "GIT_REPO_INCONSISTENT", "Operation is not PENDING: " + operationId);
+        }
+        operation.markSucceeded(commitHash, "Git apply and commit succeeded", completedAt);
         operationRepository.save(operation);
 
         GitBranchEntity branch = new GitBranchEntity(
                 UUID.randomUUID(),
                 operationId,
-                task.getOrganizationId(),
-                branchName,
-                baseRef,
-                branchCreatedAt == null ? createdAt : branchCreatedAt);
+                operation.getOrganizationId(),
+                operation.getBranchName(),
+                operation.getBaseRef(),
+                branchCreatedAt == null ? completedAt : branchCreatedAt);
         branchRepository.save(branch);
 
         GitCommitEntity commit = new GitCommitEntity(
                 UUID.randomUUID(),
                 operationId,
-                task.getOrganizationId(),
+                operation.getOrganizationId(),
                 commitHash,
                 commitMessage,
                 authorName,
                 authorEmail,
-                completedAt == null ? createdAt : completedAt);
+                completedAt);
         commitRepository.save(commit);
 
         return toOperation(
@@ -103,6 +121,25 @@ public class GitStorageService {
                 List.of(toBranch(branch)),
                 List.of(toCommit(commit)),
                 timeline == null ? List.of() : timeline);
+    }
+
+    @Transactional
+    public GitOperation markFailed(UUID operationId, String errorCode, String message, Instant completedAt) {
+        GitOperationEntity operation = operationRepository
+                .findById(operationId)
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND, "GIT_NOT_FOUND", "Git operation not found: " + operationId));
+        if (operation.getStatus() == GitStatus.SUCCEEDED) {
+            throw new ApiException(
+                    HttpStatus.CONFLICT, "GIT_REPO_INCONSISTENT", "Cannot fail a SUCCEEDED operation");
+        }
+        // Never persist branch/commit success rows for failures.
+        operation.markFailed(
+                errorCode == null ? "GIT_REPO_INCONSISTENT" : errorCode,
+                message == null ? "Git operation failed" : message,
+                completedAt);
+        operationRepository.save(operation);
+        return toOperation(operation, List.of(), List.of(), buildTimeline(operation, List.of(), List.of()));
     }
 
     @Transactional(readOnly = true)
@@ -149,6 +186,7 @@ public class GitStorageService {
                 operation.getPatchHash(),
                 operation.getRepositoryPath(),
                 operation.getBaseRef(),
+                operation.getErrorCode(),
                 new GitValidation(ok, operation.getValidationMessage() == null ? "" : operation.getValidationMessage()),
                 new GitApplyResult(ok, ok ? "Patch applied" : "Patch not applied"),
                 branches,
@@ -172,7 +210,11 @@ public class GitStorageService {
                     "COMMITTED", commits.get(0).createdAt(), "Commit " + commits.get(0).commitHash()));
         }
         if (operation.getCompletedAt() != null) {
-            events.add(new TimelineEvent("COMPLETED", operation.getCompletedAt(), operation.getStatus().name()));
+            String detail = operation.getStatus().name();
+            if (operation.getErrorCode() != null) {
+                detail = detail + " " + operation.getErrorCode();
+            }
+            events.add(new TimelineEvent("COMPLETED", operation.getCompletedAt(), detail));
         }
         return List.copyOf(events);
     }

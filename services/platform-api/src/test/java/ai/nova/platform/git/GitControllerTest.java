@@ -30,6 +30,9 @@ import ai.nova.platform.coding.dto.CodingDtos.GeneratedArtifactResponse;
 import ai.nova.platform.coding.entity.ArtifactLanguage;
 import ai.nova.platform.coding.entity.ArtifactType;
 import ai.nova.platform.coding.service.ArtifactStorageService;
+import ai.nova.platform.git.config.GitProperties;
+import ai.nova.platform.git.service.ControlledGitService;
+import ai.nova.platform.git.support.TestGitSourceFixture;
 import ai.nova.platform.orchestration.repository.AgentOrchestrationTaskRepository;
 import ai.nova.platform.patch.dto.PatchDtos.ParsedPatchOutput;
 import ai.nova.platform.patch.entity.PatchStatus;
@@ -41,6 +44,8 @@ import ai.nova.platform.patch.service.PatchStorageService;
 class GitControllerTest {
 
     private static final String PROJECT_ID = "55555555-5555-5555-5555-555555555501";
+    private static final UUID PROJECT_UUID = UUID.fromString(PROJECT_ID);
+    private static final UUID ORG_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final String VALID_PATCH = """
             --- a/src/LoginService.java
             +++ b/src/LoginService.java
@@ -67,6 +72,12 @@ class GitControllerTest {
     @Autowired
     private AgentOrchestrationTaskRepository taskRepository;
 
+    @Autowired
+    private ControlledGitService controlledGitService;
+
+    @Autowired
+    private GitProperties gitProperties;
+
     @MockitoBean
     private AgentRuntimeClient agentRuntimeClient;
 
@@ -89,6 +100,13 @@ class GitControllerTest {
         accessToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
                 .get("accessToken")
                 .asText();
+
+        TestGitSourceFixture.ensureSourceRepository(
+                controlledGitService,
+                ORG_ID,
+                PROJECT_UUID,
+                gitProperties.getBaseRef(),
+                TestGitSourceFixture.loginServiceSeeds());
     }
 
     @Test

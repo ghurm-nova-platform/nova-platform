@@ -15,7 +15,6 @@ import ai.nova.platform.git.dto.GitDtos.GitOperation;
 import ai.nova.platform.git.dto.GitDtos.GitRunRequest;
 import ai.nova.platform.git.dto.GitDtos.TimelineEvent;
 import ai.nova.platform.git.security.GitAuthorizationService;
-import ai.nova.platform.git.service.ControlledGitService.SeedFile;
 import ai.nova.platform.orchestration.entity.AgentOrchestrationTask;
 import ai.nova.platform.orchestration.repository.AgentOrchestrationTaskRepository;
 import ai.nova.platform.patch.dto.PatchDtos.PatchResult;
@@ -26,8 +25,8 @@ import ai.nova.platform.security.AuthenticatedUser;
 import ai.nova.platform.web.error.ApiException;
 
 /**
- * Git Integration Agent: applies validated Patch Agent output onto an isolated working branch.
- * Never merges, pushes, force-pushes, deletes branches, or runs arbitrary shell commands.
+ * Git Integration Agent: applies validated Patch Agent output onto an isolated operation workspace.
+ * Never mutates the shared project source tree. Never merges, pushes, force-pushes, or deletes branches.
  */
 @Service
 public class GitIntegrationAgentService {
@@ -80,6 +79,7 @@ public class GitIntegrationAgentService {
 
         PatchResult patch = patchStorageService.findLatest(task.getId(), user.getOrganizationId());
         validator.requireApprovedPatch(patch);
+        String patchHash = validator.sha256(patch.patch());
         timeline.add(new TimelineEvent("PATCH_VALIDATED", Instant.now(), "Approved patch validated"));
 
         String branchName = branchStrategy.branchNameForTask(task.getId());
@@ -91,51 +91,73 @@ public class GitIntegrationAgentService {
                     HttpStatus.BAD_REQUEST, "GIT_BRANCH_EXISTS", "Branch already recorded: " + branchName);
         }
 
-        Path repoPath = gitService.resolveRepositoryPath(project.getOrganizationId(), project.getId());
-        gitService.ensureBaseRepository(repoPath, baseRef, defaultSeeds(patch));
+        Path sourcePath =
+                gitService.resolveSourceRepositoryPath(project.getOrganizationId(), project.getId());
+        // Validate source + baseRef before allocating an operation (no synthetic init).
+        gitService.requireSourceRepository(sourcePath, baseRef);
 
-        if (gitService.branchExists(repoPath, branchName)) {
-            throw new ApiException(
-                    HttpStatus.BAD_REQUEST, "GIT_BRANCH_EXISTS", "Branch already exists: " + branchName);
-        }
+        UUID operationId = UUID.randomUUID();
+        Path operationRepoPath = gitService.resolveOperationRepositoryPath(
+                project.getOrganizationId(), project.getId(), operationId);
 
-        Instant branchCreatedAt = gitService.createIsolatedBranch(repoPath, branchName, baseRef);
-        timeline.add(new TimelineEvent("BRANCH_CREATED", branchCreatedAt, "Created " + branchName));
-
-        gitService.applyPatch(repoPath, patch.patch());
-        timeline.add(new TimelineEvent("PATCH_APPLIED", Instant.now(), "Unified diff applied"));
-
-        String commitMessage = branchStrategy.commitMessageForTask(task.getId());
-        String commitHash;
-        try {
-            commitHash = gitService.commitAll(repoPath, commitMessage);
-        } catch (ApiException ex) {
-            throw ex;
-        }
-        Instant completedAt = Instant.now();
-        timeline.add(new TimelineEvent("COMMITTED", completedAt, "Commit " + commitHash));
-
-        gitService.verifyConsistent(repoPath);
-        timeline.add(new TimelineEvent("VERIFIED", Instant.now(), "Repository consistent"));
-
-        String patchHash = validator.sha256(patch.patch());
-        GitOperation result = storageService.replaceSucceeded(
+        GitOperation pending = storageService.startPending(
+                operationId,
                 task,
                 patch.id(),
                 branchName,
-                commitHash,
                 patchHash,
-                repoPath.toString(),
+                operationRepoPath.toString(),
                 baseRef,
-                commitMessage,
-                properties.getAuthorName(),
-                properties.getAuthorEmail(),
                 startedAt,
-                branchCreatedAt,
-                completedAt,
                 timeline);
-        timeline.add(new TimelineEvent("COMPLETED", Instant.now(), "SUCCEEDED"));
-        return result;
+        timeline.add(new TimelineEvent(
+                "WORKSPACE_ALLOCATED", Instant.now(), "Operation workspace " + operationId));
+
+        Instant branchCreatedAt = null;
+        try {
+            gitService.cloneSourceToOperationWorkspace(sourcePath, operationRepoPath);
+            timeline.add(new TimelineEvent("WORKSPACE_CLONED", Instant.now(), "Cloned source into isolation"));
+
+            if (gitService.branchExists(operationRepoPath, branchName)) {
+                throw new ApiException(
+                        HttpStatus.BAD_REQUEST, "GIT_BRANCH_EXISTS", "Branch already exists: " + branchName);
+            }
+
+            branchCreatedAt = gitService.createIsolatedBranch(operationRepoPath, branchName, baseRef);
+            timeline.add(new TimelineEvent("BRANCH_CREATED", branchCreatedAt, "Created " + branchName));
+
+            gitService.applyPatch(operationRepoPath, patch.patch());
+            timeline.add(new TimelineEvent("PATCH_APPLIED", Instant.now(), "Unified diff applied"));
+
+            String commitMessage = branchStrategy.commitMessageForTask(task.getId());
+            String commitHash = gitService.commitAll(operationRepoPath, commitMessage);
+            Instant completedAt = Instant.now();
+            timeline.add(new TimelineEvent("COMMITTED", completedAt, "Commit " + commitHash));
+
+            gitService.verifySuccessfulCommit(operationRepoPath, branchName, commitHash, baseRef);
+            timeline.add(new TimelineEvent("VERIFIED", Instant.now(), "Repository consistent"));
+
+            GitOperation result = storageService.markSucceeded(
+                    pending.id(),
+                    commitHash,
+                    commitMessage,
+                    properties.getAuthorName(),
+                    properties.getAuthorEmail(),
+                    branchCreatedAt,
+                    completedAt,
+                    timeline);
+            timeline.add(new TimelineEvent("COMPLETED", Instant.now(), "SUCCEEDED"));
+            return result;
+        } catch (ApiException ex) {
+            storageService.markFailed(pending.id(), ex.getCode(), ex.getMessage(), Instant.now());
+            throw ex;
+        } catch (RuntimeException ex) {
+            storageService.markFailed(
+                    pending.id(), "GIT_REPO_INCONSISTENT", ex.getMessage(), Instant.now());
+            throw ex;
+        }
+        // Failed operation workspaces are preserved by default for diagnosis
+        // (nova.git.cleanup-failed-workspaces=false). Source repository is never mutated.
     }
 
     @Transactional(readOnly = true)
@@ -154,21 +176,5 @@ public class GitIntegrationAgentService {
                 .findByIdAndOrganizationId(taskId, organizationId)
                 .orElseThrow(() -> new ApiException(
                         HttpStatus.NOT_FOUND, "GIT_TASK_NOT_FOUND", "Orchestration task not found"));
-    }
-
-    private static List<SeedFile> defaultSeeds(PatchResult patch) {
-        // Seed base files that the sample patches modify: LoginService with one line.
-        if (patch.files() != null) {
-            List<SeedFile> files = new ArrayList<>();
-            for (var file : patch.files()) {
-                if ("MODIFY".equals(file.changeType().name()) || "DELETE".equals(file.changeType().name())) {
-                    files.add(new SeedFile(file.path(), "class LoginService {}\n"));
-                }
-            }
-            if (!files.isEmpty()) {
-                return files;
-            }
-        }
-        return List.of(new SeedFile("src/LoginService.java", "class LoginService {}\n"));
     }
 }

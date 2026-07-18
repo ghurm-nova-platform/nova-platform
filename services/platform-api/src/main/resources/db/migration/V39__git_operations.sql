@@ -1,5 +1,6 @@
--- Git Integration Agent (Sprint 3 Phase 2). Applies validated patches to isolated branches only.
+-- Git Integration Agent (Sprint 3 Phase 2). Applies validated patches to isolated operation workspaces only.
 -- Never merges, pushes to main/develop, deletes branches, or runs arbitrary shell.
+-- Failed workspaces are preserved for diagnosis (see docs/029_GIT_INTEGRATION_AGENT.md).
 
 CREATE TABLE git_operations (
     id UUID PRIMARY KEY,
@@ -14,6 +15,7 @@ CREATE TABLE git_operations (
     patch_hash VARCHAR(64) NOT NULL,
     repository_path VARCHAR(2000) NOT NULL,
     base_ref VARCHAR(255) NOT NULL,
+    error_code VARCHAR(80),
     validation_message VARCHAR(2000),
     started_at TIMESTAMP WITH TIME ZONE NOT NULL,
     completed_at TIMESTAMP WITH TIME ZONE,

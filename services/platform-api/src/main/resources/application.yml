@@ -156,7 +156,10 @@ nova:
     base-ref: main
     author-name: Nova Git Agent
     author-email: git-agent@nova.local
-    allow-init-repository: true
+    # Production must use a real source repository snapshot. Never synthetic-init on API requests.
+    allow-init-repository: false
+    # Failed operation workspaces are preserved for diagnosis by default.
+    cleanup-failed-workspaces: false
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 
