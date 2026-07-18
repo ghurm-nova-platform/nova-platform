@@ -44,6 +44,47 @@ Java, Kotlin, TypeScript, JavaScript, Angular, HTML, CSS, SCSS, SQL, Oracle SQL,
 
 Route `/coding` — Coding Agent: generate/load artifacts, search/filter, syntax-style preview, lightweight diff (no Monaco), copy, download.
 
+## Future Evolution
+
+V35 keeps Coding Agent **stateless at the artifact level**: each task owns only its latest generated artifacts. `ArtifactStorageService` replaces prior rows for the task on every successful generate. That design keeps storage, validation, retrieval, and orchestration simple and deterministic.
+
+**Do not change V35 now.** Multi-generation history is deferred until Review Agent, retry policies, and Git integration land (Sprint 3+).
+
+### Expected schema evolution (Sprint 3+)
+
+Add to `generated_artifacts`:
+
+- `generation_id UUID` — groups all files produced by one generate invocation
+
+Indexes:
+
+- `(task_id, generation_id)`
+
+Replace:
+
+- `uq_generated_artifacts_task_path`
+
+with:
+
+- `uq_generated_artifacts_generation_path` — uniqueness of `path` inside one generation, not across the whole task
+
+### Goals of multi-generation storage
+
+- Preserve multiple generations for the same task
+- Compare generations
+- Perform AI review across generations
+- Choose the best generation before creating patches
+- Support retry history
+- Support human approval workflows
+
+### Sprint backlog
+
+| Item | Priority | Target |
+|------|----------|--------|
+| **Artifact Versioning / Multi-Generation Storage** | Planned | Sprint 3+ |
+
+See [`025_SPRINT_3_BACKLOG.md`](025_SPRINT_3_BACKLOG.md).
+
 ## Related
 
 - ADR-0014
