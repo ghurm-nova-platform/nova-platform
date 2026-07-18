@@ -1,4 +1,6 @@
 spring:
+  profiles:
+    active: test
   datasource:
     url: jdbc:h2:mem:nova;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
     username: sa
@@ -88,3 +90,11 @@ nova:
     retry-backoff-maximum-ms: 10000
     usage-enabled: true
     cost-estimation-enabled: true
+    providers:
+      openai:
+        base-url: ${NOVA_OPENAI_BASE_URL:}
+      azure-openai:
+        base-url-template: ${NOVA_AZURE_OPENAI_BASE_URL_TEMPLATE:}
+  secrets:
+    # Test-only 32-byte AES key (all zeros). Never use in production.
+    master-key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="

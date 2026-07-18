@@ -1,5 +1,6 @@
 package ai.nova.platform.modelgateway.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,6 +16,8 @@ import ai.nova.platform.modelgateway.entity.AiProviderStatus;
 public interface AiProviderRepository extends JpaRepository<AiProvider, UUID> {
 
     Optional<AiProvider> findByIdAndOrganizationId(UUID id, UUID organizationId);
+
+    List<AiProvider> findByOrganizationIdAndCredentialReference(UUID organizationId, String credentialReference);
 
     boolean existsByOrganizationIdAndProviderKey(UUID organizationId, String providerKey);
 

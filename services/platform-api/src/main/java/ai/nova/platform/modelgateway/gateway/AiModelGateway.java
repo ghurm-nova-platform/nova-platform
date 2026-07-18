@@ -26,6 +26,7 @@ import ai.nova.platform.modelgateway.provider.AiModelProvider;
 import ai.nova.platform.modelgateway.provider.AiModelProviderRegistry;
 import ai.nova.platform.modelgateway.provider.ProviderConcurrencyManager;
 import ai.nova.platform.modelgateway.provider.ProviderCredentialResolver;
+import ai.nova.platform.modelgateway.provider.ProviderEndpointConfig;
 import ai.nova.platform.modelgateway.provider.ProviderException;
 import ai.nova.platform.modelgateway.provider.ProviderFailureKind;
 import ai.nova.platform.modelgateway.provider.ProviderInvokeOutcome;
@@ -172,7 +173,7 @@ public class AiModelGateway {
                 properties.getMaximumTimeoutSeconds());
 
         String credential = credentialResolver
-                .resolve(candidate.provider().getCredentialReference())
+                .resolve(candidate.provider().getCredentialReference(), request.organizationId())
                 .orElse(null);
 
         int maxOutput = candidate.model().getMaxOutputTokens();
@@ -184,6 +185,11 @@ public class AiModelGateway {
         }
         maxOutput = Math.min(maxOutput, properties.getMaximumOutputTokens());
 
+        ProviderEndpointConfig endpoint = new ProviderEndpointConfig(
+                candidate.provider().getEndpointProfile(),
+                candidate.provider().getAzureResourceName(),
+                candidate.provider().getAzureApiVersion());
+
         ProviderInvokeRequest providerRequest = new ProviderInvokeRequest(
                 candidate.model().getProviderModelId(),
                 request.systemPrompt(),
@@ -193,7 +199,8 @@ public class AiModelGateway {
                 request.knowledgeContext(),
                 maxOutput,
                 timeoutSeconds,
-                credential);
+                credential,
+                endpoint);
 
         UUID providerId = candidate.provider().getId();
         int providerLimit = candidate.provider().getMaxConcurrentRequests();

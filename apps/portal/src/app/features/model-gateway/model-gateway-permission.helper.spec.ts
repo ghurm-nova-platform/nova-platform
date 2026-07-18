@@ -42,6 +42,11 @@ describe('ModelGatewayPermissionHelper', () => {
     expect(helper.canAssignAgentModels()).toBeTrue();
     expect(helper.canManageRoutingPolicies()).toBeTrue();
     expect(helper.canReadUsage()).toBeTrue();
+    expect(helper.canReadProviderSecrets()).toBeTrue();
+    expect(helper.canCreateProviderSecret()).toBeTrue();
+    expect(helper.canRotateProviderSecret()).toBeTrue();
+    expect(helper.canRevokeProviderSecret()).toBeTrue();
+    expect(helper.canTestProviderConnection()).toBeTrue();
   });
 
   it('checks explicit model gateway permissions for non-admin users', () => {
@@ -51,14 +56,25 @@ describe('ModelGatewayPermissionHelper', () => {
       email: 'member@nova.local',
       displayName: 'Nova Member',
       roles: ['PROJECT_MEMBER'],
-      permissions: ['MODEL_READ', 'MODEL_ROUTE_READ', 'MODEL_USAGE_READ'],
+      permissions: [
+        'MODEL_READ',
+        'MODEL_ROUTE_READ',
+        'MODEL_USAGE_READ',
+        'PROVIDER_SECRET_READ',
+        'PROVIDER_CONNECTION_TEST',
+      ],
     };
     session.setSession({ accessToken: 'token', refreshToken: 'refresh' }, member);
 
     expect(helper.canReadModels()).toBeTrue();
     expect(helper.canReadRoutingPolicies()).toBeTrue();
     expect(helper.canReadUsage()).toBeTrue();
+    expect(helper.canReadProviderSecrets()).toBeTrue();
+    expect(helper.canTestProviderConnection()).toBeTrue();
     expect(helper.canCreateProvider()).toBeFalse();
     expect(helper.canAssignAgentModels()).toBeFalse();
+    expect(helper.canCreateProviderSecret()).toBeFalse();
+    expect(helper.canRotateProviderSecret()).toBeFalse();
+    expect(helper.canRevokeProviderSecret()).toBeFalse();
   });
 });

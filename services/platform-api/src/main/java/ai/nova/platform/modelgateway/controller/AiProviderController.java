@@ -19,11 +19,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.nova.platform.modelgateway.dto.ModelGatewayDtos.ConnectionTestResponse;
 import ai.nova.platform.modelgateway.dto.ModelGatewayDtos.CreateProviderRequest;
 import ai.nova.platform.modelgateway.dto.ModelGatewayDtos.ProviderAdaptersResponse;
 import ai.nova.platform.modelgateway.dto.ModelGatewayDtos.ProviderResponse;
 import ai.nova.platform.modelgateway.dto.ModelGatewayDtos.UpdateProviderRequest;
 import ai.nova.platform.modelgateway.entity.AiProviderStatus;
+import ai.nova.platform.modelgateway.provider.ProviderConnectionTestService;
 import ai.nova.platform.modelgateway.service.AiProviderService;
 import ai.nova.platform.security.AuthenticatedUser;
 
@@ -32,9 +34,12 @@ import ai.nova.platform.security.AuthenticatedUser;
 public class AiProviderController {
 
     private final AiProviderService providerService;
+    private final ProviderConnectionTestService connectionTestService;
 
-    public AiProviderController(AiProviderService providerService) {
+    public AiProviderController(
+            AiProviderService providerService, ProviderConnectionTestService connectionTestService) {
         this.providerService = providerService;
+        this.connectionTestService = connectionTestService;
     }
 
     @GetMapping
@@ -84,5 +89,11 @@ public class AiProviderController {
     @PostMapping("/{providerId}/archive")
     public ProviderResponse archive(@PathVariable UUID providerId, @AuthenticationPrincipal AuthenticatedUser user) {
         return providerService.archive(providerId, user);
+    }
+
+    @PostMapping("/{providerId}/connection-test")
+    public ConnectionTestResponse connectionTest(
+            @PathVariable UUID providerId, @AuthenticationPrincipal AuthenticatedUser user) {
+        return connectionTestService.testConnection(providerId, user);
     }
 }

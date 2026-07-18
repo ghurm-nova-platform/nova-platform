@@ -46,7 +46,12 @@ Spring-managed `AiModelProvider` beans registered by `adapter_key`. Duplicate ke
 
 ## Credential references
 
-`credential_reference` stores references only (e.g. `env:NOVA_PROVIDER_OPENAI`). Plaintext API keys, bearer tokens, private keys, and JSON secrets are rejected. Resolved secrets never appear in REST, logs, or persistence. Deterministic local providers require `NULL`.
+`credential_reference` stores references only:
+
+- `env:NOVA_PROVIDER_<NAME>` (environment)
+- `vault:provider-secret:<uuid>` (encrypted vault — see [`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md))
+
+Plaintext API keys, bearer tokens, private keys, and JSON secrets are rejected. Resolved secrets never appear in REST, logs, or persistence. Deterministic local providers require `NULL`.
 
 ## Deterministic local provider
 
@@ -107,6 +112,11 @@ V1–V19 unchanged (including knowledge + execution knowledge snapshot).
 
 Tenant isolation, RBAC, no arbitrary URLs, no secrets in Angular, no prompt/completion/tool/RAG content in invocation records or INFO/WARN logs.
 
+## Production adapters
+
+Phase 10 adds allowlisted `OPENAI` and `AZURE_OPENAI` adapters, the provider secret vault, and connection testing.
+See [`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md) and ADR-0010.
+
 ## Future work
 
-Production provider adapters, secret vaults, streaming, distributed concurrency, billing reconciliation.
+Streaming, distributed concurrency, external KMS, additional vendors, billing reconciliation.

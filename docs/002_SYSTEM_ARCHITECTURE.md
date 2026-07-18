@@ -79,6 +79,7 @@ Identity Projects     Agent Runtime   Feedback    Audit/Usage
 - Tool Registry (allowlisted executors orchestrated by Platform API)
 - Knowledge Bases and RAG (allowlisted embeddings + vector store owned by Platform API)
 - AI Model Gateway (allowlisted providers, routing, usage owned by Platform API)
+- Provider Secret Vault (AES-256-GCM credentials; OpenAI / Azure OpenAI adapters)
 - Agent Runtime
 - Workflows and Events
 - Tools and Sandboxes
@@ -124,6 +125,8 @@ Request received
   (`ORG_ADMIN`, `PROJECT_ADMIN`, `USER`).
 - Knowledge retrieval is tenant-scoped; raw embeddings and document content are not exposed in list APIs or INFO/WARN logs.
 - Model invocations store counts and safe error codes only — never prompts, completions, or secrets.
+- Provider secrets are stored as AES-256-GCM ciphertext; plaintext is accepted only at create/rotate and never returned again.
+- Provider HTTP calls use allowlisted hosts only (no arbitrary URLs from the browser).
 
 ## 7. Data stores
 

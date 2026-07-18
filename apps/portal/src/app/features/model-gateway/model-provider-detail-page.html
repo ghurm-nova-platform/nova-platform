@@ -7,7 +7,7 @@
       <h2>Unauthorized</h2>
       <p>You do not have permission to view model providers.</p>
     </div>
-  } @else if (error()) {
+  } @else if (error() && !provider()) {
     <p class="page__error" role="alert">{{ error() }}</p>
   } @else if (provider(); as current) {
     <header class="page__header">
@@ -24,6 +24,12 @@
           <mat-icon>model_training</mat-icon>
           Models
         </button>
+        @if (permissions.canTestProviderConnection()) {
+          <button mat-stroked-button type="button" [disabled]="testing()" (click)="testConnection()">
+            <mat-icon>network_check</mat-icon>
+            {{ testing() ? 'Testing…' : 'Test connection' }}
+          </button>
+        }
         @if (permissions.canUpdateProvider() && current.status !== 'ARCHIVED') {
           <button mat-stroked-button type="button" (click)="edit()">Edit</button>
         }
@@ -38,6 +44,10 @@
         }
       </div>
     </header>
+
+    @if (error()) {
+      <p class="page__error" role="alert">{{ error() }}</p>
+    }
 
     <dl class="details">
       <div>
@@ -59,6 +69,35 @@
       <div>
         <dt>Region</dt>
         <dd>{{ current.region || '—' }}</dd>
+      </div>
+      <div>
+        <dt>Endpoint profile</dt>
+        <dd>{{ current.endpointProfile || '—' }}</dd>
+      </div>
+      @if (current.providerType === 'AZURE_OPENAI') {
+        <div>
+          <dt>Azure resource / API version</dt>
+          <dd>{{ current.azureResourceName || '—' }} · {{ current.azureApiVersion || '—' }}</dd>
+        </div>
+      }
+      <div>
+        <dt>Last connection test</dt>
+        <dd>
+          @if (current.lastConnectionTestStatus) {
+            <span [class]="statusClass(current.lastConnectionTestStatus)">{{ current.lastConnectionTestStatus }}</span>
+            @if (current.lastConnectionTestAt) {
+              · {{ current.lastConnectionTestAt | date: 'medium' }}
+            }
+            @if (current.lastConnectionTestErrorCode) {
+              · <code>{{ current.lastConnectionTestErrorCode }}</code>
+            }
+          } @else {
+            —
+          }
+          @if (lastTest(); as test) {
+            <p class="hint">Latest result: {{ test.status }}{{ test.errorCode ? ' · ' + test.errorCode : '' }}</p>
+          }
+        </dd>
       </div>
       <div>
         <dt>Timeout / concurrency / retries</dt>

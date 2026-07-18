@@ -27,6 +27,11 @@ public class ModelGatewayAuthorizationService {
     public static final String MODEL_ROUTE_MANAGE = "MODEL_ROUTE_MANAGE";
     public static final String MODEL_USAGE_READ = "MODEL_USAGE_READ";
     public static final String MODEL_INVOKE = "MODEL_INVOKE";
+    public static final String PROVIDER_SECRET_READ = "PROVIDER_SECRET_READ";
+    public static final String PROVIDER_SECRET_CREATE = "PROVIDER_SECRET_CREATE";
+    public static final String PROVIDER_SECRET_ROTATE = "PROVIDER_SECRET_ROTATE";
+    public static final String PROVIDER_SECRET_REVOKE = "PROVIDER_SECRET_REVOKE";
+    public static final String PROVIDER_CONNECTION_TEST = "PROVIDER_CONNECTION_TEST";
 
     public void require(AuthenticatedUser user, String permission) {
         if (user.getRoles().contains("ORG_ADMIN")) {

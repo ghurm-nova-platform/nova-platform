@@ -1,6 +1,7 @@
 package ai.nova.platform.modelgateway.provider;
 
 import java.util.Optional;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -21,7 +22,7 @@ public class EnvironmentProviderCredentialResolver implements ProviderCredential
     }
 
     @Override
-    public Optional<String> resolve(String credentialReference) {
+    public Optional<String> resolve(String credentialReference, UUID organizationId) {
         if (credentialReference == null || credentialReference.isBlank()) {
             return Optional.empty();
         }

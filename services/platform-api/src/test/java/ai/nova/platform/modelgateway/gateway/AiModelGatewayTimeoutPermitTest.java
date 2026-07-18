@@ -96,7 +96,7 @@ class AiModelGatewayTimeoutPermitTest {
 
         gateway = newGateway();
 
-        when(credentialResolver.resolve(nullable(String.class))).thenReturn(Optional.empty());
+        when(credentialResolver.resolve(nullable(String.class), any())).thenReturn(Optional.empty());
         when(persistenceService.isExecutionCancelled(any())).thenReturn(false);
         when(persistenceService.nextAttemptNumber(any())).thenReturn(1);
         when(persistenceService.createRunning(

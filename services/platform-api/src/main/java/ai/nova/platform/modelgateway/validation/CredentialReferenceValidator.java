@@ -13,10 +13,15 @@ public class CredentialReferenceValidator {
 
     private static final Pattern ENV_REFERENCE =
             Pattern.compile("^env:NOVA_PROVIDER_[A-Z0-9_]+$");
+    private static final Pattern VAULT_REFERENCE =
+            Pattern.compile(
+                    "^vault:provider-secret:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
     private static final Pattern BEARER = Pattern.compile("(?i)bearer\\s+");
     private static final Pattern PRIVATE_KEY = Pattern.compile("(?i)-----BEGIN (?:RSA )?PRIVATE KEY-----");
-    private static final Pattern JSON_SECRET = Pattern.compile("^\\s*\\{.*\"(?:api[_-]?key|secret|token)\".*\\}\\s*$", Pattern.DOTALL);
-    private static final Pattern PLAINTEXT_KEY = Pattern.compile("(?i)(?:sk-[a-z0-9]{20,}|api[_-]?key\\s*[:=])");
+    private static final Pattern JSON_SECRET =
+            Pattern.compile("^\\s*\\{.*\"(?:api[_-]?key|secret|token)\".*\\}\\s*$", Pattern.DOTALL);
+    private static final Pattern PLAINTEXT_KEY =
+            Pattern.compile("(?i)(?:sk-[a-z0-9]{20,}|api[_-]?key\\s*[:=])");
 
     public void validate(String credentialReference, AiProviderType providerType) {
         if (providerType == AiProviderType.DETERMINISTIC_LOCAL) {
@@ -33,11 +38,11 @@ public class CredentialReferenceValidator {
         }
         String trimmed = credentialReference.trim();
         rejectSuspicious(trimmed);
-        if (!ENV_REFERENCE.matcher(trimmed).matches()) {
+        if (!ENV_REFERENCE.matcher(trimmed).matches() && !VAULT_REFERENCE.matcher(trimmed).matches()) {
             throw new ApiException(
                     HttpStatus.BAD_REQUEST,
                     "INVALID_CREDENTIAL_REFERENCE",
-                    "Credential reference must match env:NOVA_PROVIDER_<NAME>");
+                    "Credential reference must match env:NOVA_PROVIDER_<NAME> or vault:provider-secret:<uuid>");
         }
     }
 

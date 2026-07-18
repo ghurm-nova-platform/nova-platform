@@ -75,6 +75,11 @@ describe('App routing', () => {
       'MODEL_ROUTE_READ',
       'MODEL_ROUTE_MANAGE',
       'MODEL_USAGE_READ',
+      'PROVIDER_SECRET_READ',
+      'PROVIDER_SECRET_CREATE',
+      'PROVIDER_SECRET_ROTATE',
+      'PROVIDER_SECRET_REVOKE',
+      'PROVIDER_CONNECTION_TEST',
     ],
   };
 
@@ -115,6 +120,7 @@ describe('App routing', () => {
       '/organizations',
       '/projects',
       '/model-providers',
+      '/provider-secrets',
       '/feedback',
       '/settings',
     ]) {
@@ -141,6 +147,7 @@ describe('App routing', () => {
     const providerId = '99999999-9999-9999-9999-999999999901';
     const modelId = '99999999-9999-9999-9999-999999999911';
     const policyId = '99999999-9999-9999-9999-999999999941';
+    const secretId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01';
 
     for (const [path, expected] of [
       ['/model-providers/new', '/model-providers/new'],
@@ -149,6 +156,8 @@ describe('App routing', () => {
       [`/model-providers/${providerId}/models`, `/model-providers/${providerId}/models`],
       [`/model-providers/${providerId}/models/new`, `/model-providers/${providerId}/models/new`],
       [`/model-providers/${providerId}/models/${modelId}`, `/model-providers/${providerId}/models/${modelId}`],
+      ['/provider-secrets/new', '/provider-secrets/new'],
+      [`/provider-secrets/${secretId}`, `/provider-secrets/${secretId}`],
       [`/projects/${projectId}/models`, `/projects/${projectId}/models`],
       [`/projects/${projectId}/agents/${agentId}/models`, `/projects/${projectId}/agents/${agentId}/models`],
       [

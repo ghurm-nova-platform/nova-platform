@@ -66,6 +66,7 @@ export class Shell {
     { labelEn: 'Organizations', labelAr: 'المنظمات', path: '/organizations', icon: 'business' },
     { labelEn: 'Projects', labelAr: 'المشاريع', path: '/projects', icon: 'folder' },
     { labelEn: 'Model providers', labelAr: 'مزودو النماذج', path: '/model-providers', icon: 'hub' },
+    { labelEn: 'Provider secrets', labelAr: 'أسرار المزودين', path: '/provider-secrets', icon: 'vpn_key' },
     { labelEn: 'Agents', labelAr: 'الوكلاء', path: '/agents', icon: 'smart_toy' },
     { labelEn: 'Feedback', labelAr: 'الملاحظات', path: '/feedback', icon: 'feedback' },
     { labelEn: 'Settings', labelAr: 'الإعدادات', path: '/settings', icon: 'settings' },

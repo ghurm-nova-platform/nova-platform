@@ -4,11 +4,12 @@ import { Observable } from 'rxjs';
 import { ApiClient } from '../../core/http/api-client';
 import { PageResponse } from '../../core/models/catalog';
 import {
-  AdapterKeysResponse,
+  ConnectionTestResponse,
   ModelProvider,
   ModelProviderCreateRequest,
   ModelProviderListParams,
   ModelProviderUpdateRequest,
+  ProviderAdaptersResponse,
 } from './model-gateway.models';
 
 @Injectable({ providedIn: 'root' })
@@ -39,12 +40,16 @@ export class ModelProviderService {
     return this.api.post<ModelProvider>(`/api/model-providers/${providerId}/disable`, {});
   }
 
-  archiveProvider(providerId: string): Observable<void> {
-    return this.api.delete<void>(`/api/model-providers/${providerId}`);
+  archiveProvider(providerId: string): Observable<ModelProvider> {
+    return this.api.post<ModelProvider>(`/api/model-providers/${providerId}/archive`, {});
   }
 
-  listAdapters(): Observable<AdapterKeysResponse> {
-    return this.api.get<AdapterKeysResponse>('/api/model-providers/adapters');
+  testConnection(providerId: string): Observable<ConnectionTestResponse> {
+    return this.api.post<ConnectionTestResponse>(`/api/model-providers/${providerId}/connection-test`, {});
+  }
+
+  listAdapters(): Observable<ProviderAdaptersResponse> {
+    return this.api.get<ProviderAdaptersResponse>('/api/model-providers/adapters');
   }
 
   private toProviderQuery(params: ModelProviderListParams): Record<string, string> {

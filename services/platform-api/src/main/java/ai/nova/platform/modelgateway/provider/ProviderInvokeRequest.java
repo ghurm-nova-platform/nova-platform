@@ -16,5 +16,29 @@ public record ProviderInvokeRequest(
         RuntimeKnowledgeContext knowledgeContext,
         int maxOutputTokens,
         Integer timeoutSeconds,
-        String credentialSecret) {
+        String credentialSecret,
+        ProviderEndpointConfig endpoint) {
+
+    public ProviderInvokeRequest(
+            String providerModelId,
+            String systemPrompt,
+            List<RuntimeMessage> messages,
+            List<RuntimeToolSpec> availableTools,
+            List<RuntimeToolResultMessage> toolResults,
+            RuntimeKnowledgeContext knowledgeContext,
+            int maxOutputTokens,
+            Integer timeoutSeconds,
+            String credentialSecret) {
+        this(
+                providerModelId,
+                systemPrompt,
+                messages,
+                availableTools,
+                toolResults,
+                knowledgeContext,
+                maxOutputTokens,
+                timeoutSeconds,
+                credentialSecret,
+                null);
+    }
 }

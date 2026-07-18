@@ -1,0 +1,21 @@
+-- Provider secret vault and connection-test permissions.
+
+INSERT INTO permissions (id, code, name, description, created_at)
+VALUES
+    ('33333333-3333-3333-3333-333333331019', 'PROVIDER_SECRET_READ', 'Read provider secrets', 'View provider secret metadata', CURRENT_TIMESTAMP),
+    ('33333333-3333-3333-3333-333333331020', 'PROVIDER_SECRET_CREATE', 'Create provider secrets', 'Create encrypted provider secrets', CURRENT_TIMESTAMP),
+    ('33333333-3333-3333-3333-333333331021', 'PROVIDER_SECRET_ROTATE', 'Rotate provider secrets', 'Rotate encrypted provider secrets', CURRENT_TIMESTAMP),
+    ('33333333-3333-3333-3333-333333331022', 'PROVIDER_SECRET_REVOKE', 'Revoke provider secrets', 'Revoke provider secrets', CURRENT_TIMESTAMP),
+    ('33333333-3333-3333-3333-333333331023', 'PROVIDER_CONNECTION_TEST', 'Test provider connections', 'Run secure provider connection tests', CURRENT_TIMESTAMP);
+
+INSERT INTO role_permissions (role_id, permission_id)
+VALUES
+    -- ORG_ADMIN: all secret + connection test permissions
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333331019'),
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333331020'),
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333331021'),
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333331022'),
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333331023'),
+    -- PROJECT_ADMIN: read secrets metadata + connection test
+    ('22222222-2222-2222-2222-222222222203', '33333333-3333-3333-3333-333333331019'),
+    ('22222222-2222-2222-2222-222222222203', '33333333-3333-3333-3333-333333331023');

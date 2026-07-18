@@ -25,6 +25,7 @@ public class ModelGatewayProperties {
     private long invokeCancelGraceMs = 5000L;
     private boolean usageEnabled = true;
     private boolean costEstimationEnabled = true;
+    private final Providers providers = new Providers();
 
     public boolean isEnabled() {
         return enabled;
@@ -168,5 +169,54 @@ public class ModelGatewayProperties {
 
     public void setCostEstimationEnabled(boolean costEstimationEnabled) {
         this.costEstimationEnabled = costEstimationEnabled;
+    }
+
+    public Providers getProviders() {
+        return providers;
+    }
+
+    public static class Providers {
+        private final OpenAi openai = new OpenAi();
+        private final AzureOpenAi azureOpenai = new AzureOpenAi();
+
+        public OpenAi getOpenai() {
+            return openai;
+        }
+
+        public AzureOpenAi getAzureOpenai() {
+            return azureOpenai;
+        }
+    }
+
+    public static class OpenAi {
+        /**
+         * Empty = production {@code https://api.openai.com}. Tests may override to MockWebServer.
+         * Production must never accept arbitrary client-supplied URLs.
+         */
+        private String baseUrl = "";
+
+        public String getBaseUrl() {
+            return baseUrl;
+        }
+
+        public void setBaseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+        }
+    }
+
+    public static class AzureOpenAi {
+        /**
+         * Empty = {@code https://{resource}.openai.azure.com}. Tests may override with a template
+         * pointing at MockWebServer (e.g. {@code http://127.0.0.1:port}).
+         */
+        private String baseUrlTemplate = "";
+
+        public String getBaseUrlTemplate() {
+            return baseUrlTemplate;
+        }
+
+        public void setBaseUrlTemplate(String baseUrlTemplate) {
+            this.baseUrlTemplate = baseUrlTemplate;
+        }
     }
 }

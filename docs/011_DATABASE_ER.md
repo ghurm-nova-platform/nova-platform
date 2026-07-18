@@ -343,7 +343,25 @@ erDiagram
     string provider_key
     string provider_type
     string adapter_key
+    string credential_reference
+    string endpoint_profile
+    string azure_resource_name
+    string azure_api_version
+    string last_connection_test_status
     string status
+  }
+
+  PROVIDER_SECRETS {
+    uuid id PK
+    uuid organization_id FK
+    string secret_key
+    string provider_type
+    string status
+    bytes ciphertext
+    bytes nonce
+    string algorithm
+    string fingerprint_sha256
+    string last4
   }
 
   AI_MODELS {
@@ -425,9 +443,12 @@ Unique constraints:
 - `knowledge_chunks (document_id, chunk_index)`
 - `knowledge_embeddings (chunk_id, provider_key, model)`
 - `agent_knowledge_assignments (agent_id, knowledge_base_id)`
+- `provider_secrets (organization_id, secret_key)`
 
 Migrations: `V16__knowledge_base.sql`, `V17__knowledge_embeddings.sql`, `V18__knowledge_permissions_seed.sql`,
 `V19__execution_knowledge_snapshot.sql`, `V20__ai_model_gateway.sql`, `V21__model_routing_and_usage.sql`,
-`V22__model_gateway_permissions.sql`.
-See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md) and
-[`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md).
+`V22__model_gateway_permissions.sql`, `V23__provider_secret_vault.sql`,
+`V24__provider_connection_metadata.sql`, `V25__provider_secret_permissions.sql`.
+See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
+[`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md), and
+[`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md).

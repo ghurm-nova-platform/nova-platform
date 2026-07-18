@@ -2,6 +2,14 @@
 
 Angular 20 administration portal for organizations, projects, agents, feedback, policies, usage, and settings.
 
+## Sprint 1 Phase 10 scope
+
+- Provider secret metadata under organization credential vault routes
+- Create / rotate / revoke flows (plaintext only at submit; never re-displayed or stored in browser)
+- Provider connection testing UI (status + safe error code only)
+- OpenAI / Azure OpenAI provider configuration (allowlisted endpoint profiles)
+- Credential references `vault:provider-secret:<uuid>` or `env:NOVA_PROVIDER_*` only
+
 ## Sprint 1 Phase 9 scope
 
 - Organization model providers under `/model-providers`

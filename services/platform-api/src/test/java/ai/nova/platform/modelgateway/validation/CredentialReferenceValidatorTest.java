@@ -3,6 +3,8 @@ package ai.nova.platform.modelgateway.validation;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.UUID;
+
 import org.junit.jupiter.api.Test;
 
 import ai.nova.platform.modelgateway.entity.AiProviderType;
@@ -19,8 +21,21 @@ class CredentialReferenceValidatorTest {
     }
 
     @Test
+    void acceptsVaultReference() {
+        assertThatCode(() -> validator.validate(
+                        "vault:provider-secret:" + UUID.randomUUID(), AiProviderType.OPENAI))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
     void rejectsPlaintextSecret() {
         assertThatThrownBy(() -> validator.validate("sk-abcdefghijklmnopqrstuvwxyz123456", AiProviderType.OPENAI))
+                .isInstanceOf(ApiException.class);
+    }
+
+    @Test
+    void rejectsBearerToken() {
+        assertThatThrownBy(() -> validator.validate("Bearer abcdef", AiProviderType.OPENAI))
                 .isInstanceOf(ApiException.class);
     }
 

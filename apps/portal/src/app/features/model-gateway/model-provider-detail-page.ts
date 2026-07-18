@@ -5,7 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
-import { ModelProvider } from './model-gateway.models';
+import { ConnectionTestResponse, ConnectionTestStatus, ModelProvider } from './model-gateway.models';
 import { ModelGatewayPermissionHelper } from './model-gateway-permission.helper';
 import { ModelProviderService } from './model-provider.service';
 
@@ -23,9 +23,11 @@ export class ModelProviderDetailPage implements OnInit {
 
   readonly providerId = signal('');
   readonly loading = signal(true);
+  readonly testing = signal(false);
   readonly error = signal<string | null>(null);
   readonly unauthorized = signal(false);
   readonly provider = signal<ModelProvider | null>(null);
+  readonly lastTest = signal<ConnectionTestResponse | null>(null);
 
   ngOnInit(): void {
     this.providerId.set(this.route.snapshot.paramMap.get('providerId') ?? '');
@@ -73,7 +75,40 @@ export class ModelProviderDetailPage implements OnInit {
     });
   }
 
-  statusClass(status: ModelProvider['status']): string {
+  testConnection(): void {
+    const current = this.provider();
+    if (!current || !this.permissions.canTestProviderConnection() || this.testing()) {
+      return;
+    }
+    this.testing.set(true);
+    this.error.set(null);
+    this.providersApi.testConnection(current.id).subscribe({
+      next: (result) => {
+        this.testing.set(false);
+        this.lastTest.set(result);
+        this.provider.update((provider) =>
+          provider
+            ? {
+                ...provider,
+                lastConnectionTestStatus: result.status,
+                lastConnectionTestAt: result.testedAt,
+                lastConnectionTestErrorCode: result.errorCode,
+              }
+            : provider,
+        );
+      },
+      error: (err: { status?: number; error?: { message?: string } }) => {
+        this.testing.set(false);
+        if (err.status === 403) {
+          this.unauthorized.set(true);
+          return;
+        }
+        this.error.set(err.error?.message ?? 'Unable to test provider connection.');
+      },
+    });
+  }
+
+  statusClass(status: ModelProvider['status'] | ConnectionTestStatus): string {
     return `status status--${status.toLowerCase()}`;
   }
 

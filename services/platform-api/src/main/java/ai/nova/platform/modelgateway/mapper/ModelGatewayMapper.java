@@ -26,7 +26,16 @@ public class ModelGatewayMapper {
                 provider.getDescription(),
                 provider.getProviderType(),
                 provider.getAdapterKey(),
+                provider.getCredentialReference(),
                 provider.getRegion(),
+                provider.getEndpointProfile(),
+                provider.getAzureResourceName(),
+                provider.getAzureApiVersion(),
+                provider.getLastConnectionTestStatus() != null
+                        ? provider.getLastConnectionTestStatus()
+                        : ai.nova.platform.modelgateway.entity.ConnectionTestStatus.NEVER,
+                provider.getLastConnectionTestAt(),
+                provider.getLastConnectionTestErrorCode(),
                 provider.getStatus(),
                 provider.getRequestTimeoutSeconds(),
                 provider.getMaxConcurrentRequests(),

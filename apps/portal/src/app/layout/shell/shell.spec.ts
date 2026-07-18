@@ -29,6 +29,8 @@ describe('Shell', () => {
     expect(text).toContain('Dashboard');
     expect(text).toContain('Organizations');
     expect(text).toContain('Projects');
+    expect(text).toContain('Model providers');
+    expect(text).toContain('Provider secrets');
     expect(text).toContain('Agents');
     expect(text).toContain('Feedback');
     expect(text).toContain('Settings');

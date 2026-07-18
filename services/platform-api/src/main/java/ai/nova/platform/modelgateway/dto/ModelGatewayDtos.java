@@ -14,6 +14,8 @@ import ai.nova.platform.modelgateway.entity.AiModelType;
 import ai.nova.platform.modelgateway.entity.AiProviderStatus;
 import ai.nova.platform.modelgateway.entity.AiProviderType;
 import ai.nova.platform.modelgateway.entity.AssignmentRole;
+import ai.nova.platform.modelgateway.entity.ConnectionTestStatus;
+import ai.nova.platform.modelgateway.entity.EndpointProfile;
 import ai.nova.platform.modelgateway.entity.RoutingPolicyStatus;
 import ai.nova.platform.modelgateway.entity.RoutingStrategy;
 
@@ -36,6 +38,9 @@ public final class ModelGatewayDtos {
             @NotBlank String adapterKey,
             String credentialReference,
             String region,
+            EndpointProfile endpointProfile,
+            String azureResourceName,
+            String azureApiVersion,
             Integer requestTimeoutSeconds,
             Integer maxConcurrentRequests,
             Integer maxRetries,
@@ -47,6 +52,9 @@ public final class ModelGatewayDtos {
             String description,
             String credentialReference,
             String region,
+            EndpointProfile endpointProfile,
+            String azureResourceName,
+            String azureApiVersion,
             Integer requestTimeoutSeconds,
             Integer maxConcurrentRequests,
             Integer maxRetries,
@@ -61,7 +69,14 @@ public final class ModelGatewayDtos {
             String description,
             AiProviderType providerType,
             String adapterKey,
+            String credentialReference,
             String region,
+            EndpointProfile endpointProfile,
+            String azureResourceName,
+            String azureApiVersion,
+            ConnectionTestStatus lastConnectionTestStatus,
+            Instant lastConnectionTestAt,
+            String lastConnectionTestErrorCode,
             AiProviderStatus status,
             Integer requestTimeoutSeconds,
             Integer maxConcurrentRequests,
@@ -70,6 +85,10 @@ public final class ModelGatewayDtos {
             Integer version,
             Instant createdAt,
             Instant updatedAt) {
+    }
+
+    public record ConnectionTestResponse(
+            ConnectionTestStatus status, String errorCode, Instant testedAt) {
     }
 
     public record CreateModelRequest(

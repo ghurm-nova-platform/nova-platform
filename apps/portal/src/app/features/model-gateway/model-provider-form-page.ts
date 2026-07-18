@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -7,8 +7,17 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { startWith } from 'rxjs';
 
-import { AI_PROVIDER_TYPES, AiProviderType, ModelProvider } from './model-gateway.models';
+import {
+  AI_PROVIDER_TYPES,
+  AiProviderType,
+  ENDPOINT_PROFILES,
+  EndpointProfile,
+  ModelProvider,
+} from './model-gateway.models';
+import { credentialReferenceValidator } from './credential-reference.validator';
 import { ModelGatewayPermissionHelper } from './model-gateway-permission.helper';
 import { ModelProviderService } from './model-provider.service';
 
@@ -43,6 +52,7 @@ export class ModelProviderFormPage implements OnInit {
   readonly adapterKeys = signal<string[]>([]);
   readonly currentProvider = signal<ModelProvider | null>(null);
   readonly types = AI_PROVIDER_TYPES;
+  readonly endpointProfiles = ENDPOINT_PROFILES;
 
   readonly form = this.fb.nonNullable.group({
     providerKey: ['', [Validators.required, Validators.pattern(/^[A-Z][A-Z0-9_]*$/), Validators.maxLength(100)]],
@@ -50,13 +60,28 @@ export class ModelProviderFormPage implements OnInit {
     description: ['', Validators.maxLength(2000)],
     providerType: ['DETERMINISTIC_LOCAL' as AiProviderType, Validators.required],
     adapterKey: ['', Validators.required],
-    credentialReference: [''],
+    credentialReference: ['', [credentialReferenceValidator()]],
     region: ['', Validators.maxLength(100)],
+    endpointProfile: [null as EndpointProfile | null],
+    azureResourceName: ['', Validators.maxLength(255)],
+    azureApiVersion: ['', Validators.maxLength(64)],
     requestTimeoutSeconds: [60, [Validators.required, Validators.min(1), Validators.max(300)]],
     maxConcurrentRequests: [10, [Validators.required, Validators.min(1), Validators.max(1000)]],
     maxRetries: [1, [Validators.required, Validators.min(0), Validators.max(5)]],
     retryBackoffMs: [250, [Validators.required, Validators.min(0), Validators.max(10000)]],
   });
+
+  private readonly providerTypeValue = toSignal(
+    this.form.controls.providerType.valueChanges.pipe(startWith(this.form.controls.providerType.value)),
+    { initialValue: this.form.controls.providerType.value },
+  );
+
+  readonly showEndpointFields = computed(() => {
+    const type = this.providerTypeValue();
+    return type === 'OPENAI' || type === 'AZURE_OPENAI';
+  });
+
+  readonly showAzureFields = computed(() => this.providerTypeValue() === 'AZURE_OPENAI');
 
   ngOnInit(): void {
     const providerId = this.route.snapshot.paramMap.get('providerId');
@@ -76,6 +101,7 @@ export class ModelProviderFormPage implements OnInit {
       this.unauthorized.set(true);
     }
 
+    this.form.controls.providerType.valueChanges.subscribe((type) => this.applyEndpointDefaults(type));
     this.loadAdapters();
   }
 
@@ -90,6 +116,7 @@ export class ModelProviderFormPage implements OnInit {
     const raw = this.form.getRawValue();
     const credentialReference = raw.credentialReference.trim() || null;
     const region = raw.region.trim() || null;
+    const endpointFields = this.endpointPayload(raw.providerType, raw);
 
     if (this.editMode() && this.providerId()) {
       const current = this.currentProvider();
@@ -103,6 +130,7 @@ export class ModelProviderFormPage implements OnInit {
           description: raw.description.trim() || null,
           credentialReference,
           region,
+          ...endpointFields,
           requestTimeoutSeconds: raw.requestTimeoutSeconds,
           maxConcurrentRequests: raw.maxConcurrentRequests,
           maxRetries: raw.maxRetries,
@@ -135,6 +163,7 @@ export class ModelProviderFormPage implements OnInit {
         adapterKey: raw.adapterKey,
         credentialReference,
         region,
+        ...endpointFields,
         requestTimeoutSeconds: raw.requestTimeoutSeconds,
         maxConcurrentRequests: raw.maxConcurrentRequests,
         maxRetries: raw.maxRetries,
@@ -193,6 +222,54 @@ export class ModelProviderFormPage implements OnInit {
     return `status status--${status.toLowerCase()}`;
   }
 
+  private endpointPayload(
+    providerType: AiProviderType,
+    raw: {
+      endpointProfile: EndpointProfile | null;
+      azureResourceName: string;
+      azureApiVersion: string;
+    },
+  ): {
+    endpointProfile?: EndpointProfile | null;
+    azureResourceName?: string | null;
+    azureApiVersion?: string | null;
+  } {
+    if (providerType !== 'OPENAI' && providerType !== 'AZURE_OPENAI') {
+      return {
+        endpointProfile: null,
+        azureResourceName: null,
+        azureApiVersion: null,
+      };
+    }
+    return {
+      endpointProfile: raw.endpointProfile,
+      azureResourceName: providerType === 'AZURE_OPENAI' ? raw.azureResourceName.trim() || null : null,
+      azureApiVersion: providerType === 'AZURE_OPENAI' ? raw.azureApiVersion.trim() || null : null,
+    };
+  }
+
+  private applyEndpointDefaults(type: AiProviderType): void {
+    if (type === 'OPENAI') {
+      this.form.patchValue({
+        endpointProfile: 'OPENAI_PUBLIC',
+        azureResourceName: '',
+        azureApiVersion: '',
+      });
+      return;
+    }
+    if (type === 'AZURE_OPENAI') {
+      this.form.patchValue({
+        endpointProfile: 'AZURE_OPENAI_RESOURCE',
+      });
+      return;
+    }
+    this.form.patchValue({
+      endpointProfile: null,
+      azureResourceName: '',
+      azureApiVersion: '',
+    });
+  }
+
   private loadProvider(providerId: string): void {
     this.loading.set(true);
     this.providersApi.getProvider(providerId).subscribe({
@@ -206,6 +283,9 @@ export class ModelProviderFormPage implements OnInit {
           adapterKey: provider.adapterKey,
           credentialReference: provider.credentialReference ?? '',
           region: provider.region ?? '',
+          endpointProfile: provider.endpointProfile ?? null,
+          azureResourceName: provider.azureResourceName ?? '',
+          azureApiVersion: provider.azureApiVersion ?? '',
           requestTimeoutSeconds: provider.requestTimeoutSeconds,
           maxConcurrentRequests: provider.maxConcurrentRequests,
           maxRetries: provider.maxRetries,
@@ -225,7 +305,7 @@ export class ModelProviderFormPage implements OnInit {
       return;
     }
     this.providersApi.listAdapters().subscribe({
-      next: (response) => this.adapterKeys.set(response.adapterKeys),
+      next: (response) => this.adapterKeys.set(response.adapters.map((adapter) => adapter.adapterKey)),
       error: () => this.error.set('Unable to load adapter allowlist.'),
     });
   }
