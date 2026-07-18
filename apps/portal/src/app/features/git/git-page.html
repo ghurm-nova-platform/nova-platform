@@ -1,0 +1,94 @@
+<section class="git-page">
+  <header class="page-header">
+    <div>
+      <h1>Git Integration</h1>
+      <p class="subtitle">
+        Apply validated Patch Agent output onto an isolated working branch. Does not merge, push to
+        main/develop, or delete branches.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">You need GIT_RUN or GIT_READ to use this page.</p>
+  } @else {
+    <form class="run-form" [formGroup]="form" (ngSubmit)="runGit()">
+      <mat-form-field appearance="outline" class="task-field">
+        <mat-label>Orchestration task ID</mat-label>
+        <input matInput formControlName="taskId" placeholder="UUID" />
+      </mat-form-field>
+      <div class="actions">
+        @if (permissions.canRun()) {
+          <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
+            Apply patch to branch
+          </button>
+        }
+        @if (permissions.canRead()) {
+          <button mat-stroked-button type="button" (click)="loadLatest()" [disabled]="loading()">
+            Load latest
+          </button>
+        }
+      </div>
+    </form>
+
+    @if (loading()) {
+      <div class="loading">
+        <mat-spinner diameter="36"></mat-spinner>
+      </div>
+    }
+
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    @if (result(); as op) {
+      <section class="summary-panel">
+        <div class="status-badge" [attr.data-status]="op.status">{{ op.status }}</div>
+        <div class="summary-meta">
+          <div class="field-row">
+            <span class="label">Branch</span>
+            <code>{{ op.branchName }}</code>
+            <button mat-stroked-button type="button" (click)="copy(op.branchName, 'branch')">
+              <mat-icon>content_copy</mat-icon>
+              Copy branch
+            </button>
+          </div>
+          <div class="field-row">
+            <span class="label">Commit</span>
+            <code>{{ op.commitHash ?? '—' }}</code>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!op.commitHash"
+              (click)="copy(op.commitHash, 'commit')"
+            >
+              <mat-icon>content_copy</mat-icon>
+              Copy commit
+            </button>
+          </div>
+          <div class="field-row">
+            <span class="label">Patch hash</span>
+            <code>{{ op.patchHash }}</code>
+          </div>
+          <p class="meta">base={{ op.baseRef }} · {{ op.validation.message }}</p>
+          @if (copied(); as label) {
+            <p class="copied">Copied {{ label }}</p>
+          }
+        </div>
+      </section>
+
+      <section class="timeline">
+        <h2>Execution timeline</h2>
+        <ol>
+          @for (event of op.timeline; track event.phase + event.at) {
+            <li>
+              <strong>{{ event.phase }}</strong>
+              <span class="meta">{{ event.at }}</span>
+              <p>{{ event.detail }}</p>
+            </li>
+          }
+        </ol>
+      </section>
+    }
+  }
+</section>

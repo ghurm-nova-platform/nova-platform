@@ -92,6 +92,10 @@ export const routes: Routes = [
           import('./features/patch/patch-page').then((m) => m.PatchPage),
       },
       {
+        path: 'git',
+        loadComponent: () => import('./features/git/git-page').then((m) => m.GitPage),
+      },
+      {
         path: 'orchestration-runs',
         loadComponent: () =>
           import('./features/orchestration/orchestration-runs-list-page').then(

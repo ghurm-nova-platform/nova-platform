@@ -108,6 +108,8 @@ describe('App routing', () => {
       'TESTING_READ',
       'PATCH_RUN',
       'PATCH_READ',
+      'GIT_RUN',
+      'GIT_READ',
     ],
   };
 
@@ -155,6 +157,7 @@ describe('App routing', () => {
       '/review',
       '/testing',
       '/patch',
+      '/git',
       '/orchestration-runs',
       '/feedback',
       '/settings',

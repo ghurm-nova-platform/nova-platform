@@ -99,6 +99,12 @@ export class Shell {
       icon: 'difference',
     },
     {
+      labelEn: 'Git Integration',
+      labelAr: 'تكامل Git',
+      path: '/git',
+      icon: 'merge',
+    },
+    {
       labelEn: 'AI Orchestration',
       labelAr: 'تنسيق الوكلاء',
       path: '/orchestration-runs',

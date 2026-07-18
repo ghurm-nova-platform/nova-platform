@@ -144,8 +144,12 @@ See [`docs/027_TESTING_AGENT.md`](../../docs/027_TESTING_AGENT.md) and ADR-0016.
 
 See [`docs/028_PATCH_AGENT.md`](../../docs/028_PATCH_AGENT.md) and ADR-0017.
 
+## Git Integration Agent
+
+See [`docs/029_GIT_INTEGRATION_AGENT.md`](../../docs/029_GIT_INTEGRATION_AGENT.md) and ADR-0018.
+
 Migrations: `V29`–`V32`. Durable runs, tasks, dependencies, attempts, events; claim leases; TX1/external/TX2 execution.
-Migration `V34` planner templates; `V35` generated artifacts; `V36` review results/findings; `V37` testing results; `V38` patch results.
+Migration `V34` planner templates; `V35` generated artifacts; `V36` review results/findings; `V37` testing results; `V38` patch results; `V39` git operations.
 
 Local demo user (Flyway seed, local only):
 

@@ -147,6 +147,14 @@ nova:
     max-path-length: 1000
     default-provider: LOCAL
     default-model: patch-local
+  git:
+    enabled: true
+    workspace-root: ${java.io.tmpdir}/nova-git-test-workspaces
+    base-ref: main
+    author-name: Nova Git Agent
+    author-email: git-agent@nova.local
+    allow-init-repository: false
+    cleanup-failed-workspaces: false
   secrets:
     # Test-only 32-byte AES key (all zeros). Never use in production.
     master-key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
