@@ -21,7 +21,7 @@ Given an orchestration `taskId`, the agent:
 
 ## Workspace layout
 
-```
+```text
 workspaceRoot/
   {organizationId}/
     {projectId}/
