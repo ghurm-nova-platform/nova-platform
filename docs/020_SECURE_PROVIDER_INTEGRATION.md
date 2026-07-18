@@ -27,7 +27,7 @@ The browser never calls providers, never receives stored credentials after creat
 | Master key | `NOVA_SECRET_MASTER_KEY` (Base64-encoded 32 bytes) |
 | Config | `nova.secrets.master-key=${NOVA_SECRET_MASTER_KEY:}` |
 | Persistence | Ciphertext + nonce + `key_version` only — never plaintext |
-| Metadata | `fingerprint_sha256`, optional `last4`, status, provider type |
+| Metadata | optional `last4`, status, provider type (internal HMAC fingerprint is never returned) |
 
 Startup fails (or vault operations fail clearly) when vault work is required without a valid master key. Tests use a fixed test-only Base64 key in `application.yml`.
 
@@ -51,7 +51,7 @@ Resolution order: vault reference first, then environment (`CompositeProviderCre
 | Revoke | None | Status `REVOKED` |
 | List / get | Never | Metadata only — secret never returned again |
 
-Stored fields include ciphertext, nonce, algorithm `AES-256-GCM`, `key_version`, SHA-256 fingerprint hex, and `last4` when the secret ends in four alphanumeric characters.
+Stored fields include ciphertext, nonce, algorithm `AES-256-GCM`, `key_version`, an internal HMAC fingerprint (never returned via API), and `last4` when the secret ends in four alphanumeric characters. Rotation creates a **new** ACTIVE secret row, marks the previous row `ROTATED`, remaps provider credential references, and returns the new `vault:provider-secret:<uuid>`.
 
 Secret lifecycle: `ACTIVE` → `REVOKED` / `ARCHIVED`. Deterministic-local provider type is forbidden on vault rows.
 
@@ -73,7 +73,7 @@ Capabilities for OpenAI / Azure: tools, knowledge context, JSON output, and syst
 - Azure OpenAI: `POST https://{resource}.openai.azure.com/openai/deployments/{deployment}/chat/completions?api-version=...`  
   (`deployment` = model `provider_model_id`)
 
-Activation of OPENAI / AZURE_OPENAI requires a registered adapter, valid endpoint profile fields, and a resolvable ACTIVE vault or present env credential.
+Activation of OPENAI / AZURE_OPENAI requires a registered adapter, valid endpoint profile fields, a resolvable ACTIVE vault or present env credential, **and** `last_connection_test_status = SUCCESS` for the current credential/endpoint settings. Updating credential or endpoint fields resets connection test status to `NEVER`.
 
 ## Endpoint allowlisting / SSRF
 
@@ -83,12 +83,13 @@ Activation of OPENAI / AZURE_OPENAI requires a registered adapter, valid endpoin
 - Cross-host redirects are not followed.
 - HTTP uses Spring-managed bounded clients with provider timeouts.
 - Non-allowlisted host strings are rejected before connect.
-
-Test-only overrides (`nova.model-gateway.providers.openai.base-url`, Azure base-url template) may point at MockWebServer. Production defaults keep fixed allowlisted hosts.
+- Localhost / `127.0.0.1` overrides are **disabled by default** (`nova.model-gateway.allow-localhost-overrides=false`). They are enabled only in the test `application.yml` for MockWebServer — never rely on this in production.
 
 ## Connection testing
 
 `POST /api/model-providers/{providerId}/connection-test` requires `PROVIDER_CONNECTION_TEST`.
+
+Loads provider metadata in a short read transaction, runs the HTTP probe **outside** any database transaction, then persists status in a short write transaction.
 
 Resolves credentials, probes an allowlisted lightweight endpoint, and updates:
 

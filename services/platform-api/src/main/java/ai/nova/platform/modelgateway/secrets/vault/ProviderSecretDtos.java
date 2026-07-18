@@ -34,7 +34,6 @@ public final class ProviderSecretDtos {
             String credentialReference,
             String algorithm,
             Integer keyVersion,
-            String fingerprintSha256,
             String last4,
             Integer version,
             Instant createdAt,

@@ -1,12 +1,12 @@
 package ai.nova.platform.modelgateway.secrets.vault;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HexFormat;
 
 import javax.crypto.Cipher;
+import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -71,13 +71,16 @@ public class SecretEncryptionService {
         }
     }
 
-    public String fingerprintSha256(String plaintext) {
+    public String internalFingerprint(String plaintext) {
+        byte[] rawKey = requireMasterKeyBytes();
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(plaintext.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(rawKey, "HmacSHA256"));
+            byte[] digest = mac.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
         } catch (Exception ex) {
-            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "SECRET_FINGERPRINT_FAILED", "Failed to fingerprint secret");
+            throw new ApiException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "SECRET_FINGERPRINT_FAILED", "Failed to fingerprint secret");
         }
     }
 
@@ -107,6 +110,10 @@ public class SecretEncryptionService {
     }
 
     private SecretKey requireMasterKey() {
+        return new SecretKeySpec(requireMasterKeyBytes(), "AES");
+    }
+
+    private byte[] requireMasterKeyBytes() {
         String encoded = properties.getMasterKey();
         if (encoded == null || encoded.isBlank()) {
             throw new ApiException(
@@ -129,6 +136,6 @@ public class SecretEncryptionService {
                     "SECRET_MASTER_KEY_INVALID",
                     "NOVA_SECRET_MASTER_KEY must be Base64-encoded 32 bytes");
         }
-        return new SecretKeySpec(raw, "AES");
+        return raw;
     }
 }

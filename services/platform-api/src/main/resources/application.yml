@@ -91,9 +91,11 @@ nova:
     retry-backoff-maximum-ms: 10000
     usage-enabled: true
     cost-estimation-enabled: true
+    # Must remain false in production. Localhost MockWebServer overrides are test-only.
+    allow-localhost-overrides: false
     providers:
       openai:
-        # empty = production api.openai.com; tests may set mock base
+        # empty = production api.openai.com; tests may set mock base when allow-localhost-overrides=true
         base-url: ${NOVA_OPENAI_BASE_URL:}
       azure-openai:
         # empty = https://{resource}.openai.azure.com

@@ -22,7 +22,7 @@ class SecretEncryptionServiceTest {
         assertThat(encrypted.algorithm()).isEqualTo("AES-256-GCM");
         assertThat(service.decrypt(encrypted.ciphertext(), encrypted.nonce(), encrypted.keyVersion()))
                 .isEqualTo(secret);
-        assertThat(service.fingerprintSha256(secret)).hasSize(64);
+        assertThat(service.internalFingerprint(secret)).hasSize(64);
         assertThat(service.last4(secret)).isEqualTo("1234");
     }
 

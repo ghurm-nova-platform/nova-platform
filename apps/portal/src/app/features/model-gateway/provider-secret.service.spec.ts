@@ -83,7 +83,6 @@ describe('ProviderSecretService', () => {
       credentialReference: `vault:provider-secret:${secretId}`,
       algorithm: 'AES-256-GCM',
       keyVersion: 1,
-      fingerprintSha256: 'abc',
       last4: '3456',
       version: 0,
       createdAt: '2026-01-01T00:00:00Z',

@@ -31,7 +31,7 @@ CREATE TABLE provider_secrets (
     CONSTRAINT ck_provider_secrets_key_format
         CHECK (secret_key ~ '^[A-Z][A-Z0-9_]*$'),
     CONSTRAINT ck_provider_secrets_status
-        CHECK (status IN ('ACTIVE', 'REVOKED', 'ARCHIVED')),
+        CHECK (status IN ('ACTIVE', 'ROTATED', 'REVOKED', 'ARCHIVED')),
     CONSTRAINT ck_provider_secrets_provider_type
         CHECK (provider_type IN (
             'DETERMINISTIC_LOCAL',

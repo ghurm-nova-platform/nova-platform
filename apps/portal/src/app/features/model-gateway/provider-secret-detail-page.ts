@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -30,6 +30,7 @@ import { ProviderSecretService } from './provider-secret.service';
 export class ProviderSecretDetailPage implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly secretsApi = inject(ProviderSecretService);
   readonly permissions = inject(ModelGatewayPermissionHelper);
 
@@ -76,7 +77,7 @@ export class ProviderSecretDetailPage implements OnInit {
       this.rotateForm.markAllAsTouched();
       return;
     }
-    if (!window.confirm(`Rotate secret "${current.name}"? The previous value cannot be recovered.`)) {
+    if (!window.confirm(`Rotate secret "${current.name}"? A new secret will be created and the previous one marked ROTATED.`)) {
       return;
     }
 
@@ -86,8 +87,10 @@ export class ProviderSecretDetailPage implements OnInit {
     this.secretsApi.rotateSecret(current.id, { secret: plaintext }).subscribe({
       next: (updated) => {
         this.rotating.set(false);
-        this.secret.set(updated);
         this.rotateForm.reset({ secret: '' });
+        this.secretId.set(updated.id);
+        this.secret.set(updated);
+        void this.router.navigate(['/provider-secrets', updated.id], { replaceUrl: true });
       },
       error: (err: { status?: number; error?: { message?: string } }) => {
         this.rotating.set(false);

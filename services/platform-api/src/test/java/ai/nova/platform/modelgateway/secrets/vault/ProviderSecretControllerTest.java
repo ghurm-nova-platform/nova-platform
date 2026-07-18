@@ -71,7 +71,7 @@ class ProviderSecretControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.credentialReference").value(org.hamcrest.Matchers.startsWith("vault:provider-secret:")))
                 .andExpect(jsonPath("$.last4").value("xyz9"))
-                .andExpect(jsonPath("$.fingerprintSha256").isString())
+                .andExpect(jsonPath("$.fingerprintSha256").doesNotExist())
                 .andExpect(jsonPath("$.secret").doesNotExist())
                 .andExpect(jsonPath("$.ciphertext").doesNotExist())
                 .andReturn();
@@ -90,7 +90,8 @@ class ProviderSecretControllerTest {
     }
 
     @Test
-    void rotateAndRevoke() throws Exception {
+    void rotateCreatesNewSecretAndMarksPreviousRotated() throws Exception {
+        String keySuffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
         MvcResult createResult = mockMvc.perform(post("/api/provider-secrets")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -101,23 +102,37 @@ class ProviderSecretControllerTest {
                                   "providerType":"OPENAI",
                                   "secret":"initial-secret-aaaa"
                                 }
-                                """.formatted(UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase())))
+                                """.formatted(keySuffix)))
                 .andExpect(status().isCreated())
                 .andReturn();
-        String secretId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asText();
+        JsonNode created = objectMapper.readTree(createResult.getResponse().getContentAsString());
+        String previousId = created.get("id").asText();
+        String previousKey = created.get("secretKey").asText();
 
-        mockMvc.perform(post("/api/provider-secrets/" + secretId + "/rotate")
+        MvcResult rotateResult = mockMvc.perform(post("/api/provider-secrets/" + previousId + "/rotate")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"secret":"rotated-secret-bbbb"}
                                 """))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.not(previousId)))
+                .andExpect(jsonPath("$.secretKey").value(previousKey))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.last4").value("bbbb"))
-                .andExpect(jsonPath("$.rotatedAt").isNotEmpty())
-                .andExpect(jsonPath("$.secret").doesNotExist());
+                .andExpect(jsonPath("$.fingerprintSha256").doesNotExist())
+                .andExpect(jsonPath("$.secret").doesNotExist())
+                .andReturn();
+        String replacementId = objectMapper.readTree(rotateResult.getResponse().getContentAsString()).get("id").asText();
 
-        mockMvc.perform(post("/api/provider-secrets/" + secretId + "/revoke")
+        mockMvc.perform(get("/api/provider-secrets/" + previousId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ROTATED"))
+                .andExpect(jsonPath("$.rotatedAt").isNotEmpty())
+                .andExpect(jsonPath("$.secretKey").value(org.hamcrest.Matchers.startsWith(previousKey + "__ROTATED_")));
+
+        mockMvc.perform(post("/api/provider-secrets/" + replacementId + "/revoke")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("REVOKED"))

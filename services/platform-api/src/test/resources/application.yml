@@ -88,6 +88,8 @@ nova:
     retry-backoff-maximum-ms: 10000
     usage-enabled: true
     cost-estimation-enabled: true
+    # Test-only: allow MockWebServer on localhost. Never enable in production.
+    allow-localhost-overrides: true
     providers:
       openai:
         base-url: ${NOVA_OPENAI_BASE_URL:}

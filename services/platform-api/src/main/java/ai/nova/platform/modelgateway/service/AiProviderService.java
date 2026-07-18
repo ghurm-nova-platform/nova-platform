@@ -165,6 +165,12 @@ public class AiProviderService {
                 request.azureResourceName(),
                 request.azureApiVersion(),
                 true);
+        boolean connectionRelevantChanged = connectionRelevantFieldsChanged(
+                provider,
+                trimToNull(request.credentialReference()),
+                request.endpointProfile(),
+                request.azureResourceName(),
+                request.azureApiVersion());
         provider.setName(request.name().trim());
         provider.setDescription(trimToNull(request.description()));
         provider.setCredentialReference(trimToNull(request.credentialReference()));
@@ -175,6 +181,9 @@ public class AiProviderService {
                 request.endpointProfile(),
                 request.azureResourceName(),
                 request.azureApiVersion());
+        if (connectionRelevantChanged) {
+            clearConnectionTest(provider);
+        }
         if (request.requestTimeoutSeconds() != null) {
             provider.setRequestTimeoutSeconds(request.requestTimeoutSeconds());
         }
@@ -273,6 +282,12 @@ public class AiProviderService {
                         "CREDENTIAL_UNRESOLVABLE",
                         "Credential reference could not be resolved to an active secret");
             }
+            if (provider.getLastConnectionTestStatus() != ConnectionTestStatus.SUCCESS) {
+                throw new ApiException(
+                        HttpStatus.CONFLICT,
+                        "CONNECTION_TEST_REQUIRED",
+                        "A successful connection test is required before activation");
+            }
         }
     }
 
@@ -360,6 +375,24 @@ public class AiProviderService {
         provider.setEndpointProfile(endpointProfile);
         provider.setAzureResourceName(trimToNull(azureResourceName));
         provider.setAzureApiVersion(trimToNull(azureApiVersion));
+    }
+
+    private static boolean connectionRelevantFieldsChanged(
+            AiProvider provider,
+            String newCredentialReference,
+            EndpointProfile newEndpointProfile,
+            String newAzureResourceName,
+            String newAzureApiVersion) {
+        return !java.util.Objects.equals(provider.getCredentialReference(), newCredentialReference)
+                || !java.util.Objects.equals(provider.getEndpointProfile(), newEndpointProfile)
+                || !java.util.Objects.equals(provider.getAzureResourceName(), trimToNull(newAzureResourceName))
+                || !java.util.Objects.equals(provider.getAzureApiVersion(), trimToNull(newAzureApiVersion));
+    }
+
+    private static void clearConnectionTest(AiProvider provider) {
+        provider.setLastConnectionTestStatus(ConnectionTestStatus.NEVER);
+        provider.setLastConnectionTestAt(null);
+        provider.setLastConnectionTestErrorCode(null);
     }
 
     private ProviderAdapterResponse toAdapterResponse(AiModelProvider provider) {

@@ -28,7 +28,7 @@ export type EndpointProfile = 'OPENAI_PUBLIC' | 'AZURE_OPENAI_RESOURCE';
 
 export type ConnectionTestStatus = 'NEVER' | 'SUCCESS' | 'FAILED';
 
-export type ProviderSecretStatus = 'ACTIVE' | 'REVOKED' | 'ARCHIVED';
+export type ProviderSecretStatus = 'ACTIVE' | 'ROTATED' | 'REVOKED' | 'ARCHIVED';
 
 export const AI_PROVIDER_STATUSES: AiProviderStatus[] = ['DRAFT', 'ACTIVE', 'DISABLED', 'ARCHIVED'];
 
@@ -46,7 +46,7 @@ export const PROVIDER_SECRET_TYPES: AiProviderType[] = AI_PROVIDER_TYPES.filter(
   (type) => type !== 'DETERMINISTIC_LOCAL',
 );
 
-export const PROVIDER_SECRET_STATUSES: ProviderSecretStatus[] = ['ACTIVE', 'REVOKED', 'ARCHIVED'];
+export const PROVIDER_SECRET_STATUSES: ProviderSecretStatus[] = ['ACTIVE', 'ROTATED', 'REVOKED', 'ARCHIVED'];
 
 export const ENDPOINT_PROFILES: EndpointProfile[] = ['OPENAI_PUBLIC', 'AZURE_OPENAI_RESOURCE'];
 
@@ -146,7 +146,6 @@ export interface ProviderSecret {
   credentialReference: string;
   algorithm: string;
   keyVersion: number;
-  fingerprintSha256: string;
   last4: string | null;
   version: number;
   createdAt: string;

@@ -38,6 +38,7 @@ class OpenAiModelProviderTest {
         server = new MockWebServer();
         server.start();
         ModelGatewayProperties properties = new ModelGatewayProperties();
+        properties.setAllowLocalhostOverrides(true);
         properties.getProviders().getOpenai().setBaseUrl(server.url("/").toString().replaceAll("/$", ""));
         provider = new OpenAiModelProvider(
                 new ProviderRestClientFactory(properties, new ProviderHostAllowlist()),

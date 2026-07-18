@@ -35,6 +35,7 @@ class AzureOpenAiModelProviderTest {
         server = new MockWebServer();
         server.start();
         ModelGatewayProperties properties = new ModelGatewayProperties();
+        properties.setAllowLocalhostOverrides(true);
         String base = server.url("/").toString().replaceAll("/$", "");
         properties.getProviders().getAzureOpenai().setBaseUrlTemplate(base);
         provider = new AzureOpenAiModelProvider(
