@@ -392,6 +392,45 @@ erDiagram
     string normalized_alias
   }
 
+  AGENT_ORCHESTRATION_RUNS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    string status
+    string execution_mode
+    string failure_policy
+    bigint event_sequence
+  }
+
+  AGENT_ORCHESTRATION_TASKS {
+    uuid id PK
+    uuid run_id FK
+    string task_key
+    string task_type
+    string status
+    string idempotency_key
+  }
+
+  AGENT_TASK_DEPENDENCIES {
+    uuid predecessor_task_id FK
+    uuid successor_task_id FK
+    string dependency_type
+  }
+
+  AGENT_TASK_ATTEMPTS {
+    uuid id PK
+    uuid task_id FK
+    int attempt_number
+    string status
+  }
+
+  AGENT_ORCHESTRATION_EVENTS {
+    uuid id PK
+    uuid run_id FK
+    bigint event_sequence
+    string event_type
+  }
+
   PROJECT_MODELS {
     uuid id PK
     uuid project_id FK

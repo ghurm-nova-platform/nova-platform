@@ -1,0 +1,95 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <h1>{{ editMode() ? 'Edit orchestration run' : 'Create orchestration run' }}</h1>
+      <p>Draft runs can be configured and have their task graph built before start.</p>
+    </div>
+    <div class="page__actions">
+      <a mat-stroked-button routerLink="/orchestration-runs">Back to runs</a>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to manage orchestration runs.</p>
+    </div>
+  } @else if (loading()) {
+    <div class="page__loading" role="status"><mat-spinner diameter="36" /></div>
+  } @else {
+    @if (error()) {
+      <p class="page__error" role="alert">{{ error() }}</p>
+    }
+
+    <form class="page__form" [formGroup]="form" (ngSubmit)="save()">
+      <mat-form-field appearance="outline">
+        <mat-label>Project</mat-label>
+        <mat-select formControlName="projectId" aria-label="Project">
+          @for (project of projects(); track project.id) {
+            <mat-option [value]="project.id">{{ project.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Name</mat-label>
+        <input matInput formControlName="name" aria-label="Run name" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Objective</mat-label>
+        <textarea matInput rows="3" formControlName="objective" aria-label="Objective"></textarea>
+      </mat-form-field>
+      <div class="page__form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Execution mode</mat-label>
+          <mat-select formControlName="executionMode" aria-label="Execution mode">
+            @for (mode of modes; track mode) {
+              <mat-option [value]="mode">{{ mode }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Failure policy</mat-label>
+          <mat-select formControlName="failurePolicy" aria-label="Failure policy">
+            @for (policy of failurePolicies; track policy) {
+              <mat-option [value]="policy">{{ policy }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+      <div class="page__form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Max parallel tasks</mat-label>
+          <input matInput type="number" formControlName="maxParallelTasks" aria-label="Max parallel tasks" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Maximum duration (ms)</mat-label>
+          <input
+            matInput
+            type="number"
+            formControlName="maximumDurationMs"
+            aria-label="Maximum duration milliseconds"
+          />
+        </mat-form-field>
+      </div>
+      <mat-form-field appearance="outline">
+        <mat-label>Initiated by agent ID</mat-label>
+        <input matInput formControlName="initiatedByAgentId" aria-label="Initiated by agent ID" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Input JSON</mat-label>
+        <textarea matInput rows="4" formControlName="inputJson" aria-label="Input JSON"></textarea>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Metadata JSON</mat-label>
+        <textarea matInput rows="3" formControlName="metadataJson" aria-label="Metadata JSON"></textarea>
+      </mat-form-field>
+      <div class="page__form-actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
+          {{ saving() ? 'Saving…' : editMode() ? 'Save changes' : 'Create run' }}
+        </button>
+        <a mat-stroked-button routerLink="/orchestration-runs">Cancel</a>
+      </div>
+    </form>
+  }
+</section>

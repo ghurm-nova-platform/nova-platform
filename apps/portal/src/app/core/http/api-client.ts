@@ -38,8 +38,8 @@ export class ApiClient {
     return this.http.patch<T>(this.url(path), body);
   }
 
-  delete<T>(path: string): Observable<T> {
-    return this.http.delete<T>(this.url(path));
+  delete<T>(path: string, body?: unknown): Observable<T> {
+    return this.http.delete<T>(this.url(path), body !== undefined ? { body } : undefined);
   }
 
   private url(path: string): string {

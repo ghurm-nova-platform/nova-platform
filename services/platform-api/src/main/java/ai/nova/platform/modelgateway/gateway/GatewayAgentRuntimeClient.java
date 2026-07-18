@@ -52,6 +52,7 @@ public class GatewayAgentRuntimeClient implements AgentRuntimeClient {
                 .map(execution -> execution.getCreatedBy())
                 .orElse(null);
 
+        String modelReference = request.model() != null && !request.model().isBlank() ? request.model().trim() : null;
         ModelGatewayRequest gatewayRequest = new ModelGatewayRequest(
                 request.organizationId(),
                 request.projectId(),
@@ -65,7 +66,8 @@ public class GatewayAgentRuntimeClient implements AgentRuntimeClient {
                 request.toolResults(),
                 request.knowledgeContext(),
                 requiresTools,
-                requiresKnowledge);
+                requiresKnowledge,
+                modelReference);
 
         ModelGatewayResponse response = modelGateway.invoke(gatewayRequest);
         return response.turnResult();

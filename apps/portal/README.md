@@ -2,6 +2,15 @@
 
 Angular 20 administration portal for organizations, projects, agents, feedback, policies, usage, and settings.
 
+## Sprint 2 Phase 1 scope
+
+- Orchestration runs under `/orchestration-runs`
+- Create / edit DRAFT runs, list filters, detail with progress and events
+- Practical list-based task graph builder (`/orchestration-runs/:runId/graph`)
+- Ready / start / cancel / archive lifecycle actions
+- Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
+- No heavy graph visualization libraries
+
 ## Sprint 1 Phase 11 scope
 
 - Organization AI model catalog under `/ai-models`

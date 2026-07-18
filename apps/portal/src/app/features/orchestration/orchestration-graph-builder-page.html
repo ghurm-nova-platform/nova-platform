@@ -1,0 +1,231 @@
+<section class="page">
+  @if (loading()) {
+    <div class="page__loading"><mat-spinner diameter="36" /></div>
+  } @else if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to view orchestration runs.</p>
+    </div>
+  } @else if (run(); as current) {
+    <header class="page__header">
+      <div>
+        <h1>Task graph · {{ current.name }}</h1>
+        <p>
+          Practical list editor for draft tasks and dependencies.
+          <span [class]="statusClass(current.status)">{{ current.status }}</span>
+        </p>
+      </div>
+      <div class="page__actions">
+        <a mat-stroked-button [routerLink]="['/orchestration-runs', runId()]">Back to run</a>
+        @if (current.status === 'DRAFT' && permissions.canStartRun()) {
+          <button mat-flat-button color="primary" type="button" [disabled]="acting()" (click)="markReady()">
+            Mark ready
+          </button>
+        }
+        @if (current.status === 'READY' && permissions.canStartRun()) {
+          <button mat-flat-button color="primary" type="button" [disabled]="acting()" (click)="start()">
+            Start
+          </button>
+        }
+      </div>
+    </header>
+
+    @if (error()) {
+      <p class="page__error" role="alert">{{ error() }}</p>
+    }
+
+    @if (current.status !== 'DRAFT') {
+      <p class="hint">Graph editing is available only while the run is DRAFT. You can still review nodes and edges.</p>
+    }
+
+    <section class="page__section">
+      <h2>Tasks</h2>
+      @if (tasks().length === 0) {
+        <p class="hint">No tasks yet.</p>
+      } @else {
+        <div class="page__table-wrap">
+          <table mat-table [dataSource]="tasks()" class="page__table">
+            <ng-container matColumnDef="taskKey">
+              <th mat-header-cell *matHeaderCellDef>Key</th>
+              <td mat-cell *matCellDef="let row"><code>{{ row.taskKey }}</code></td>
+            </ng-container>
+            <ng-container matColumnDef="displayName">
+              <th mat-header-cell *matHeaderCellDef>Name</th>
+              <td mat-cell *matCellDef="let row">{{ row.displayName }}</td>
+            </ng-container>
+            <ng-container matColumnDef="taskType">
+              <th mat-header-cell *matHeaderCellDef>Type</th>
+              <td mat-cell *matCellDef="let row">{{ row.taskType }}</td>
+            </ng-container>
+            <ng-container matColumnDef="priority">
+              <th mat-header-cell *matHeaderCellDef>Priority</th>
+              <td mat-cell *matCellDef="let row">{{ row.priority }}</td>
+            </ng-container>
+            <ng-container matColumnDef="sequenceOrder">
+              <th mat-header-cell *matHeaderCellDef>Order</th>
+              <td mat-cell *matCellDef="let row">{{ row.sequenceOrder ?? '—' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let row">
+                @if (current.status === 'DRAFT' && permissions.canManageTasks()) {
+                  <button mat-icon-button type="button" aria-label="Edit task" (click)="editTask(row)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button type="button" aria-label="Delete task" (click)="deleteTask(row)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                }
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="taskColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: taskColumns"></tr>
+          </table>
+        </div>
+      }
+    </section>
+
+    @if (current.status === 'DRAFT' && permissions.canManageTasks()) {
+      <section class="page__section">
+        <h2>{{ editingTaskId() ? 'Edit task' : 'Add task' }}</h2>
+        <form class="page__form" [formGroup]="taskForm" (ngSubmit)="saveTask()">
+          <div class="page__form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Task key</mat-label>
+              <input matInput formControlName="taskKey" aria-label="Task key" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Display name</mat-label>
+              <input matInput formControlName="displayName" aria-label="Display name" />
+            </mat-form-field>
+          </div>
+          <mat-form-field appearance="outline">
+            <mat-label>Description</mat-label>
+            <textarea matInput rows="2" formControlName="description" aria-label="Description"></textarea>
+          </mat-form-field>
+          <div class="page__form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Task type</mat-label>
+              <mat-select formControlName="taskType">
+                @for (type of taskTypes; track type) {
+                  <mat-option [value]="type">{{ type }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Assigned agent ID</mat-label>
+              <input matInput formControlName="assignedAgentId" aria-label="Assigned agent ID" />
+            </mat-form-field>
+          </div>
+          <div class="page__form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Model reference</mat-label>
+              <input matInput formControlName="modelReference" aria-label="Model reference" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Priority</mat-label>
+              <input matInput type="number" formControlName="priority" aria-label="Priority" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Sequence order</mat-label>
+              <input matInput type="number" formControlName="sequenceOrder" aria-label="Sequence order" />
+            </mat-form-field>
+          </div>
+          <div class="page__form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Max attempts</mat-label>
+              <input matInput type="number" formControlName="maxAttempts" aria-label="Max attempts" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Retry backoff (ms)</mat-label>
+              <input matInput type="number" formControlName="retryBackoffMs" aria-label="Retry backoff" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Timeout (seconds)</mat-label>
+              <input matInput type="number" formControlName="timeoutSeconds" aria-label="Timeout seconds" />
+            </mat-form-field>
+          </div>
+          <mat-form-field appearance="outline">
+            <mat-label>Input JSON</mat-label>
+            <textarea matInput rows="3" formControlName="inputJson" aria-label="Input JSON"></textarea>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Idempotency key</mat-label>
+            <input matInput formControlName="idempotencyKey" aria-label="Idempotency key" />
+          </mat-form-field>
+          <div class="page__form-actions">
+            <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
+              {{ editingTaskId() ? 'Update task' : 'Add task' }}
+            </button>
+            @if (editingTaskId()) {
+              <button mat-stroked-button type="button" (click)="resetTaskForm()">Cancel edit</button>
+            }
+          </div>
+        </form>
+      </section>
+    }
+
+    <section class="page__section">
+      <h2>Dependencies</h2>
+      @if (edges().length === 0) {
+        <p class="hint">No dependencies yet.</p>
+      } @else {
+        <ul class="dep-list">
+          @for (edge of edges(); track edge.predecessorTaskId + edge.successorTaskId) {
+            <li>
+              <code>{{ taskLabel(edge.predecessorTaskId) }}</code>
+              <mat-icon>arrow_forward</mat-icon>
+              <code>{{ taskLabel(edge.successorTaskId) }}</code>
+              <span>({{ edge.dependencyType }})</span>
+              @if (current.status === 'DRAFT' && permissions.canManageTasks()) {
+                <button mat-icon-button type="button" aria-label="Remove dependency" (click)="removeDependency(edge)">
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    @if (current.status === 'DRAFT' && permissions.canManageTasks()) {
+      <section class="page__section">
+        <h2>Add dependency</h2>
+        <form class="page__form" [formGroup]="dependencyForm" (ngSubmit)="addDependency()">
+          <div class="page__form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Predecessor</mat-label>
+              <mat-select formControlName="predecessorTaskId">
+                @for (task of tasks(); track task.id) {
+                  <mat-option [value]="task.id">{{ task.taskKey }} · {{ task.displayName }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Successor</mat-label>
+              <mat-select formControlName="successorTaskId">
+                @for (task of tasks(); track task.id) {
+                  <mat-option [value]="task.id">{{ task.taskKey }} · {{ task.displayName }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Type</mat-label>
+              <mat-select formControlName="dependencyType">
+                @for (type of dependencyTypes; track type) {
+                  <mat-option [value]="type">{{ type }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+          <div class="page__form-actions">
+            <button mat-flat-button color="primary" type="submit" [disabled]="saving() || tasks().length < 2">
+              Add dependency
+            </button>
+          </div>
+        </form>
+      </section>
+    }
+  }
+</section>

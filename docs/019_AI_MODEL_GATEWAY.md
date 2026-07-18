@@ -122,6 +122,11 @@ See [`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md) a
 Phase 11 evolves `ai_models` with capabilities, aliases, provider sync, and optional gateway `modelReference` resolution.
 See [`021_MODEL_CATALOG.md`](021_MODEL_CATALOG.md) and ADR-0011.
 
+## Multi-agent orchestration
+
+Sprint 2 Phase 1 adds durable orchestration runs that invoke the Agent Runtime / Model Gateway outside DB transactions with stale-safe TX2.
+See [`022_MULTI_AGENT_ORCHESTRATION_FOUNDATION.md`](022_MULTI_AGENT_ORCHESTRATION_FOUNDATION.md) and ADR-0012.
+
 ## Future work
 
 Streaming, distributed concurrency, external KMS, additional vendors, billing reconciliation.

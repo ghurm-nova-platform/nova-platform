@@ -95,6 +95,22 @@ nova:
         base-url: ${NOVA_OPENAI_BASE_URL:}
       azure-openai:
         base-url-template: ${NOVA_AZURE_OPENAI_BASE_URL_TEMPLATE:}
+  orchestration:
+    enabled: false
+    poll-interval-ms: 2000
+    claim-limit: 10
+    claim-lease-seconds: 30
+    maximum-parallel-tasks: 20
+    global-concurrency: 20
+    dispatch-pool-size: 20
+    dispatch-queue-capacity: 40
+    maximum-task-attempts: 10
+    maximum-task-timeout-seconds: 600
+    maximum-run-duration-ms: 3600000
+    retry-backoff-cap-ms: 60000
+    worker-id: platform-api-test
+    max-json-chars: 100000
+    max-objective-length: 4000
   secrets:
     # Test-only 32-byte AES key (all zeros). Never use in production.
     master-key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="

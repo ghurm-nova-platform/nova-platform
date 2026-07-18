@@ -32,6 +32,7 @@ describe('Shell', () => {
     expect(text).toContain('Model providers');
     expect(text).toContain('AI Models');
     expect(text).toContain('Provider secrets');
+    expect(text).toContain('AI Orchestration');
     expect(text).toContain('Agents');
     expect(text).toContain('Feedback');
     expect(text).toContain('Settings');

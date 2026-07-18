@@ -328,7 +328,7 @@ public class ToolCallingOrchestrator {
                         request.agentId(),
                         request.executionId(),
                         request.agent().getModelProvider(),
-                        request.agent().getModelName(),
+                        null,
                         request.renderedPrompt(),
                         messages,
                         request.conversationId(),
