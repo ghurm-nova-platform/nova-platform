@@ -104,6 +104,9 @@ nova:
     claim-limit: 10
     claim-lease-seconds: 30
     maximum-parallel-tasks: 20
+    global-concurrency: 20
+    dispatch-pool-size: 20
+    dispatch-queue-capacity: 40
     maximum-task-attempts: 10
     maximum-task-timeout-seconds: 600
     maximum-run-duration-ms: 3600000

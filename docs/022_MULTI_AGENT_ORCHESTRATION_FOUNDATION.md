@@ -22,13 +22,15 @@ Portal / API
 
 | Entity | Role |
 |--------|------|
-| `agent_orchestration_runs` | Workflow execution + event sequence counter |
+| `agent_orchestration_runs` | Workflow execution |
+| `agent_orchestration_event_counters` | Atomic per-run event sequence (isolated from `run.version`) |
+| `agent_orchestration_claim_lock` | Short global claim-capacity lock row |
 | `agent_orchestration_tasks` | Units of work with claim lease + retry |
 | `agent_task_dependencies` | SUCCESS / COMPLETION edges |
 | `agent_task_attempts` | Append-only attempt history |
 | `agent_orchestration_events` | Ordered timeline (`run_id`, `event_sequence`) |
 
-Migrations: **V29–V32**.
+Migrations: **V29–V33**.
 
 ## Run lifecycle
 
@@ -51,7 +53,18 @@ Cycles, self-edges, and cross-run edges are rejected at READY.
 
 ## Scheduling / claim
 
-Configurable poller (`nova.orchestration.*`). Disabled in tests (`enabled: false`). Safe for multi-node via DB CAS updates — not JVM locks.
+Configurable poller (`nova.orchestration.*`). Disabled in tests (`enabled: false`). Safe for multi-node via:
+
+- Global claim lock row + per-run `SELECT … FOR UPDATE`
+- Atomic CAS claim that counts `CLAIMED` + `RUNNING` against `max_parallel_tasks`
+- Global concurrency (`nova.orchestration.global-concurrency`)
+- Bounded `OrchestrationExecutionDispatcher` (pool + queue); rejection releases unstarted claims
+
+Scheduler never blocks the poll loop on AI calls; dispatch is asynchronous within the bounded executor.
+
+## Event sequencing
+
+`agent_orchestration_event_counters.next_sequence` is incremented with `UPDATE … RETURNING` (not `MAX+1`, not JVM sync). Reservation does not bump `AgentOrchestrationRun.version`, so concurrent task claim/completion TXs do not fail solely due to audit events.
 
 ## TX1 / external / TX2
 

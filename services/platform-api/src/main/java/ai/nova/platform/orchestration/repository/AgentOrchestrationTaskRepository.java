@@ -35,6 +35,19 @@ public interface AgentOrchestrationTaskRepository extends JpaRepository<AgentOrc
 
     long countByRunIdAndOrganizationIdAndStatusIn(UUID runId, UUID organizationId, List<TaskStatus> statuses);
 
+    @Query(value = """
+            SELECT COUNT(*) FROM agent_orchestration_tasks
+            WHERE run_id = :runId
+              AND status IN ('CLAIMED', 'RUNNING')
+            """, nativeQuery = true)
+    long countActiveSlotsByRunId(@Param("runId") UUID runId);
+
+    @Query(value = """
+            SELECT COUNT(*) FROM agent_orchestration_tasks
+            WHERE status IN ('CLAIMED', 'RUNNING')
+            """, nativeQuery = true)
+    long countActiveSlotsGlobal();
+
     @Query("""
             SELECT t FROM AgentOrchestrationTask t
             WHERE t.runId = :runId
@@ -49,10 +62,21 @@ public interface AgentOrchestrationTaskRepository extends JpaRepository<AgentOrc
             @Param("taskType") TaskType taskType,
             Pageable pageable);
 
+    /**
+     * Candidate READY tasks whose parent run is executable and currently under per-run capacity.
+     * Authoritative capacity enforcement happens under claim locks in TaskClaimService.
+     */
     @Query(value = """
-            SELECT * FROM agent_orchestration_tasks t
+            SELECT t.* FROM agent_orchestration_tasks t
+            INNER JOIN agent_orchestration_runs r ON r.id = t.run_id
             WHERE t.status = 'READY'
               AND (t.next_attempt_at IS NULL OR t.next_attempt_at <= :now)
+              AND r.status IN ('RUNNING', 'WAITING')
+              AND (
+                    SELECT COUNT(*) FROM agent_orchestration_tasks active
+                    WHERE active.run_id = t.run_id
+                      AND active.status IN ('CLAIMED', 'RUNNING')
+                  ) < r.max_parallel_tasks
             ORDER BY t.priority ASC, t.created_at ASC
             LIMIT :limit
             """, nativeQuery = true)
@@ -70,6 +94,19 @@ public interface AgentOrchestrationTaskRepository extends JpaRepository<AgentOrc
             WHERE id = :id
               AND status = 'READY'
               AND version = :version
+              AND EXISTS (
+                    SELECT 1 FROM agent_orchestration_runs r
+                    WHERE r.id = agent_orchestration_tasks.run_id
+                      AND r.status IN ('RUNNING', 'WAITING')
+                  )
+              AND (
+                    SELECT COUNT(*) FROM agent_orchestration_tasks active
+                    WHERE active.run_id = agent_orchestration_tasks.run_id
+                      AND active.status IN ('CLAIMED', 'RUNNING')
+                  ) < (
+                    SELECT r.max_parallel_tasks FROM agent_orchestration_runs r
+                    WHERE r.id = agent_orchestration_tasks.run_id
+                  )
             """, nativeQuery = true)
     int claimReadyTask(
             @Param("id") UUID id,
@@ -77,6 +114,25 @@ public interface AgentOrchestrationTaskRepository extends JpaRepository<AgentOrc
             @Param("workerId") String workerId,
             @Param("now") Instant now,
             @Param("expiresAt") Instant expiresAt);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE agent_orchestration_tasks
+            SET status = 'READY',
+                claimed_by = NULL,
+                claimed_at = NULL,
+                claim_expires_at = NULL,
+                updated_at = :now,
+                version = version + 1
+            WHERE id = :id
+              AND status = 'CLAIMED'
+              AND started_at IS NULL
+              AND version = :version
+            """, nativeQuery = true)
+    int releaseUnstartedClaim(
+            @Param("id") UUID id,
+            @Param("version") long version,
+            @Param("now") Instant now);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """

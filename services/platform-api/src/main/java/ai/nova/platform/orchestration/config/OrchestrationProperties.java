@@ -12,6 +12,12 @@ public class OrchestrationProperties {
     private int claimLimit = 10;
     private int claimLeaseSeconds = 30;
     private int maximumParallelTasks = 20;
+    /** Global max CLAIMED+RUNNING tasks across all runs (multi-node enforced via DB). */
+    private int globalConcurrency = 20;
+    /** Bounded dispatch pool size (must not be unbounded). */
+    private int dispatchPoolSize = 20;
+    /** Bounded dispatch queue capacity (must not be unbounded). */
+    private int dispatchQueueCapacity = 40;
     private int maximumTaskAttempts = 10;
     private int maximumTaskTimeoutSeconds = 600;
     private long maximumRunDurationMs = 3600000;
@@ -58,6 +64,30 @@ public class OrchestrationProperties {
 
     public void setMaximumParallelTasks(int maximumParallelTasks) {
         this.maximumParallelTasks = maximumParallelTasks;
+    }
+
+    public int getGlobalConcurrency() {
+        return globalConcurrency;
+    }
+
+    public void setGlobalConcurrency(int globalConcurrency) {
+        this.globalConcurrency = globalConcurrency;
+    }
+
+    public int getDispatchPoolSize() {
+        return dispatchPoolSize;
+    }
+
+    public void setDispatchPoolSize(int dispatchPoolSize) {
+        this.dispatchPoolSize = dispatchPoolSize;
+    }
+
+    public int getDispatchQueueCapacity() {
+        return dispatchQueueCapacity;
+    }
+
+    public void setDispatchQueueCapacity(int dispatchQueueCapacity) {
+        this.dispatchQueueCapacity = dispatchQueueCapacity;
     }
 
     public int getMaximumTaskAttempts() {

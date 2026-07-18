@@ -1,17 +1,20 @@
 package ai.nova.platform.orchestration.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import ai.nova.platform.orchestration.entity.AgentOrchestrationRun;
 import ai.nova.platform.orchestration.entity.ExecutionMode;
 import ai.nova.platform.orchestration.entity.RunStatus;
+import jakarta.persistence.LockModeType;
 
 public interface AgentOrchestrationRunRepository extends JpaRepository<AgentOrchestrationRun, UUID> {
 
@@ -19,6 +22,13 @@ public interface AgentOrchestrationRunRepository extends JpaRepository<AgentOrch
 
     Optional<AgentOrchestrationRun> findByIdAndOrganizationIdAndProjectId(
             UUID id, UUID organizationId, UUID projectId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM AgentOrchestrationRun r WHERE r.id = :id")
+    Optional<AgentOrchestrationRun> findByIdForUpdate(@Param("id") UUID id);
+
+    @Query(value = "SELECT id FROM agent_orchestration_claim_lock WHERE id = 1 FOR UPDATE", nativeQuery = true)
+    Short lockGlobalClaimCapacity();
 
     @Query("""
             SELECT r FROM AgentOrchestrationRun r

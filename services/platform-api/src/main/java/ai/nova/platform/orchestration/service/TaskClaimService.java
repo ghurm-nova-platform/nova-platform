@@ -3,14 +3,19 @@ package ai.nova.platform.orchestration.service;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.nova.platform.orchestration.config.OrchestrationProperties;
+import ai.nova.platform.orchestration.entity.AgentOrchestrationRun;
 import ai.nova.platform.orchestration.entity.AgentOrchestrationTask;
 import ai.nova.platform.orchestration.entity.OrchestrationEventType;
+import ai.nova.platform.orchestration.entity.RunStatus;
 import ai.nova.platform.orchestration.entity.TaskStatus;
 import ai.nova.platform.orchestration.repository.AgentOrchestrationRunRepository;
 import ai.nova.platform.orchestration.repository.AgentOrchestrationTaskRepository;
@@ -70,13 +75,55 @@ public class TaskClaimService {
         return promoted;
     }
 
+    /**
+     * Claims READY tasks under a short global claim lock plus per-run pessimistic locks so
+     * multi-node workers cannot exceed per-run {@code max_parallel_tasks} or global concurrency.
+     * CLAIMED and RUNNING both consume capacity. External AI work must happen outside this TX.
+     */
     @Transactional
     public List<AgentOrchestrationTask> claimReadyTasks(int limit) {
         Instant now = Instant.now(clock);
         Instant expiresAt = now.plusSeconds(properties.getClaimLeaseSeconds());
-        List<AgentOrchestrationTask> candidates = taskRepository.findReadyForClaim(now, limit);
+
+        runRepository.lockGlobalClaimCapacity();
+
+        long globalActive = taskRepository.countActiveSlotsGlobal();
+        int globalLimit = Math.max(1, properties.getGlobalConcurrency());
+        int globalRemaining = (int) Math.max(0, globalLimit - globalActive);
+        if (globalRemaining == 0 || limit <= 0) {
+            return List.of();
+        }
+
+        int fetchLimit = Math.min(limit, globalRemaining);
+        List<AgentOrchestrationTask> candidates = taskRepository.findReadyForClaim(now, fetchLimit);
         List<AgentOrchestrationTask> claimed = new ArrayList<>();
+        Set<UUID> lockedRuns = new HashSet<>();
+
         for (AgentOrchestrationTask candidate : candidates) {
+            if (claimed.size() >= globalRemaining) {
+                break;
+            }
+
+            UUID runId = candidate.getRunId();
+            if (!lockedRuns.contains(runId)) {
+                AgentOrchestrationRun run = runRepository.findByIdForUpdate(runId).orElse(null);
+                lockedRuns.add(runId);
+                if (run == null || !isExecutableRun(run.getStatus())) {
+                    continue;
+                }
+            } else {
+                AgentOrchestrationRun run = runRepository.findById(runId).orElse(null);
+                if (run == null || !isExecutableRun(run.getStatus())) {
+                    continue;
+                }
+            }
+
+            AgentOrchestrationRun run = runRepository.findById(runId).orElseThrow();
+            long runActive = taskRepository.countActiveSlotsByRunId(runId);
+            if (runActive >= run.getMaxParallelTasks()) {
+                continue;
+            }
+
             int updated = taskRepository.claimReadyTask(
                     candidate.getId(),
                     candidate.getVersion(),
@@ -86,18 +133,35 @@ public class TaskClaimService {
             if (updated == 1) {
                 AgentOrchestrationTask refreshed = taskRepository.findById(candidate.getId()).orElse(null);
                 if (refreshed != null) {
-                    runRepository
-                            .findByIdAndOrganizationId(refreshed.getRunId(), refreshed.getOrganizationId())
-                            .ifPresent(run -> eventService.appendEvent(
-                                    run,
-                                    refreshed.getId(),
-                                    OrchestrationEventType.TASK_CLAIMED,
-                                    "{\"workerId\":\"" + properties.getWorkerId() + "\"}",
-                                    null));
+                    eventService.appendEvent(
+                            run,
+                            refreshed.getId(),
+                            OrchestrationEventType.TASK_CLAIMED,
+                            "{\"workerId\":\"" + properties.getWorkerId() + "\"}",
+                            null);
                     claimed.add(refreshed);
                 }
             }
         }
         return claimed;
+    }
+
+    /**
+     * Releases a CLAIMED-but-not-started task back to READY (executor rejection / dispatch abort).
+     * Does not create attempts and does not duplicate prior claim attempts.
+     */
+    @Transactional
+    public boolean releaseUnstartedClaim(UUID taskId) {
+        AgentOrchestrationTask task = taskRepository.findById(taskId).orElse(null);
+        if (task == null || task.getStatus() != TaskStatus.CLAIMED || task.getStartedAt() != null) {
+            return false;
+        }
+        Instant now = Instant.now(clock);
+        int updated = taskRepository.releaseUnstartedClaim(task.getId(), task.getVersion(), now);
+        return updated == 1;
+    }
+
+    private static boolean isExecutableRun(RunStatus status) {
+        return status == RunStatus.RUNNING || status == RunStatus.WAITING;
     }
 }

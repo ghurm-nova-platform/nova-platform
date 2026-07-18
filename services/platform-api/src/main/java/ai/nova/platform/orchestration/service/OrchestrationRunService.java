@@ -118,7 +118,8 @@ public class OrchestrationRunService {
         run.setInitiatedByAgentId(request.initiatedByAgentId());
         run.setInputJson(request.inputJson());
         run.setMetadataJson(request.metadataJson());
-        runRepository.save(run);
+        runRepository.saveAndFlush(run);
+        eventService.ensureCounter(run.getId());
         eventService.appendEvent(run, null, OrchestrationEventType.RUN_CREATED, null, user.getUserId());
         return toResponse(run);
     }

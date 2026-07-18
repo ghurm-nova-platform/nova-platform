@@ -54,7 +54,11 @@ public class AgentOrchestrationRun {
     @Column(name = "maximum_duration_ms", nullable = false)
     private long maximumDurationMs;
 
-    @Column(name = "event_sequence", nullable = false)
+    /**
+     * Legacy mirror of the event counter. Updated only via native SQL / migration backfill.
+     * JPA must not overwrite it on business saves (see OrchestrationEventService).
+     */
+    @Column(name = "event_sequence", nullable = false, insertable = true, updatable = false)
     private long eventSequence;
 
     @Column(name = "started_at")

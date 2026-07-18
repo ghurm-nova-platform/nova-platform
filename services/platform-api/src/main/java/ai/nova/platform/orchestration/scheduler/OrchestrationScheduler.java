@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import ai.nova.platform.orchestration.config.OrchestrationProperties;
 import ai.nova.platform.orchestration.entity.AgentOrchestrationTask;
+import ai.nova.platform.orchestration.execution.OrchestrationExecutionDispatcher;
 import ai.nova.platform.orchestration.service.OrchestrationExecutionService;
 import ai.nova.platform.orchestration.service.TaskClaimService;
 
@@ -22,14 +23,17 @@ public class OrchestrationScheduler {
     private final OrchestrationProperties properties;
     private final TaskClaimService claimService;
     private final OrchestrationExecutionService executionService;
+    private final OrchestrationExecutionDispatcher dispatcher;
 
     public OrchestrationScheduler(
             OrchestrationProperties properties,
             TaskClaimService claimService,
-            OrchestrationExecutionService executionService) {
+            OrchestrationExecutionService executionService,
+            OrchestrationExecutionDispatcher dispatcher) {
         this.properties = properties;
         this.claimService = claimService;
         this.executionService = executionService;
+        this.dispatcher = dispatcher;
     }
 
     @Scheduled(fixedDelayString = "${nova.orchestration.poll-interval-ms:2000}")
@@ -40,12 +44,24 @@ public class OrchestrationScheduler {
         try {
             claimService.reclaimExpiredClaims(properties.getClaimLimit());
             claimService.promoteDueRetries(properties.getClaimLimit());
-            List<AgentOrchestrationTask> claimed = claimService.claimReadyTasks(properties.getClaimLimit());
+
+            int freeDispatch = dispatcher.approximateFreeCapacity();
+            int claimBudget = Math.min(properties.getClaimLimit(), Math.max(0, freeDispatch));
+            if (claimBudget == 0) {
+                return;
+            }
+
+            List<AgentOrchestrationTask> claimed = claimService.claimReadyTasks(claimBudget);
             for (AgentOrchestrationTask task : claimed) {
-                try {
-                    executionService.executeClaimedTask(task.getId());
-                } catch (Exception ex) {
-                    log.warn("Failed to execute orchestration task {}", task.getId(), ex);
+                boolean accepted = dispatcher.dispatch(
+                        task.getId(),
+                        () -> executionService.executeClaimedTask(task.getId()));
+                if (!accepted) {
+                    boolean released = claimService.releaseUnstartedClaim(task.getId());
+                    log.warn(
+                            "Released claim for task {} after executor rejection (released={})",
+                            task.getId(),
+                            released);
                 }
             }
         } catch (Exception ex) {

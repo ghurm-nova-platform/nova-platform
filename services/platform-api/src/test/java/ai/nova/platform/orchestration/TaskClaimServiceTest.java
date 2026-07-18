@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -45,10 +46,36 @@ class TaskClaimServiceTest {
     @Autowired
     private AgentOrchestrationTaskRepository taskRepository;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     private String accessToken;
 
     @BeforeEach
     void login() throws Exception {
+        jdbcTemplate.update("""
+                UPDATE agent_orchestration_tasks
+                SET status = 'CANCELLED',
+                    claimed_by = NULL,
+                    claimed_at = NULL,
+                    claim_expires_at = NULL,
+                    cancelled_at = CURRENT_TIMESTAMP,
+                    completed_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP,
+                    version = version + 1
+                WHERE status IN ('DRAFT', 'BLOCKED', 'READY', 'CLAIMED', 'RUNNING', 'RETRY_WAIT',
+                                 'WAITING_APPROVAL', 'CANCEL_REQUESTED')
+                """);
+        jdbcTemplate.update("""
+                UPDATE agent_orchestration_runs
+                SET status = 'CANCELLED',
+                    cancelled_at = CURRENT_TIMESTAMP,
+                    completed_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP,
+                    version = version + 1
+                WHERE status IN ('DRAFT', 'READY', 'RUNNING', 'WAITING', 'CANCEL_REQUESTED')
+                """);
+
         MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
