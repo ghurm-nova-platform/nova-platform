@@ -59,6 +59,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Planner Agent](docs/023_PLANNER_AGENT.md)
 - [Coding Agent](docs/024_CODING_AGENT.md)
 - [Sprint 3 backlog](docs/025_SPRINT_3_BACKLOG.md)
+- [Review Agent](docs/026_REVIEW_AGENT.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles

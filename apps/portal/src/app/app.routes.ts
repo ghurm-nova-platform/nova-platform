@@ -77,6 +77,11 @@ export const routes: Routes = [
           import('./features/coding/coding-page').then((m) => m.CodingPage),
       },
       {
+        path: 'review',
+        loadComponent: () =>
+          import('./features/review/review-page').then((m) => m.ReviewPage),
+      },
+      {
         path: 'orchestration-runs',
         loadComponent: () =>
           import('./features/orchestration/orchestration-runs-list-page').then(

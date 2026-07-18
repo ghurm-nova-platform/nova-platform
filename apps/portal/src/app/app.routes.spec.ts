@@ -102,6 +102,8 @@ describe('App routing', () => {
       'PLANNER_TEMPLATE_MANAGE',
       'CODING_GENERATE',
       'CODING_READ',
+      'REVIEW_RUN',
+      'REVIEW_READ',
     ],
   };
 
@@ -146,6 +148,7 @@ describe('App routing', () => {
       '/provider-secrets',
       '/planner',
       '/coding',
+      '/review',
       '/orchestration-runs',
       '/feedback',
       '/settings',

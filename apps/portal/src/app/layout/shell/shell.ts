@@ -81,6 +81,12 @@ export class Shell {
       icon: 'code',
     },
     {
+      labelEn: 'Review Agent',
+      labelAr: 'وكيل المراجعة',
+      path: '/review',
+      icon: 'rate_review',
+    },
+    {
       labelEn: 'AI Orchestration',
       labelAr: 'تنسيق الوكلاء',
       path: '/orchestration-runs',
