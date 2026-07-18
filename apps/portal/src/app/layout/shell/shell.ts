@@ -65,6 +65,7 @@ export class Shell {
     { labelEn: 'Dashboard', labelAr: 'لوحة التحكم', path: '/dashboard', icon: 'dashboard' },
     { labelEn: 'Organizations', labelAr: 'المنظمات', path: '/organizations', icon: 'business' },
     { labelEn: 'Projects', labelAr: 'المشاريع', path: '/projects', icon: 'folder' },
+    { labelEn: 'Model providers', labelAr: 'مزودو النماذج', path: '/model-providers', icon: 'hub' },
     { labelEn: 'Agents', labelAr: 'الوكلاء', path: '/agents', icon: 'smart_toy' },
     { labelEn: 'Feedback', labelAr: 'الملاحظات', path: '/feedback', icon: 'feedback' },
     { labelEn: 'Settings', labelAr: 'الإعدادات', path: '/settings', icon: 'settings' },

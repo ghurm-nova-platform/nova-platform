@@ -96,8 +96,15 @@ See [`docs/017_TOOL_REGISTRY_AND_CALLING.md`](../../docs/017_TOOL_REGISTRY_AND_C
 
 See [`docs/018_KNOWLEDGE_BASE_AND_RAG.md`](../../docs/018_KNOWLEDGE_BASE_AND_RAG.md).
 
-Migrations: `V16`–`V18`. Embedding provider allowlist starts with `DETERMINISTIC_LOCAL`.
+Migrations: `V16`–`V19`. Embedding provider allowlist starts with `DETERMINISTIC_LOCAL`.
 PDF extraction is deferred (`nova.knowledge.pdf-enabled=false`).
+
+## AI model gateway
+
+See [`docs/019_AI_MODEL_GATEWAY.md`](../../docs/019_AI_MODEL_GATEWAY.md).
+
+Migrations: `V20`–`V22`. Only `DETERMINISTIC_LOCAL` executes in this phase.
+Credential references use `env:NOVA_PROVIDER_*` — never plaintext secrets.
 
 Local demo user (Flyway seed, local only):
 

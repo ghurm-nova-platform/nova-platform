@@ -27,6 +27,15 @@ export interface AgentExecuteRequest {
   clientRequestId?: string | null;
 }
 
+export interface ExecutionModelMetadata {
+  providerId: string;
+  providerName: string;
+  modelId: string;
+  modelName: string;
+  fallbackUsed: boolean;
+  attemptCount: number;
+}
+
 export interface AgentExecuteResponse {
   executionId: string;
   status: ExecutionStatus;
@@ -38,6 +47,7 @@ export interface AgentExecuteResponse {
   awaitingApproval?: boolean;
   pendingToolCallId?: string | null;
   citations?: Citation[];
+  model?: ExecutionModelMetadata;
 }
 
 export interface Execution {

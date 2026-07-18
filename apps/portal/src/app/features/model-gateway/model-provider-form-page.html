@@ -1,0 +1,106 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <h1>{{ editMode() ? 'Edit model provider' : 'Create model provider' }}</h1>
+      <p>Credential references only (for example <code>env:NOVA_PROVIDER_OPENAI</code>). Never store raw API keys.</p>
+    </div>
+    <div class="page__actions">
+      <a mat-stroked-button routerLink="/model-providers">Back to providers</a>
+      @if (editMode() && providerId()) {
+        <a mat-stroked-button [routerLink]="['/model-providers', providerId(), 'models']">Models</a>
+      }
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to manage model providers.</p>
+    </div>
+  } @else if (loading()) {
+    <div class="page__loading" role="status"><mat-spinner diameter="36" /></div>
+  } @else {
+    @if (error()) {
+      <p class="page__error" role="alert">{{ error() }}</p>
+    }
+
+    @if (currentProvider(); as current) {
+      <p>
+        <span [class]="statusClass(current.status)">{{ current.status }}</span>
+        · version {{ current.version }}
+      </p>
+    }
+
+    <form class="page__form" [formGroup]="form" (ngSubmit)="save()">
+      <mat-form-field appearance="outline">
+        <mat-label>Provider key</mat-label>
+        <input matInput formControlName="providerKey" aria-label="Provider key" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Name</mat-label>
+        <input matInput formControlName="name" aria-label="Provider name" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Description</mat-label>
+        <textarea matInput rows="3" formControlName="description" aria-label="Description"></textarea>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Provider type</mat-label>
+        <mat-select formControlName="providerType" aria-label="Provider type">
+          @for (type of types; track type) {
+            <mat-option [value]="type">{{ type }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Adapter key</mat-label>
+        <mat-select formControlName="adapterKey" aria-label="Adapter key">
+          @for (key of adapterKeys(); track key) {
+            <mat-option [value]="key">{{ key }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Credential reference</mat-label>
+        <input matInput formControlName="credentialReference" aria-label="Credential reference" placeholder="env:NOVA_PROVIDER_OPENAI" />
+        <mat-hint>Reference only. Leave empty for deterministic local providers.</mat-hint>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Region</mat-label>
+        <input matInput formControlName="region" aria-label="Region" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Request timeout (seconds)</mat-label>
+        <input matInput type="number" formControlName="requestTimeoutSeconds" aria-label="Request timeout" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Max concurrent requests</mat-label>
+        <input matInput type="number" formControlName="maxConcurrentRequests" aria-label="Max concurrent requests" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Max retries</mat-label>
+        <input matInput type="number" formControlName="maxRetries" aria-label="Max retries" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Retry backoff (ms)</mat-label>
+        <input matInput type="number" formControlName="retryBackoffMs" aria-label="Retry backoff" />
+      </mat-form-field>
+
+      <div class="page__form-actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="saving() || form.invalid">
+          {{ saving() ? 'Saving…' : editMode() ? 'Save changes' : 'Create provider' }}
+        </button>
+        @if (editMode() && permissions.canActivateProvider() && currentProvider()?.status === 'DRAFT') {
+          <button mat-stroked-button type="button" (click)="activate()">Activate</button>
+        }
+        @if (editMode() && permissions.canDisableProvider() && currentProvider()?.status === 'ACTIVE') {
+          <button mat-stroked-button type="button" (click)="disable()">Disable</button>
+        }
+        @if (editMode() && permissions.canArchiveProvider() && currentProvider()?.status !== 'ARCHIVED') {
+          <button mat-button color="warn" type="button" (click)="archive()">Archive</button>
+        }
+      </div>
+    </form>
+  }
+</section>

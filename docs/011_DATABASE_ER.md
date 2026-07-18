@@ -337,6 +337,64 @@ erDiagram
     int total_characters
   }
 
+  AI_PROVIDERS {
+    uuid id PK
+    uuid organization_id FK
+    string provider_key
+    string provider_type
+    string adapter_key
+    string status
+  }
+
+  AI_MODELS {
+    uuid id PK
+    uuid provider_id FK
+    string model_key
+    string model_type
+    string status
+  }
+
+  PROJECT_MODELS {
+    uuid id PK
+    uuid project_id FK
+    uuid model_id FK
+    boolean enabled
+    boolean is_default
+  }
+
+  AGENT_MODEL_ASSIGNMENTS {
+    uuid id PK
+    uuid agent_id FK
+    uuid model_id FK
+    string assignment_role
+    int priority
+  }
+
+  MODEL_ROUTING_POLICIES {
+    uuid id PK
+    uuid project_id FK
+    uuid agent_id FK
+    string strategy
+    string status
+  }
+
+  MODEL_INVOCATIONS {
+    uuid id PK
+    uuid execution_id FK
+    uuid provider_id FK
+    uuid model_id FK
+    int attempt_number
+    string status
+  }
+
+  MODEL_USAGE_DAILY {
+    uuid id PK
+    uuid project_id FK
+    uuid model_id FK
+    date usage_date
+    bigint request_count
+  }
+
   REFRESH_TOKENS {
     uuid id PK
     uuid user_id FK
@@ -368,5 +426,8 @@ Unique constraints:
 - `knowledge_embeddings (chunk_id, provider_key, model)`
 - `agent_knowledge_assignments (agent_id, knowledge_base_id)`
 
-Migrations: `V16__knowledge_base.sql`, `V17__knowledge_embeddings.sql`, `V18__knowledge_permissions_seed.sql`.
-See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md).
+Migrations: `V16__knowledge_base.sql`, `V17__knowledge_embeddings.sql`, `V18__knowledge_permissions_seed.sql`,
+`V19__execution_knowledge_snapshot.sql`, `V20__ai_model_gateway.sql`, `V21__model_routing_and_usage.sql`,
+`V22__model_gateway_permissions.sql`.
+See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md) and
+[`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md).

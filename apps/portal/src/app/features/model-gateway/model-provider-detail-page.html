@@ -1,0 +1,80 @@
+<section class="page">
+  @if (loading()) {
+    <div class="page__loading"><mat-spinner diameter="36" /></div>
+  } @else if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to view model providers.</p>
+    </div>
+  } @else if (error()) {
+    <p class="page__error" role="alert">{{ error() }}</p>
+  } @else if (provider(); as current) {
+    <header class="page__header">
+      <div>
+        <h1>{{ current.name }}</h1>
+        <p>
+          <span [class]="statusClass(current.status)">{{ current.status }}</span>
+          · <code>{{ current.providerKey }}</code>
+        </p>
+      </div>
+      <div class="page__actions">
+        <a mat-stroked-button routerLink="/model-providers">Back</a>
+        <button mat-stroked-button type="button" (click)="openModels()">
+          <mat-icon>model_training</mat-icon>
+          Models
+        </button>
+        @if (permissions.canUpdateProvider() && current.status !== 'ARCHIVED') {
+          <button mat-stroked-button type="button" (click)="edit()">Edit</button>
+        }
+        @if (permissions.canActivateProvider() && current.status === 'DRAFT') {
+          <button mat-flat-button color="primary" type="button" (click)="activate()">Activate</button>
+        }
+        @if (permissions.canDisableProvider() && current.status === 'ACTIVE') {
+          <button mat-stroked-button type="button" (click)="disable()">Disable</button>
+        }
+        @if (permissions.canArchiveProvider() && current.status !== 'ARCHIVED') {
+          <button mat-button color="warn" type="button" (click)="archive()">Archive</button>
+        }
+      </div>
+    </header>
+
+    <dl class="details">
+      <div>
+        <dt>Description</dt>
+        <dd>{{ current.description || '—' }}</dd>
+      </div>
+      <div>
+        <dt>Provider type</dt>
+        <dd>{{ current.providerType }}</dd>
+      </div>
+      <div>
+        <dt>Adapter key</dt>
+        <dd><code>{{ current.adapterKey }}</code></dd>
+      </div>
+      <div>
+        <dt>Credential reference</dt>
+        <dd>{{ current.credentialReference || '—' }}</dd>
+      </div>
+      <div>
+        <dt>Region</dt>
+        <dd>{{ current.region || '—' }}</dd>
+      </div>
+      <div>
+        <dt>Timeout / concurrency / retries</dt>
+        <dd>
+          {{ current.requestTimeoutSeconds }}s · {{ current.maxConcurrentRequests }} concurrent ·
+          {{ current.maxRetries }} retries · {{ current.retryBackoffMs }}ms backoff
+        </dd>
+      </div>
+      <div>
+        <dt>Version</dt>
+        <dd>{{ current.version }}</dd>
+      </div>
+      <div>
+        <dt>Updated</dt>
+        <dd>{{ current.updatedAt | date: 'medium' }}</dd>
+      </div>
+    </dl>
+  }
+</section>

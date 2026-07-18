@@ -202,3 +202,10 @@ Soft archive preserves documents, chunks, embeddings, and retrieval history. Phy
 - Document connectors (Drive, SharePoint, etc.) — not in Sprint 1
 - PDF text extraction when safely enabled
 - Streaming ingestion, OCR, knowledge graphs
+
+## Compatibility with model gateway
+
+Retrieved context is passed through the AI Model Gateway request contract
+([`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md)). Execution knowledge
+snapshots (V19) survive tool-approval continuation independently of which
+provider adapter executes the turn.

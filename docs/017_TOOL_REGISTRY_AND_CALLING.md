@@ -83,6 +83,12 @@ Retrieval does not re-run after every tool call in this phase. When a tool call
 awaits approval, the original bounded knowledge snapshot is restored for the
 continuation turn (`execution_knowledge_snapshots`).
 
+## Compatibility with model gateway
+
+Tool results are returned through the provider-neutral runtime contract used by
+the AI Model Gateway ([`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md)).
+Provider invocation must not hold a database transaction open.
+
 ## Migrations
 
 - `V14__tool_registry.sql`

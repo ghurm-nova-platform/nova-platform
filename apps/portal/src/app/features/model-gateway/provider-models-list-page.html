@@ -1,0 +1,125 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <h1>Provider models</h1>
+      <p>Model catalog for provider <code>{{ providerId() }}</code>.</p>
+    </div>
+    <div class="page__actions">
+      <a mat-stroked-button [routerLink]="['/model-providers', providerId()]">Back to provider</a>
+      @if (permissions.canCreateModel()) {
+        <button mat-flat-button color="primary" type="button" (click)="create()">
+          <mat-icon>add</mat-icon>
+          Create model
+        </button>
+      }
+    </div>
+  </header>
+
+  <div class="page__filters">
+    <mat-form-field appearance="outline">
+      <mat-label>Search models</mat-label>
+      <input matInput [formControl]="searchControl" aria-label="Search models" />
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Status</mat-label>
+      <mat-select [formControl]="statusControl">
+        <mat-option value="">All</mat-option>
+        @for (status of statuses; track status) {
+          <mat-option [value]="status">{{ status }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Type</mat-label>
+      <mat-select [formControl]="typeControl">
+        <mat-option value="">All</mat-option>
+        @for (type of types; track type) {
+          <mat-option [value]="type">{{ type }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  @if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to view models.</p>
+    </div>
+  } @else if (error()) {
+    <p class="page__error" role="alert">{{ error() }}</p>
+  } @else if (loading()) {
+    <div class="page__loading" role="status">
+      <mat-spinner diameter="36" />
+      <span>Loading models…</span>
+    </div>
+  } @else if (rows().length === 0) {
+    <div class="page__empty">
+      <mat-icon>model_training</mat-icon>
+      <h2>No models found</h2>
+      <p>Create a model in this provider catalog.</p>
+    </div>
+  } @else {
+    <div class="page__table-wrap">
+      <table mat-table [dataSource]="rows()" matSort (matSortChange)="onSort($event)" class="page__table">
+        <ng-container matColumnDef="displayName">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
+          <td mat-cell *matCellDef="let row">
+            <button class="linkish" type="button" (click)="open(row)">{{ row.displayName }}</button>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="modelKey">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Key</th>
+          <td mat-cell *matCellDef="let row"><code>{{ row.modelKey }}</code></td>
+        </ng-container>
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+          <td mat-cell *matCellDef="let row">
+            <span [class]="statusClass(row.status)">{{ row.status }}</span>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="modelType">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Type</th>
+          <td mat-cell *matCellDef="let row">{{ row.modelType }}</td>
+        </ng-container>
+        <ng-container matColumnDef="updatedAt">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Updated</th>
+          <td mat-cell *matCellDef="let row">{{ row.updatedAt | date: 'medium' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Actions</th>
+          <td mat-cell *matCellDef="let row">
+            <button mat-icon-button type="button" aria-label="Open model" (click)="open(row)">
+              <mat-icon>visibility</mat-icon>
+            </button>
+            @if (permissions.canActivateModel() && row.status === 'DRAFT') {
+              <button mat-icon-button type="button" aria-label="Activate model" (click)="activate(row)">
+                <mat-icon>check_circle</mat-icon>
+              </button>
+            }
+            @if (permissions.canDisableModel() && row.status === 'ACTIVE') {
+              <button mat-icon-button type="button" aria-label="Disable model" (click)="disable(row)">
+                <mat-icon>pause_circle</mat-icon>
+              </button>
+            }
+            @if (permissions.canArchiveModel() && row.status !== 'ARCHIVED') {
+              <button mat-icon-button type="button" aria-label="Archive model" (click)="archive(row)">
+                <mat-icon>archive</mat-icon>
+              </button>
+            }
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+    </div>
+    <mat-paginator
+      [length]="total()"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="[5, 10, 25]"
+      (page)="onPage($event)"
+    />
+  }
+</section>

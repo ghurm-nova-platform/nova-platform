@@ -27,6 +27,41 @@ export const routes: Routes = [
           import('./features/organizations/organizations-page').then((m) => m.OrganizationsPage),
       },
       {
+        path: 'model-providers',
+        loadComponent: () =>
+          import('./features/model-gateway/model-providers-list-page').then((m) => m.ModelProvidersListPage),
+      },
+      {
+        path: 'model-providers/new',
+        loadComponent: () =>
+          import('./features/model-gateway/model-provider-form-page').then((m) => m.ModelProviderFormPage),
+      },
+      {
+        path: 'model-providers/:providerId/models/new',
+        loadComponent: () =>
+          import('./features/model-gateway/provider-model-form-page').then((m) => m.ProviderModelFormPage),
+      },
+      {
+        path: 'model-providers/:providerId/models/:modelId',
+        loadComponent: () =>
+          import('./features/model-gateway/provider-model-form-page').then((m) => m.ProviderModelFormPage),
+      },
+      {
+        path: 'model-providers/:providerId/models',
+        loadComponent: () =>
+          import('./features/model-gateway/provider-models-list-page').then((m) => m.ProviderModelsListPage),
+      },
+      {
+        path: 'model-providers/:providerId/edit',
+        loadComponent: () =>
+          import('./features/model-gateway/model-provider-form-page').then((m) => m.ModelProviderFormPage),
+      },
+      {
+        path: 'model-providers/:providerId',
+        loadComponent: () =>
+          import('./features/model-gateway/model-provider-detail-page').then((m) => m.ModelProviderDetailPage),
+      },
+      {
         path: 'projects',
         loadComponent: () =>
           import('./features/projects/projects-page').then((m) => m.ProjectsPage),
@@ -87,6 +122,42 @@ export const routes: Routes = [
         path: 'projects/:projectId/agents/:agentId/knowledge-bases',
         loadComponent: () =>
           import('./features/knowledge/agent-knowledge-page').then((m) => m.AgentKnowledgePage),
+      },
+      {
+        path: 'projects/:projectId/models',
+        loadComponent: () =>
+          import('./features/model-gateway/project-models-page').then((m) => m.ProjectModelsPage),
+      },
+      {
+        path: 'projects/:projectId/agents/:agentId/models',
+        loadComponent: () =>
+          import('./features/model-gateway/agent-models-page').then((m) => m.AgentModelsPage),
+      },
+      {
+        path: 'projects/:projectId/model-routing-policies/new',
+        loadComponent: () =>
+          import('./features/model-gateway/model-routing-policy-form-page').then(
+            (m) => m.ModelRoutingPolicyFormPage,
+          ),
+      },
+      {
+        path: 'projects/:projectId/model-routing-policies/:policyId',
+        loadComponent: () =>
+          import('./features/model-gateway/model-routing-policy-form-page').then(
+            (m) => m.ModelRoutingPolicyFormPage,
+          ),
+      },
+      {
+        path: 'projects/:projectId/model-routing-policies',
+        loadComponent: () =>
+          import('./features/model-gateway/model-routing-policies-list-page').then(
+            (m) => m.ModelRoutingPoliciesListPage,
+          ),
+      },
+      {
+        path: 'projects/:projectId/model-usage',
+        loadComponent: () =>
+          import('./features/model-gateway/model-usage-dashboard-page').then((m) => m.ModelUsageDashboardPage),
       },
       {
         path: 'projects/:projectId/tools',

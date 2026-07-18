@@ -1,0 +1,120 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <h1>Agent models</h1>
+      <p>Primary and fallback model assignments for agent <code>{{ agentId() }}</code>.</p>
+    </div>
+    <div class="page__actions">
+      <a mat-stroked-button [routerLink]="['/projects', projectId(), 'agents', agentId()]">Back to agent</a>
+      <a mat-stroked-button [routerLink]="['/projects', projectId(), 'models']">Project models</a>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to view agent model assignments.</p>
+    </div>
+  } @else if (error()) {
+    <p class="page__error" role="alert">{{ error() }}</p>
+  } @else if (loading()) {
+    <div class="page__loading" role="status">
+      <mat-spinner diameter="36" />
+      <span>Loading assignments…</span>
+    </div>
+  } @else {
+    @if (permissions.canAssignAgentModels()) {
+      <form class="page__assign" [formGroup]="assignForm" (ngSubmit)="assign()">
+        <mat-form-field appearance="outline">
+          <mat-label>Model</mat-label>
+          <mat-select formControlName="modelId" aria-label="Model to assign">
+            @for (model of availableModels(); track model.modelId) {
+              <mat-option [value]="model.modelId">
+                {{ model.displayName }} ({{ model.providerName }})
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Role</mat-label>
+          <mat-select formControlName="assignmentRole" aria-label="Assignment role">
+            @for (role of roles; track role) {
+              <mat-option [value]="role">{{ role }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Priority</mat-label>
+          <input matInput type="number" formControlName="priority" aria-label="Priority" />
+        </mat-form-field>
+        <mat-checkbox formControlName="enabled">Enabled</mat-checkbox>
+        <button mat-flat-button color="primary" type="submit" [disabled]="assigning() || assignForm.invalid">
+          {{ assigning() ? 'Assigning…' : 'Assign' }}
+        </button>
+      </form>
+    }
+
+    @if (assignments().length === 0) {
+      <div class="page__empty">
+        <mat-icon>model_training</mat-icon>
+        <h2>No models assigned</h2>
+        <p>Assign PRIMARY and optional FALLBACK models from project-enabled catalog.</p>
+      </div>
+    } @else {
+      <div class="page__table-wrap">
+        <table mat-table [dataSource]="assignments()" class="page__table">
+          <ng-container matColumnDef="assignmentRole">
+            <th mat-header-cell *matHeaderCellDef>Role</th>
+            <td mat-cell *matCellDef="let row">
+              <span [class]="roleClass(row.assignmentRole)">{{ row.assignmentRole }}</span>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="priority">
+            <th mat-header-cell *matHeaderCellDef>Priority</th>
+            <td mat-cell *matCellDef="let row">{{ row.priority }}</td>
+          </ng-container>
+          <ng-container matColumnDef="displayName">
+            <th mat-header-cell *matHeaderCellDef>Name</th>
+            <td mat-cell *matCellDef="let row">{{ row.displayName }}</td>
+          </ng-container>
+          <ng-container matColumnDef="modelKey">
+            <th mat-header-cell *matHeaderCellDef>Key</th>
+            <td mat-cell *matCellDef="let row"><code>{{ row.modelKey }}</code></td>
+          </ng-container>
+          <ng-container matColumnDef="providerName">
+            <th mat-header-cell *matHeaderCellDef>Provider</th>
+            <td mat-cell *matCellDef="let row">{{ row.providerName }}</td>
+          </ng-container>
+          <ng-container matColumnDef="modelStatus">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let row">
+              <span [class]="statusClass(row.modelStatus)">{{ row.modelStatus }}</span>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="enabled">
+            <th mat-header-cell *matHeaderCellDef>Enabled</th>
+            <td mat-cell *matCellDef="let row">{{ row.enabled ? 'Yes' : 'No' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="updatedAt">
+            <th mat-header-cell *matHeaderCellDef>Updated</th>
+            <td mat-cell *matCellDef="let row">{{ row.updatedAt | date: 'medium' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let row">
+              @if (permissions.canAssignAgentModels()) {
+                <button mat-button type="button" (click)="updatePriority(row)">Edit priority</button>
+                <button mat-icon-button type="button" aria-label="Unassign model" (click)="unassign(row)">
+                  <mat-icon>link_off</mat-icon>
+                </button>
+              }
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+      </div>
+    }
+  }
+</section>

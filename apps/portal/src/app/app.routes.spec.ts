@@ -58,6 +58,23 @@ describe('App routing', () => {
       'KNOWLEDGE_ASSIGN',
       'KNOWLEDGE_RETRIEVE',
       'KNOWLEDGE_AUDIT_READ',
+      'MODEL_PROVIDER_READ',
+      'MODEL_PROVIDER_CREATE',
+      'MODEL_PROVIDER_UPDATE',
+      'MODEL_PROVIDER_ACTIVATE',
+      'MODEL_PROVIDER_DISABLE',
+      'MODEL_PROVIDER_ARCHIVE',
+      'MODEL_READ',
+      'MODEL_CREATE',
+      'MODEL_UPDATE',
+      'MODEL_ACTIVATE',
+      'MODEL_DISABLE',
+      'MODEL_ARCHIVE',
+      'MODEL_PROJECT_ASSIGN',
+      'MODEL_AGENT_ASSIGN',
+      'MODEL_ROUTE_READ',
+      'MODEL_ROUTE_MANAGE',
+      'MODEL_USAGE_READ',
     ],
   };
 
@@ -97,6 +114,7 @@ describe('App routing', () => {
       '/dashboard',
       '/organizations',
       '/projects',
+      '/model-providers',
       '/feedback',
       '/settings',
     ]) {
@@ -120,7 +138,32 @@ describe('App routing', () => {
     const documentId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01';
     const executionId = '99999999-9999-9999-9999-999999999901';
 
+    const providerId = '99999999-9999-9999-9999-999999999901';
+    const modelId = '99999999-9999-9999-9999-999999999911';
+    const policyId = '99999999-9999-9999-9999-999999999941';
+
     for (const [path, expected] of [
+      ['/model-providers/new', '/model-providers/new'],
+      [`/model-providers/${providerId}`, `/model-providers/${providerId}`],
+      [`/model-providers/${providerId}/edit`, `/model-providers/${providerId}/edit`],
+      [`/model-providers/${providerId}/models`, `/model-providers/${providerId}/models`],
+      [`/model-providers/${providerId}/models/new`, `/model-providers/${providerId}/models/new`],
+      [`/model-providers/${providerId}/models/${modelId}`, `/model-providers/${providerId}/models/${modelId}`],
+      [`/projects/${projectId}/models`, `/projects/${projectId}/models`],
+      [`/projects/${projectId}/agents/${agentId}/models`, `/projects/${projectId}/agents/${agentId}/models`],
+      [
+        `/projects/${projectId}/model-routing-policies`,
+        `/projects/${projectId}/model-routing-policies`,
+      ],
+      [
+        `/projects/${projectId}/model-routing-policies/new`,
+        `/projects/${projectId}/model-routing-policies/new`,
+      ],
+      [
+        `/projects/${projectId}/model-routing-policies/${policyId}`,
+        `/projects/${projectId}/model-routing-policies/${policyId}`,
+      ],
+      [`/projects/${projectId}/model-usage`, `/projects/${projectId}/model-usage`],
       [`/projects/${projectId}/knowledge-bases`, `/projects/${projectId}/knowledge-bases`],
       [`/projects/${projectId}/knowledge-bases/new`, `/projects/${projectId}/knowledge-bases/new`],
       [
@@ -152,5 +195,5 @@ describe('App routing', () => {
       fixture.detectChanges();
       expect(router.url).toBe(expected);
     }
-  });
+  }, 60000);
 });

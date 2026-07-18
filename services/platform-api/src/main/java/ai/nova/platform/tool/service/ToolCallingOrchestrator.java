@@ -355,7 +355,10 @@ public class ToolCallingOrchestrator {
                         completed,
                         responseText,
                         request.renderedPrompt(),
-                        toCitationDtos(request.knowledgeContext()));
+                        false,
+                        null,
+                        toCitationDtos(request.knowledgeContext()),
+                        turn.modelMetadata());
             }
 
             if (!turn.isToolCalls()) {
@@ -684,7 +687,8 @@ public class ToolCallingOrchestrator {
                 response.errorMessage(),
                 response.awaitingApproval(),
                 response.pendingToolCallId(),
-                citations);
+                citations,
+                response.model());
     }
 
     private ToolProcessOutcome failToolExecution(

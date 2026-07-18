@@ -29,6 +29,7 @@ import { ExecutionPermissionHelper } from './execution-permission.helper';
 import {
   AgentExecuteResponse,
   Execution,
+  ExecutionModelMetadata,
   ExecutionStatus,
   ExecutionTokenUsage,
 } from './execution.models';
@@ -611,6 +612,10 @@ export class AgentPlaygroundPage implements OnInit, OnDestroy {
 
   retrievalUsed(): boolean {
     return this.activeCitations().length > 0;
+  }
+
+  activeModelMetadata(): ExecutionModelMetadata | null {
+    return this.lastResult()?.model ?? null;
   }
 
   private loadAssignedKnowledgeBases(): void {
