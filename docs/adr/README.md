@@ -29,3 +29,4 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0013](ADR-0013-planner-agent.md) | Planner Agent and dynamic workflow generation | Accepted |
 | [ADR-0014](ADR-0014-coding-agent.md) | Coding Agent generates artifacts only | Accepted |
 | [ADR-0015](ADR-0015-review-agent.md) | Review Agent evaluates artifacts only | Accepted |
+| [ADR-0016](ADR-0016-testing-agent.md) | Testing Agent generates plans only | Accepted |

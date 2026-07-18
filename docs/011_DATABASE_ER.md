@@ -471,6 +471,40 @@ erDiagram
     string sha256
   }
 
+  TESTING_RESULTS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    uuid run_id FK
+    uuid task_id FK
+    string summary
+    int coverage_estimate
+  }
+
+  GENERATED_TESTS {
+    uuid id PK
+    uuid testing_result_id FK
+    string test_type
+    string priority
+    string title
+  }
+
+  GENERATED_TEST_CASES {
+    uuid id PK
+    uuid testing_result_id FK
+    uuid generated_test_id FK
+    string name
+    string priority
+  }
+
+  TESTING_REVIEWED_ARTIFACTS {
+    uuid id PK
+    uuid testing_result_id FK
+    uuid artifact_id FK
+    string path
+    string sha256
+  }
+
   PLANNER_TEMPLATES {
     uuid id PK
     uuid organization_id FK
@@ -558,10 +592,12 @@ Migrations: `V16__knowledge_base.sql`, `V17__knowledge_embeddings.sql`, `V18__kn
 `V19__execution_knowledge_snapshot.sql`, `V20__ai_model_gateway.sql`, `V21__model_routing_and_usage.sql`,
 `V22__model_gateway_permissions.sql`, `V23__provider_secret_vault.sql`,
 `V24__provider_connection_metadata.sql`, `V25__provider_secret_permissions.sql`,
-`V34__planner_templates.sql`, `V35__generated_artifacts.sql`, `V36__review_findings.sql`.
+`V34__planner_templates.sql`, `V35__generated_artifacts.sql`, `V36__review_findings.sql`,
+`V37__testing_results.sql`.
 See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md),
 [`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md),
 [`023_PLANNER_AGENT.md`](023_PLANNER_AGENT.md),
-[`024_CODING_AGENT.md`](024_CODING_AGENT.md), and
-[`026_REVIEW_AGENT.md`](026_REVIEW_AGENT.md).
+[`024_CODING_AGENT.md`](024_CODING_AGENT.md),
+[`026_REVIEW_AGENT.md`](026_REVIEW_AGENT.md), and
+[`027_TESTING_AGENT.md`](027_TESTING_AGENT.md).

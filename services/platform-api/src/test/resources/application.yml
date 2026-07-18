@@ -132,6 +132,13 @@ nova:
     max-artifact-chars-in-prompt: 120000
     default-provider: LOCAL
     default-model: review-local
+  testing:
+    enabled: true
+    max-tests: 80
+    max-cases-per-test: 20
+    max-artifact-chars-in-prompt: 100000
+    default-provider: LOCAL
+    default-model: testing-local
   secrets:
     # Test-only 32-byte AES key (all zeros). Never use in production.
     master-key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
