@@ -82,6 +82,9 @@ nova:
     max-provider-attempts: 5
     max-total-duration-ms: 300000
     max-concurrent-requests-per-provider: 100
+    invoke-executor-pool-size: 32
+    invoke-executor-queue-capacity: 32
+    invoke-cancel-grace-ms: 5000
     retry-backoff-maximum-ms: 10000
     usage-enabled: true
     cost-estimation-enabled: true

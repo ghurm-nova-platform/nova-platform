@@ -75,17 +75,17 @@ Retry only transient codes: timeout, unavailable, rate limited, temporary error.
 
 ## Concurrency
 
-`ProviderConcurrencyManager` enforces per-provider process-local capacity (semaphores). Not distributed across instances. Permits released on success, failure, timeout, and cancellation.
+`ProviderConcurrencyManager` enforces per-provider process-local capacity (semaphores). Invocations run on the Spring-managed bounded `modelGatewayInvokeExecutor` (fixed pool + bounded queue). Not distributed across instances. On timeout the gateway calls `Future.cancel(true)` and waits for the worker to finish so the semaphore permit is released only after the real provider call ends (or is interrupted)—never while work is still running.
 
 ## Transaction boundaries
 
 1. Short TX: validate, create invocation RUNNING, commit.
 2. Provider call **outside** any DB transaction.
-3. Short TX: re-lock, recheck cancel, persist result, update usage, commit.
+3. Short TX: lock invocation + execution together, decide COMPLETED vs CANCELLED (or failure vs CANCELLED) atomically, persist, commit. Usage recording and retry/fallback follow that TX2 status only—never a later non-atomic cancel check.
 
 ## Cancellation
 
-Cancel before/during invocation prevents final assistant append and keeps execution `CANCELLED`. Provider completion after cancel does not overwrite status. Conversation archive during invocation skips assistant append.
+Cancel before/during invocation prevents final assistant append and keeps execution `CANCELLED`. Transaction 2 locks execution with the invocation and stores either `COMPLETED` or `CANCELLED` in one decision; usage and fallback use that result only. Conversation archive during invocation skips assistant append.
 
 ## RAG and tools
 

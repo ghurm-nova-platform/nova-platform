@@ -30,10 +30,14 @@ public class ProviderConcurrencyManager {
     public boolean tryAcquire(UUID providerId, int providerLimit, long timeoutMs) throws InterruptedException {
         int limit = Math.min(providerLimit, properties.getMaxConcurrentRequestsPerProvider());
         Semaphore semaphore = semaphores.computeIfAbsent(providerId, ignored -> new Semaphore(limit, true));
-        if (semaphore.tryAcquire(timeoutMs, TimeUnit.MILLISECONDS)) {
-            return true;
-        }
-        return false;
+        return semaphore.tryAcquire(timeoutMs, TimeUnit.MILLISECONDS);
+    }
+
+    /** Visible for tests asserting permit release after timeout/cancel. */
+    public int availablePermits(UUID providerId, int providerLimit) {
+        int limit = Math.min(providerLimit, properties.getMaxConcurrentRequestsPerProvider());
+        Semaphore semaphore = semaphores.computeIfAbsent(providerId, ignored -> new Semaphore(limit, true));
+        return semaphore.availablePermits();
     }
 
     public static final class Permit implements AutoCloseable {

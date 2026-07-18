@@ -69,38 +69,48 @@ public class ModelInvocationPersistenceService {
                 .orElse(false);
     }
 
+    /**
+     * Transaction 2 success path: lock invocation + execution and decide COMPLETED vs CANCELLED atomically.
+     */
     @Transactional
-    public ModelInvocation completeSuccess(UUID invocationId, ProviderInvokeResult result) {
+    public CompletionOutcome completeSuccess(UUID invocationId, ProviderInvokeResult result) {
         ModelInvocation invocation = requireForUpdate(invocationId);
         if (invocation.getStatus() != InvocationStatus.RUNNING) {
-            return invocation;
+            return CompletionOutcome.from(invocation);
         }
-        if (isExecutionCancelled(invocation.getExecutionId())) {
+        AgentExecution execution = requireExecutionForUpdate(invocation.getExecutionId());
+        if (execution.getStatus() == ExecutionStatus.CANCELLED) {
             invocation.setStatus(InvocationStatus.CANCELLED);
-        } else {
-            invocation.setStatus(InvocationStatus.COMPLETED);
-            invocation.setOutputCharacterCount(
-                    result.responseText() != null ? result.responseText().length() : 0);
-            invocation.setEstimatedInputTokens(result.inputTokens());
-            invocation.setEstimatedOutputTokens(result.outputTokens());
-            invocation.setProviderInputTokens(result.inputTokens());
-            invocation.setProviderOutputTokens(result.outputTokens());
-            invocation.setFinishReason(result.finishReason());
-            invocation.setProviderRequestId(result.providerRequestId());
+            invocation.setDurationMs(result.latencyMs());
+            invocation.setCompletedAt(Instant.now());
+            return CompletionOutcome.from(invocationRepository.save(invocation));
         }
+        invocation.setStatus(InvocationStatus.COMPLETED);
+        invocation.setOutputCharacterCount(
+                result.responseText() != null ? result.responseText().length() : 0);
+        invocation.setEstimatedInputTokens(result.inputTokens());
+        invocation.setEstimatedOutputTokens(result.outputTokens());
+        invocation.setProviderInputTokens(result.inputTokens());
+        invocation.setProviderOutputTokens(result.outputTokens());
+        invocation.setFinishReason(result.finishReason());
+        invocation.setProviderRequestId(result.providerRequestId());
         invocation.setDurationMs(result.latencyMs());
         invocation.setCompletedAt(Instant.now());
-        return invocationRepository.save(invocation);
+        return CompletionOutcome.from(invocationRepository.save(invocation));
     }
 
+    /**
+     * Transaction 2 failure path: lock invocation + execution and decide failure vs CANCELLED atomically.
+     */
     @Transactional
-    public ModelInvocation completeFailure(
+    public CompletionOutcome completeFailure(
             UUID invocationId, InvocationStatus status, String errorCode, long durationMs) {
         ModelInvocation invocation = requireForUpdate(invocationId);
         if (invocation.getStatus() != InvocationStatus.RUNNING) {
-            return invocation;
+            return CompletionOutcome.from(invocation);
         }
-        if (isExecutionCancelled(invocation.getExecutionId())) {
+        AgentExecution execution = requireExecutionForUpdate(invocation.getExecutionId());
+        if (execution.getStatus() == ExecutionStatus.CANCELLED) {
             invocation.setStatus(InvocationStatus.CANCELLED);
         } else {
             invocation.setStatus(status);
@@ -108,7 +118,7 @@ public class ModelInvocationPersistenceService {
         }
         invocation.setDurationMs(durationMs);
         invocation.setCompletedAt(Instant.now());
-        return invocationRepository.save(invocation);
+        return CompletionOutcome.from(invocationRepository.save(invocation));
     }
 
     @Transactional(readOnly = true)
@@ -120,5 +130,26 @@ public class ModelInvocationPersistenceService {
         return invocationRepository
                 .findByIdForUpdate(invocationId)
                 .orElseThrow(() -> new IllegalStateException("Invocation not found: " + invocationId));
+    }
+
+    private AgentExecution requireExecutionForUpdate(UUID executionId) {
+        return executionRepository
+                .findByIdForUpdate(executionId)
+                .orElseThrow(() -> new IllegalStateException("Execution not found: " + executionId));
+    }
+
+    public record CompletionOutcome(ModelInvocation invocation, InvocationStatus status) {
+
+        static CompletionOutcome from(ModelInvocation invocation) {
+            return new CompletionOutcome(invocation, invocation.getStatus());
+        }
+
+        public boolean completed() {
+            return status == InvocationStatus.COMPLETED;
+        }
+
+        public boolean cancelled() {
+            return status == InvocationStatus.CANCELLED;
+        }
     }
 }

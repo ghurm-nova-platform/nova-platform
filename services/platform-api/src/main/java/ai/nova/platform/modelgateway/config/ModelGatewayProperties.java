@@ -19,7 +19,10 @@ public class ModelGatewayProperties {
     private int maxProviderAttempts = 5;
     private long maxTotalDurationMs = 300000L;
     private int maxConcurrentRequestsPerProvider = 100;
+    private int invokeExecutorPoolSize = 32;
+    private int invokeExecutorQueueCapacity = 32;
     private int retryBackoffMaximumMs = 10000;
+    private long invokeCancelGraceMs = 5000L;
     private boolean usageEnabled = true;
     private boolean costEstimationEnabled = true;
 
@@ -117,6 +120,30 @@ public class ModelGatewayProperties {
 
     public void setMaxConcurrentRequestsPerProvider(int maxConcurrentRequestsPerProvider) {
         this.maxConcurrentRequestsPerProvider = maxConcurrentRequestsPerProvider;
+    }
+
+    public int getInvokeExecutorPoolSize() {
+        return invokeExecutorPoolSize;
+    }
+
+    public void setInvokeExecutorPoolSize(int invokeExecutorPoolSize) {
+        this.invokeExecutorPoolSize = invokeExecutorPoolSize;
+    }
+
+    public int getInvokeExecutorQueueCapacity() {
+        return invokeExecutorQueueCapacity;
+    }
+
+    public void setInvokeExecutorQueueCapacity(int invokeExecutorQueueCapacity) {
+        this.invokeExecutorQueueCapacity = invokeExecutorQueueCapacity;
+    }
+
+    public long getInvokeCancelGraceMs() {
+        return invokeCancelGraceMs;
+    }
+
+    public void setInvokeCancelGraceMs(long invokeCancelGraceMs) {
+        this.invokeCancelGraceMs = invokeCancelGraceMs;
     }
 
     public int getRetryBackoffMaximumMs() {

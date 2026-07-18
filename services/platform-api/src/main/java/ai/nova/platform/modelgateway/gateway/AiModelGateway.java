@@ -1,18 +1,18 @@
 package ai.nova.platform.modelgateway.gateway;
 
-import java.time.Duration;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -55,7 +55,7 @@ public class AiModelGateway {
     private final ProviderConcurrencyManager concurrencyManager;
     private final ModelGatewayRuntimeMapper runtimeMapper;
     private final ModelGatewayInputValidator inputValidator;
-    private final ExecutorService invokeExecutor = Executors.newCachedThreadPool();
+    private final ExecutorService invokeExecutor;
 
     public AiModelGateway(
             ModelGatewayProperties properties,
@@ -66,7 +66,8 @@ public class AiModelGateway {
             ProviderCredentialResolver credentialResolver,
             ProviderConcurrencyManager concurrencyManager,
             ModelGatewayRuntimeMapper runtimeMapper,
-            ModelGatewayInputValidator inputValidator) {
+            ModelGatewayInputValidator inputValidator,
+            @Qualifier("modelGatewayInvokeExecutor") ExecutorService invokeExecutor) {
         this.properties = properties;
         this.routingService = routingService;
         this.persistenceService = persistenceService;
@@ -76,6 +77,7 @@ public class AiModelGateway {
         this.concurrencyManager = concurrencyManager;
         this.runtimeMapper = runtimeMapper;
         this.inputValidator = inputValidator;
+        this.invokeExecutor = invokeExecutor;
     }
 
     public ModelGatewayResponse invoke(ModelGatewayRequest request) {
@@ -133,6 +135,7 @@ public class AiModelGateway {
                 AttemptOutcome outcome = invokeProvider(request, candidate, adapter, invocationId);
                 fallbackFrom = invocationId;
 
+                // Usage + success/fallback decisions follow the atomic TX2 status only.
                 if (outcome.success()) {
                     RuntimeTurnResult turnResult = runtimeMapper.toTurnResult(
                             outcome.result(), toMetadata(candidate, fallbackUsed, attemptCount));
@@ -168,70 +171,120 @@ public class AiModelGateway {
                 candidate.provider().getRequestTimeoutSeconds(),
                 properties.getMaximumTimeoutSeconds());
 
-        try (ProviderConcurrencyManager.Permit permit =
-                concurrencyManager.acquire(candidate.provider().getId(), candidate.provider().getMaxConcurrentRequests())) {
-            String credential = credentialResolver
-                    .resolve(candidate.provider().getCredentialReference())
-                    .orElse(null);
+        String credential = credentialResolver
+                .resolve(candidate.provider().getCredentialReference())
+                .orElse(null);
 
-            int maxOutput = candidate.model().getMaxOutputTokens();
-            if (candidate.assignment().getMaximumOutputTokensOverride() != null) {
-                maxOutput = candidate.assignment().getMaximumOutputTokensOverride();
+        int maxOutput = candidate.model().getMaxOutputTokens();
+        if (candidate.assignment().getMaximumOutputTokensOverride() != null) {
+            maxOutput = candidate.assignment().getMaximumOutputTokensOverride();
+        }
+        if (candidate.projectModel().getMaximumOutputTokensOverride() != null) {
+            maxOutput = candidate.projectModel().getMaximumOutputTokensOverride();
+        }
+        maxOutput = Math.min(maxOutput, properties.getMaximumOutputTokens());
+
+        ProviderInvokeRequest providerRequest = new ProviderInvokeRequest(
+                candidate.model().getProviderModelId(),
+                request.systemPrompt(),
+                request.messages(),
+                request.availableTools(),
+                request.toolResults(),
+                request.knowledgeContext(),
+                maxOutput,
+                timeoutSeconds,
+                credential);
+
+        UUID providerId = candidate.provider().getId();
+        int providerLimit = candidate.provider().getMaxConcurrentRequests();
+
+        // Permit is acquired and released only inside the worker so timeout cannot free capacity
+        // while the provider call is still running.
+        Callable<ProviderInvokeResult> task = () -> {
+            try (ProviderConcurrencyManager.Permit ignored =
+                    concurrencyManager.acquire(providerId, providerLimit)) {
+                return adapter.invoke(providerRequest);
             }
-            if (candidate.projectModel().getMaximumOutputTokensOverride() != null) {
-                maxOutput = candidate.projectModel().getMaximumOutputTokensOverride();
-            }
-            maxOutput = Math.min(maxOutput, properties.getMaximumOutputTokens());
+        };
 
-            ProviderInvokeRequest providerRequest = new ProviderInvokeRequest(
-                    candidate.model().getProviderModelId(),
-                    request.systemPrompt(),
-                    request.messages(),
-                    request.availableTools(),
-                    request.toolResults(),
-                    request.knowledgeContext(),
-                    maxOutput,
-                    timeoutSeconds,
-                    credential);
+        Future<ProviderInvokeResult> future;
+        try {
+            future = invokeExecutor.submit(task);
+        } catch (RejectedExecutionException ex) {
+            ModelInvocationPersistenceService.CompletionOutcome completion =
+                    persistenceService.completeFailure(
+                            invocationId,
+                            InvocationStatus.RATE_LIMITED,
+                            "PROVIDER_UNAVAILABLE",
+                            elapsedMs(start));
+            return AttemptOutcome.fromCompletion(completion, null, true);
+        }
 
-            Callable<ProviderInvokeResult> task = () -> adapter.invoke(providerRequest);
-            Future<ProviderInvokeResult> future = invokeExecutor.submit(task);
+        try {
             ProviderInvokeResult result = future.get(timeoutSeconds, TimeUnit.SECONDS);
-
             if (result.outcome() == ProviderInvokeOutcome.FAILURE) {
                 InvocationStatus status = mapFailureStatus(result.errorCode());
-                ModelInvocation invocation = persistenceService.completeFailure(
-                        invocationId, status, result.errorCode(), elapsedMs(start));
-                return AttemptOutcome.failure(invocation, isRetryable(result.failureKind()));
+                ModelInvocationPersistenceService.CompletionOutcome completion =
+                        persistenceService.completeFailure(
+                                invocationId, status, result.errorCode(), elapsedMs(start));
+                return AttemptOutcome.fromCompletion(completion, null, isRetryable(result.failureKind()));
             }
 
-            ModelInvocation invocation = persistenceService.completeSuccess(invocationId, result);
-            if (persistenceService.isExecutionCancelled(request.executionId())) {
-                return AttemptOutcome.failure(invocation, false);
-            }
-            return AttemptOutcome.success(invocation, result);
+            ModelInvocationPersistenceService.CompletionOutcome completion =
+                    persistenceService.completeSuccess(invocationId, result);
+            return AttemptOutcome.fromCompletion(completion, result, false);
         } catch (TimeoutException ex) {
-            ModelInvocation invocation = persistenceService.completeFailure(
-                    invocationId, InvocationStatus.TIMED_OUT, "PROVIDER_TIMEOUT", elapsedMs(start));
-            return AttemptOutcome.failure(invocation, true);
+            future.cancel(true);
+            awaitWorkerRelease(future);
+            ModelInvocationPersistenceService.CompletionOutcome completion =
+                    persistenceService.completeFailure(
+                            invocationId, InvocationStatus.TIMED_OUT, "PROVIDER_TIMEOUT", elapsedMs(start));
+            return AttemptOutcome.fromCompletion(completion, null, true);
+        } catch (CancellationException ex) {
+            awaitWorkerRelease(future);
+            ModelInvocationPersistenceService.CompletionOutcome completion =
+                    persistenceService.completeFailure(
+                            invocationId, InvocationStatus.CANCELLED, "PROVIDER_CANCELLED", elapsedMs(start));
+            return AttemptOutcome.fromCompletion(completion, null, false);
         } catch (ExecutionException ex) {
             Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
             if (cause instanceof ProviderException providerEx) {
                 InvocationStatus status = mapFailureStatus(providerEx.errorCode());
-                ModelInvocation invocation = persistenceService.completeFailure(
-                        invocationId, status, providerEx.errorCode(), elapsedMs(start));
-                return AttemptOutcome.failure(
-                        invocation, providerEx.failureKind() == ProviderFailureKind.TRANSIENT);
+                ModelInvocationPersistenceService.CompletionOutcome completion =
+                        persistenceService.completeFailure(
+                                invocationId, status, providerEx.errorCode(), elapsedMs(start));
+                return AttemptOutcome.fromCompletion(
+                        completion, null, providerEx.failureKind() == ProviderFailureKind.TRANSIENT);
             }
             log.warn("Model provider invocation failed (details omitted)");
-            ModelInvocation invocation = persistenceService.completeFailure(
-                    invocationId, InvocationStatus.FAILED, "PROVIDER_ERROR", elapsedMs(start));
-            return AttemptOutcome.failure(invocation, false);
+            ModelInvocationPersistenceService.CompletionOutcome completion =
+                    persistenceService.completeFailure(
+                            invocationId, InvocationStatus.FAILED, "PROVIDER_ERROR", elapsedMs(start));
+            return AttemptOutcome.fromCompletion(completion, null, false);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
-            ModelInvocation invocation = persistenceService.completeFailure(
-                    invocationId, InvocationStatus.CANCELLED, "PROVIDER_CANCELLED", elapsedMs(start));
-            return AttemptOutcome.failure(invocation, false);
+            future.cancel(true);
+            awaitWorkerRelease(future);
+            ModelInvocationPersistenceService.CompletionOutcome completion =
+                    persistenceService.completeFailure(
+                            invocationId, InvocationStatus.CANCELLED, "PROVIDER_CANCELLED", elapsedMs(start));
+            return AttemptOutcome.fromCompletion(completion, null, false);
+        }
+    }
+
+    /**
+     * After cancel(true), wait until the worker finishes so the semaphore permit is released before retry.
+     */
+    private void awaitWorkerRelease(Future<?> future) {
+        long graceMs = Math.max(0L, properties.getInvokeCancelGraceMs());
+        try {
+            future.get(graceMs, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException ex) {
+            log.warn("Provider worker still running after cancel grace; permit remains held until it finishes");
+        } catch (CancellationException | ExecutionException ignored) {
+            // Worker finished (cancelled or failed) — permit released in worker finally.
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -292,12 +345,16 @@ public class AiModelGateway {
     private record AttemptOutcome(
             boolean success, boolean retryable, ModelInvocation invocation, ProviderInvokeResult result) {
 
-        static AttemptOutcome success(ModelInvocation invocation, ProviderInvokeResult result) {
-            return new AttemptOutcome(true, false, invocation, result);
-        }
-
-        static AttemptOutcome failure(ModelInvocation invocation, boolean retryable) {
-            return new AttemptOutcome(false, retryable, invocation, null);
+        static AttemptOutcome fromCompletion(
+                ModelInvocationPersistenceService.CompletionOutcome completion,
+                ProviderInvokeResult result,
+                boolean retryableIfFailed) {
+            if (completion.completed()) {
+                return new AttemptOutcome(true, false, completion.invocation(), result);
+            }
+            // CANCELLED and permanent failures must not retry/fallback based on a stale outer check.
+            boolean retryable = retryableIfFailed && !completion.cancelled();
+            return new AttemptOutcome(false, retryable, completion.invocation(), null);
         }
     }
 }
