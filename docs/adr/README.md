@@ -23,3 +23,4 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0007](ADR-0007-secure-tool-calling.md) | Secure allowlisted tool calling on Platform API | Accepted |
 | [ADR-0008](ADR-0008-provider-neutral-rag.md) | Provider-neutral knowledge bases and RAG on Platform API | Accepted |
 | [ADR-0009](ADR-0009-provider-neutral-model-gateway.md) | Provider-neutral AI model gateway and routing on Platform API | Accepted |
+| [ADR-0010](ADR-0010-provider-secret-vault.md) | Provider secret vault and production OpenAI / Azure adapters | Accepted |

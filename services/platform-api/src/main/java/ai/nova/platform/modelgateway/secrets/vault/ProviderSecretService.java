@@ -1,0 +1,211 @@
+package ai.nova.platform.modelgateway.secrets.vault;
+
+import java.time.Instant;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.regex.Pattern;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import ai.nova.platform.modelgateway.entity.AiProviderType;
+import ai.nova.platform.modelgateway.secrets.vault.ProviderSecretDtos.CreateProviderSecretRequest;
+import ai.nova.platform.modelgateway.secrets.vault.ProviderSecretDtos.ProviderSecretResponse;
+import ai.nova.platform.modelgateway.secrets.vault.ProviderSecretDtos.RotateProviderSecretRequest;
+import ai.nova.platform.modelgateway.security.ModelGatewayAuthorizationService;
+import ai.nova.platform.security.AuthenticatedUser;
+import ai.nova.platform.web.error.ApiException;
+
+@Service
+public class ProviderSecretService {
+
+    public static final String CREDENTIAL_REFERENCE_PREFIX = "vault:provider-secret:";
+    private static final Pattern SECRET_KEY_PATTERN = Pattern.compile("^[A-Z][A-Z0-9_]*$");
+
+    private final ProviderSecretRepository secretRepository;
+    private final SecretEncryptionService encryptionService;
+    private final ModelGatewayAuthorizationService authorizationService;
+    private final ProviderSecretAuditService auditService;
+
+    public ProviderSecretService(
+            ProviderSecretRepository secretRepository,
+            SecretEncryptionService encryptionService,
+            ModelGatewayAuthorizationService authorizationService,
+            ProviderSecretAuditService auditService) {
+        this.secretRepository = secretRepository;
+        this.encryptionService = encryptionService;
+        this.authorizationService = authorizationService;
+        this.auditService = auditService;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProviderSecretResponse> list(
+            ProviderSecretStatus status,
+            AiProviderType providerType,
+            String search,
+            Pageable pageable,
+            AuthenticatedUser user) {
+        authorizationService.require(user, ModelGatewayAuthorizationService.PROVIDER_SECRET_READ);
+        String normalizedSearch = search == null || search.isBlank() ? null : search.trim();
+        return secretRepository
+                .search(user.getOrganizationId(), status, providerType, normalizedSearch, pageable)
+                .map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public ProviderSecretResponse get(UUID secretId, AuthenticatedUser user) {
+        authorizationService.require(user, ModelGatewayAuthorizationService.PROVIDER_SECRET_READ);
+        return toResponse(requireSecret(secretId, user.getOrganizationId()));
+    }
+
+    @Transactional
+    public ProviderSecretResponse create(CreateProviderSecretRequest request, AuthenticatedUser user) {
+        authorizationService.require(user, ModelGatewayAuthorizationService.PROVIDER_SECRET_CREATE);
+        if (request.providerType() == AiProviderType.DETERMINISTIC_LOCAL) {
+            throw new ApiException(
+                    HttpStatus.BAD_REQUEST,
+                    "PROVIDER_TYPE_INVALID",
+                    "Deterministic local providers cannot store secrets");
+        }
+        String key = request.secretKey().trim().toUpperCase();
+        if (!SECRET_KEY_PATTERN.matcher(key).matches()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "SECRET_KEY_INVALID", "Invalid secret key");
+        }
+        if (secretRepository.existsByOrganizationIdAndSecretKey(user.getOrganizationId(), key)) {
+            throw new ApiException(HttpStatus.CONFLICT, "SECRET_KEY_EXISTS", "Secret key already exists");
+        }
+
+        String plaintext = request.secret();
+        EncryptedSecretPayload encrypted = encryptionService.encrypt(plaintext);
+        Instant now = Instant.now();
+
+        ProviderSecret secret = new ProviderSecret();
+        secret.setId(UUID.randomUUID());
+        secret.setOrganizationId(user.getOrganizationId());
+        secret.setSecretKey(key);
+        secret.setName(request.name().trim());
+        secret.setDescription(trimToNull(request.description()));
+        secret.setProviderType(request.providerType());
+        secret.setStatus(ProviderSecretStatus.ACTIVE);
+        secret.setCiphertext(encrypted.ciphertext());
+        secret.setNonce(encrypted.nonce());
+        secret.setKeyVersion(encrypted.keyVersion());
+        secret.setAlgorithm(encrypted.algorithm());
+        secret.setFingerprintSha256(encryptionService.fingerprintSha256(plaintext));
+        secret.setLast4(encryptionService.last4(plaintext));
+        secret.setCreatedBy(user.getUserId());
+        secret.setUpdatedBy(user.getUserId());
+        secret.setCreatedAt(now);
+        secret.setUpdatedAt(now);
+        secretRepository.save(secret);
+        auditService.secretCreated(user.getOrganizationId(), secret.getId(), user.getUserId());
+        return toResponse(secret);
+    }
+
+    @Transactional
+    public ProviderSecretResponse rotate(
+            UUID secretId, RotateProviderSecretRequest request, AuthenticatedUser user) {
+        authorizationService.require(user, ModelGatewayAuthorizationService.PROVIDER_SECRET_ROTATE);
+        ProviderSecret secret = requireSecret(secretId, user.getOrganizationId());
+        if (secret.getStatus() != ProviderSecretStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.CONFLICT, "SECRET_NOT_ACTIVE", "Only active secrets can be rotated");
+        }
+        String plaintext = request.secret();
+        EncryptedSecretPayload encrypted = encryptionService.encrypt(plaintext);
+        Instant now = Instant.now();
+        secret.setCiphertext(encrypted.ciphertext());
+        secret.setNonce(encrypted.nonce());
+        secret.setKeyVersion(encrypted.keyVersion());
+        secret.setAlgorithm(encrypted.algorithm());
+        secret.setFingerprintSha256(encryptionService.fingerprintSha256(plaintext));
+        secret.setLast4(encryptionService.last4(plaintext));
+        secret.setRotatedAt(now);
+        secret.setUpdatedBy(user.getUserId());
+        secret.setUpdatedAt(now);
+        secretRepository.save(secret);
+        auditService.secretRotated(user.getOrganizationId(), secret.getId(), user.getUserId());
+        return toResponse(secret);
+    }
+
+    @Transactional
+    public ProviderSecretResponse revoke(UUID secretId, AuthenticatedUser user) {
+        authorizationService.require(user, ModelGatewayAuthorizationService.PROVIDER_SECRET_REVOKE);
+        ProviderSecret secret = requireSecret(secretId, user.getOrganizationId());
+        if (secret.getStatus() == ProviderSecretStatus.REVOKED) {
+            return toResponse(secret);
+        }
+        Instant now = Instant.now();
+        secret.setStatus(ProviderSecretStatus.REVOKED);
+        secret.setRevokedAt(now);
+        secret.setUpdatedBy(user.getUserId());
+        secret.setUpdatedAt(now);
+        secretRepository.save(secret);
+        auditService.secretRevoked(user.getOrganizationId(), secret.getId(), user.getUserId());
+        return toResponse(secret);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<String> resolveActiveSecret(UUID secretId, UUID organizationId) {
+        return secretRepository
+                .findByIdAndOrganizationId(secretId, organizationId)
+                .filter(secret -> secret.getStatus() == ProviderSecretStatus.ACTIVE)
+                .map(secret -> encryptionService.decrypt(
+                        secret.getCiphertext(), secret.getNonce(), secret.getKeyVersion()));
+    }
+
+    public static String toCredentialReference(UUID secretId) {
+        return CREDENTIAL_REFERENCE_PREFIX + secretId;
+    }
+
+    public static Optional<UUID> parseVaultSecretId(String credentialReference) {
+        if (credentialReference == null || credentialReference.isBlank()) {
+            return Optional.empty();
+        }
+        String trimmed = credentialReference.trim();
+        if (!trimmed.startsWith(CREDENTIAL_REFERENCE_PREFIX)) {
+            return Optional.empty();
+        }
+        String idPart = trimmed.substring(CREDENTIAL_REFERENCE_PREFIX.length());
+        try {
+            return Optional.of(UUID.fromString(idPart));
+        } catch (IllegalArgumentException ex) {
+            return Optional.empty();
+        }
+    }
+
+    private ProviderSecret requireSecret(UUID secretId, UUID organizationId) {
+        return secretRepository
+                .findByIdAndOrganizationId(secretId, organizationId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "SECRET_NOT_FOUND", "Secret not found"));
+    }
+
+    private ProviderSecretResponse toResponse(ProviderSecret secret) {
+        return new ProviderSecretResponse(
+                secret.getId(),
+                secret.getSecretKey(),
+                secret.getName(),
+                secret.getDescription(),
+                secret.getProviderType(),
+                secret.getStatus(),
+                toCredentialReference(secret.getId()),
+                secret.getAlgorithm(),
+                secret.getKeyVersion(),
+                secret.getFingerprintSha256(),
+                secret.getLast4(),
+                secret.getVersion(),
+                secret.getCreatedAt(),
+                secret.getUpdatedAt(),
+                secret.getRotatedAt(),
+                secret.getRevokedAt());
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+}

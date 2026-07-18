@@ -32,6 +32,21 @@ export const routes: Routes = [
           import('./features/model-gateway/model-providers-list-page').then((m) => m.ModelProvidersListPage),
       },
       {
+        path: 'provider-secrets',
+        loadComponent: () =>
+          import('./features/model-gateway/provider-secrets-list-page').then((m) => m.ProviderSecretsListPage),
+      },
+      {
+        path: 'provider-secrets/new',
+        loadComponent: () =>
+          import('./features/model-gateway/provider-secret-form-page').then((m) => m.ProviderSecretFormPage),
+      },
+      {
+        path: 'provider-secrets/:secretId',
+        loadComponent: () =>
+          import('./features/model-gateway/provider-secret-detail-page').then((m) => m.ProviderSecretDetailPage),
+      },
+      {
         path: 'model-providers/new',
         loadComponent: () =>
           import('./features/model-gateway/model-provider-form-page').then((m) => m.ModelProviderFormPage),

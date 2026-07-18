@@ -95,7 +95,31 @@ describe('ModelProviderService', () => {
     const req = http.expectOne('http://localhost:8080/api/model-providers/adapters');
     expect(req.request.method).toBe('GET');
     expect(req.request.url.includes('8090')).toBeFalse();
-    req.flush({ adapterKeys: ['DETERMINISTIC_LOCAL'] });
+    req.flush({
+      adapters: [
+        {
+          adapterKey: 'DETERMINISTIC_LOCAL',
+          tools: true,
+          knowledgeContext: true,
+          jsonOutput: true,
+          systemMessages: true,
+          streaming: false,
+        },
+      ],
+    });
+    http.verify();
+  });
+
+  it('tests provider connection through Platform API only', () => {
+    const http = TestBed.inject(HttpTestingController);
+    const service = TestBed.inject(ModelProviderService);
+
+    service.testConnection(providerId).subscribe();
+
+    const req = http.expectOne(`http://localhost:8080/api/model-providers/${providerId}/connection-test`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.url.includes('8090')).toBeFalse();
+    req.flush({ status: 'SUCCESS', errorCode: null, testedAt: '2026-01-01T00:00:00Z' });
     http.verify();
   });
 });

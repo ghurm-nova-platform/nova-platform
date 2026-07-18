@@ -59,6 +59,26 @@ public class AiProvider {
     @Column(name = "retry_backoff_ms", nullable = false)
     private Integer retryBackoffMs;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "endpoint_profile", length = 50)
+    private EndpointProfile endpointProfile;
+
+    @Column(name = "azure_resource_name", length = 100)
+    private String azureResourceName;
+
+    @Column(name = "azure_api_version", length = 50)
+    private String azureApiVersion;
+
+    @Column(name = "last_connection_test_at")
+    private Instant lastConnectionTestAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "last_connection_test_status", length = 30)
+    private ConnectionTestStatus lastConnectionTestStatus;
+
+    @Column(name = "last_connection_test_error_code", length = 100)
+    private String lastConnectionTestErrorCode;
+
     @Column(name = "created_by", nullable = false)
     private UUID createdBy;
 
@@ -188,6 +208,54 @@ public class AiProvider {
 
     public void setRetryBackoffMs(Integer retryBackoffMs) {
         this.retryBackoffMs = retryBackoffMs;
+    }
+
+    public EndpointProfile getEndpointProfile() {
+        return endpointProfile;
+    }
+
+    public void setEndpointProfile(EndpointProfile endpointProfile) {
+        this.endpointProfile = endpointProfile;
+    }
+
+    public String getAzureResourceName() {
+        return azureResourceName;
+    }
+
+    public void setAzureResourceName(String azureResourceName) {
+        this.azureResourceName = azureResourceName;
+    }
+
+    public String getAzureApiVersion() {
+        return azureApiVersion;
+    }
+
+    public void setAzureApiVersion(String azureApiVersion) {
+        this.azureApiVersion = azureApiVersion;
+    }
+
+    public Instant getLastConnectionTestAt() {
+        return lastConnectionTestAt;
+    }
+
+    public void setLastConnectionTestAt(Instant lastConnectionTestAt) {
+        this.lastConnectionTestAt = lastConnectionTestAt;
+    }
+
+    public ConnectionTestStatus getLastConnectionTestStatus() {
+        return lastConnectionTestStatus;
+    }
+
+    public void setLastConnectionTestStatus(ConnectionTestStatus lastConnectionTestStatus) {
+        this.lastConnectionTestStatus = lastConnectionTestStatus;
+    }
+
+    public String getLastConnectionTestErrorCode() {
+        return lastConnectionTestErrorCode;
+    }
+
+    public void setLastConnectionTestErrorCode(String lastConnectionTestErrorCode) {
+        this.lastConnectionTestErrorCode = lastConnectionTestErrorCode;
     }
 
     public UUID getCreatedBy() {

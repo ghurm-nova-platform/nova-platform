@@ -46,8 +46,10 @@ and export values in your shell, or set them in your IDE run configuration.
 | `LOG_LEVEL_ROOT` | `INFO` | Root log level |
 | `LOG_LEVEL_APP` | `INFO` | `ai.nova.platform` log level |
 | `SPRING_PROFILES_ACTIVE` | _(empty)_ | Set `json-logs` for structured JSON console logging |
+| `NOVA_SECRET_MASTER_KEY` | _(required for vault)_ | Base64-encoded 32-byte AES-256-GCM master key |
 
 Do not commit real secrets. Generate `JWT_SECRET` per environment (for example `openssl rand -base64 48`).
+Generate `NOVA_SECRET_MASTER_KEY` with `openssl rand -base64 32` where provider secret vault is used.
 
 ## Package layout
 
@@ -103,8 +105,14 @@ PDF extraction is deferred (`nova.knowledge.pdf-enabled=false`).
 
 See [`docs/019_AI_MODEL_GATEWAY.md`](../../docs/019_AI_MODEL_GATEWAY.md).
 
-Migrations: `V20`–`V22`. Only `DETERMINISTIC_LOCAL` executes in this phase.
-Credential references use `env:NOVA_PROVIDER_*` — never plaintext secrets.
+Migrations: `V20`–`V22`. Gateway routing, invocations, and usage.
+
+## Secure provider integration
+
+See [`docs/020_SECURE_PROVIDER_INTEGRATION.md`](../../docs/020_SECURE_PROVIDER_INTEGRATION.md).
+
+Migrations: `V23`–`V25`. Executable adapters: `DETERMINISTIC_LOCAL`, `OPENAI`, `AZURE_OPENAI`.
+Credential references: `vault:provider-secret:<uuid>` or `env:NOVA_PROVIDER_*` — never plaintext secrets in persistence or API responses after create/rotate.
 
 Local demo user (Flyway seed, local only):
 

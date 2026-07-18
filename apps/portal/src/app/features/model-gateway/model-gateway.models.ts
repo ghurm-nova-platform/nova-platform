@@ -24,6 +24,12 @@ export type RoutingPolicyStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
 
 export type RoutingStrategy = 'FIXED_PRIMARY' | 'PRIORITY_FALLBACK' | 'CAPABILITY_BASED';
 
+export type EndpointProfile = 'OPENAI_PUBLIC' | 'AZURE_OPENAI_RESOURCE';
+
+export type ConnectionTestStatus = 'NEVER' | 'SUCCESS' | 'FAILED';
+
+export type ProviderSecretStatus = 'ACTIVE' | 'REVOKED' | 'ARCHIVED';
+
 export const AI_PROVIDER_STATUSES: AiProviderStatus[] = ['DRAFT', 'ACTIVE', 'DISABLED', 'ARCHIVED'];
 
 export const AI_PROVIDER_TYPES: AiProviderType[] = [
@@ -35,6 +41,14 @@ export const AI_PROVIDER_TYPES: AiProviderType[] = [
   'AWS_BEDROCK',
   'CUSTOM_MANAGED',
 ];
+
+export const PROVIDER_SECRET_TYPES: AiProviderType[] = AI_PROVIDER_TYPES.filter(
+  (type) => type !== 'DETERMINISTIC_LOCAL',
+);
+
+export const PROVIDER_SECRET_STATUSES: ProviderSecretStatus[] = ['ACTIVE', 'REVOKED', 'ARCHIVED'];
+
+export const ENDPOINT_PROFILES: EndpointProfile[] = ['OPENAI_PUBLIC', 'AZURE_OPENAI_RESOURCE'];
 
 export const AI_MODEL_STATUSES: AiModelStatus[] = ['DRAFT', 'ACTIVE', 'DISABLED', 'ARCHIVED'];
 
@@ -58,22 +72,28 @@ export const ROUTING_STRATEGIES: RoutingStrategy[] = [
 
 export interface ModelProvider {
   id: string;
-  organizationId: string;
+  organizationId?: string;
   providerKey: string;
   name: string;
   description: string | null;
   providerType: AiProviderType;
   adapterKey: string;
-  credentialReference: string | null;
+  credentialReference?: string | null;
   region: string | null;
+  endpointProfile?: EndpointProfile | null;
+  azureResourceName?: string | null;
+  azureApiVersion?: string | null;
+  lastConnectionTestStatus?: ConnectionTestStatus;
+  lastConnectionTestAt?: string | null;
+  lastConnectionTestErrorCode?: string | null;
   status: AiProviderStatus;
   requestTimeoutSeconds: number;
   maxConcurrentRequests: number;
   maxRetries: number;
   retryBackoffMs: number;
   version: number;
-  createdBy: string;
-  updatedBy: string;
+  createdBy?: string;
+  updatedBy?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -86,6 +106,9 @@ export interface ModelProviderCreateRequest {
   adapterKey: string;
   credentialReference?: string | null;
   region?: string | null;
+  endpointProfile?: EndpointProfile | null;
+  azureResourceName?: string | null;
+  azureApiVersion?: string | null;
   requestTimeoutSeconds: number;
   maxConcurrentRequests: number;
   maxRetries: number;
@@ -98,10 +121,59 @@ export interface ModelProviderUpdateRequest {
   description?: string | null;
   credentialReference?: string | null;
   region?: string | null;
+  endpointProfile?: EndpointProfile | null;
+  azureResourceName?: string | null;
+  azureApiVersion?: string | null;
   requestTimeoutSeconds: number;
   maxConcurrentRequests: number;
   maxRetries: number;
   retryBackoffMs: number;
+}
+
+export interface ConnectionTestResponse {
+  status: ConnectionTestStatus;
+  errorCode: string | null;
+  testedAt: string;
+}
+
+export interface ProviderSecret {
+  id: string;
+  secretKey: string;
+  name: string;
+  description: string | null;
+  providerType: AiProviderType;
+  status: ProviderSecretStatus;
+  credentialReference: string;
+  algorithm: string;
+  keyVersion: number;
+  fingerprintSha256: string;
+  last4: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  rotatedAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface ProviderSecretCreateRequest {
+  secretKey: string;
+  name: string;
+  description?: string | null;
+  providerType: AiProviderType;
+  secret: string;
+}
+
+export interface ProviderSecretRotateRequest {
+  secret: string;
+}
+
+export interface ProviderSecretListParams {
+  search?: string;
+  status?: ProviderSecretStatus;
+  providerType?: AiProviderType;
+  page?: number;
+  size?: number;
+  sort?: string;
 }
 
 export interface ModelProviderListParams {
@@ -113,6 +185,20 @@ export interface ModelProviderListParams {
   sort?: string;
 }
 
+export interface ProviderAdapter {
+  adapterKey: string;
+  tools: boolean;
+  knowledgeContext: boolean;
+  jsonOutput: boolean;
+  systemMessages: boolean;
+  streaming: boolean;
+}
+
+export interface ProviderAdaptersResponse {
+  adapters: ProviderAdapter[];
+}
+
+/** @deprecated Prefer ProviderAdaptersResponse */
 export interface AdapterKeysResponse {
   adapterKeys: string[];
 }

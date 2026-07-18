@@ -91,6 +91,15 @@ nova:
     retry-backoff-maximum-ms: 10000
     usage-enabled: true
     cost-estimation-enabled: true
+    providers:
+      openai:
+        # empty = production api.openai.com; tests may set mock base
+        base-url: ${NOVA_OPENAI_BASE_URL:}
+      azure-openai:
+        # empty = https://{resource}.openai.azure.com
+        base-url-template: ${NOVA_AZURE_OPENAI_BASE_URL_TEMPLATE:}
+  secrets:
+    master-key: ${NOVA_SECRET_MASTER_KEY:}
 
 management:
   endpoints:

@@ -53,6 +53,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Tool Registry and Calling](docs/017_TOOL_REGISTRY_AND_CALLING.md)
 - [Knowledge Bases and RAG](docs/018_KNOWLEDGE_BASE_AND_RAG.md)
 - [AI Model Gateway](docs/019_AI_MODEL_GATEWAY.md)
+- [Secure Provider Integration](docs/020_SECURE_PROVIDER_INTEGRATION.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
@@ -68,4 +69,4 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 
 ## Current status
 
-Sprint 1 Phase 9 — secure AI model gateway and routing policies on Platform API.
+Sprint 1 Phase 10 — secure provider credentials and OpenAI / Azure OpenAI adapters on Platform API.

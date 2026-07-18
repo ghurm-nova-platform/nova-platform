@@ -8,7 +8,6 @@ import java.util.regex.Pattern;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,9 +20,13 @@ import ai.nova.platform.modelgateway.dto.ModelGatewayDtos.ProviderResponse;
 import ai.nova.platform.modelgateway.dto.ModelGatewayDtos.UpdateProviderRequest;
 import ai.nova.platform.modelgateway.entity.AiProvider;
 import ai.nova.platform.modelgateway.entity.AiProviderStatus;
+import ai.nova.platform.modelgateway.entity.AiProviderType;
+import ai.nova.platform.modelgateway.entity.ConnectionTestStatus;
+import ai.nova.platform.modelgateway.entity.EndpointProfile;
 import ai.nova.platform.modelgateway.mapper.ModelGatewayMapper;
 import ai.nova.platform.modelgateway.provider.AiModelProvider;
 import ai.nova.platform.modelgateway.provider.AiModelProviderRegistry;
+import ai.nova.platform.modelgateway.provider.ProviderCredentialResolver;
 import ai.nova.platform.modelgateway.repository.AiProviderRepository;
 import ai.nova.platform.modelgateway.security.ModelGatewayAuthorizationService;
 import ai.nova.platform.modelgateway.validation.CredentialReferenceValidator;
@@ -34,6 +37,8 @@ import ai.nova.platform.web.error.ApiException;
 public class AiProviderService {
 
     private static final Pattern PROVIDER_KEY_PATTERN = Pattern.compile("^[A-Z][A-Z0-9_]*$");
+    private static final Pattern AZURE_RESOURCE_PATTERN =
+            Pattern.compile("^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$");
 
     private final AiProviderRepository providerRepository;
     private final AiModelProviderRegistry providerRegistry;
@@ -41,6 +46,7 @@ public class AiProviderService {
     private final ModelGatewayMapper mapper;
     private final ModelGatewayAuthorizationService authorizationService;
     private final CredentialReferenceValidator credentialReferenceValidator;
+    private final ProviderCredentialResolver credentialResolver;
     private final ModelGatewayAuditService auditService;
 
     public AiProviderService(
@@ -50,6 +56,7 @@ public class AiProviderService {
             ModelGatewayMapper mapper,
             ModelGatewayAuthorizationService authorizationService,
             CredentialReferenceValidator credentialReferenceValidator,
+            ProviderCredentialResolver credentialResolver,
             ModelGatewayAuditService auditService) {
         this.providerRepository = providerRepository;
         this.providerRegistry = providerRegistry;
@@ -57,6 +64,7 @@ public class AiProviderService {
         this.mapper = mapper;
         this.authorizationService = authorizationService;
         this.credentialReferenceValidator = credentialReferenceValidator;
+        this.credentialResolver = credentialResolver;
         this.auditService = auditService;
     }
 
@@ -98,6 +106,12 @@ public class AiProviderService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "ADAPTER_NOT_REGISTERED", "Adapter not registered");
         }
         credentialReferenceValidator.validate(request.credentialReference(), request.providerType());
+        applyEndpointFields(
+                request.providerType(),
+                request.endpointProfile(),
+                request.azureResourceName(),
+                request.azureApiVersion(),
+                true);
 
         Instant now = Instant.now();
         AiProvider provider = new AiProvider();
@@ -110,7 +124,14 @@ public class AiProviderService {
         provider.setAdapterKey(request.adapterKey().trim());
         provider.setCredentialReference(trimToNull(request.credentialReference()));
         provider.setRegion(trimToNull(request.region()));
+        setEndpointMetadata(
+                provider,
+                request.providerType(),
+                request.endpointProfile(),
+                request.azureResourceName(),
+                request.azureApiVersion());
         provider.setStatus(AiProviderStatus.DRAFT);
+        provider.setLastConnectionTestStatus(ConnectionTestStatus.NEVER);
         provider.setRequestTimeoutSeconds(
                 request.requestTimeoutSeconds() != null
                         ? request.requestTimeoutSeconds()
@@ -125,7 +146,6 @@ public class AiProviderService {
         provider.setUpdatedBy(user.getUserId());
         provider.setCreatedAt(now);
         provider.setUpdatedAt(now);
-        provider.setVersion(0);
         providerRepository.save(provider);
         auditService.providerCreated(user.getOrganizationId(), provider.getId(), user.getUserId());
         return mapper.toProviderResponse(provider);
@@ -139,10 +159,22 @@ public class AiProviderService {
             throw optimisticLockFailure();
         }
         credentialReferenceValidator.validate(request.credentialReference(), provider.getProviderType());
+        applyEndpointFields(
+                provider.getProviderType(),
+                request.endpointProfile(),
+                request.azureResourceName(),
+                request.azureApiVersion(),
+                true);
         provider.setName(request.name().trim());
         provider.setDescription(trimToNull(request.description()));
         provider.setCredentialReference(trimToNull(request.credentialReference()));
         provider.setRegion(trimToNull(request.region()));
+        setEndpointMetadata(
+                provider,
+                provider.getProviderType(),
+                request.endpointProfile(),
+                request.azureResourceName(),
+                request.azureApiVersion());
         if (request.requestTimeoutSeconds() != null) {
             provider.setRequestTimeoutSeconds(request.requestTimeoutSeconds());
         }
@@ -167,6 +199,7 @@ public class AiProviderService {
         if (!providerRegistry.isRegistered(provider.getAdapterKey())) {
             throw new ApiException(HttpStatus.CONFLICT, "ADAPTER_NOT_REGISTERED", "Adapter not registered");
         }
+        validateActivationRequirements(provider);
         provider.setStatus(AiProviderStatus.ACTIVE);
         provider.setUpdatedBy(user.getUserId());
         provider.setUpdatedAt(Instant.now());
@@ -202,10 +235,131 @@ public class AiProviderService {
         return mapper.toProviderResponse(provider);
     }
 
-    AiProvider requireProvider(UUID providerId, UUID organizationId) {
+    public AiProvider requireProvider(UUID providerId, UUID organizationId) {
         return providerRepository
                 .findByIdAndOrganizationId(providerId, organizationId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PROVIDER_NOT_FOUND", "Provider not found"));
+    }
+
+    private void validateActivationRequirements(AiProvider provider) {
+        AiProviderType type = provider.getProviderType();
+        if (type == AiProviderType.DETERMINISTIC_LOCAL) {
+            if (provider.getCredentialReference() != null && !provider.getCredentialReference().isBlank()) {
+                throw new ApiException(
+                        HttpStatus.BAD_REQUEST,
+                        "INVALID_CREDENTIAL_REFERENCE",
+                        "Deterministic local providers must not have credentials");
+            }
+            return;
+        }
+        if (type == AiProviderType.OPENAI || type == AiProviderType.AZURE_OPENAI) {
+            applyEndpointFields(
+                    type,
+                    provider.getEndpointProfile(),
+                    provider.getAzureResourceName(),
+                    provider.getAzureApiVersion(),
+                    false);
+            if (provider.getCredentialReference() == null || provider.getCredentialReference().isBlank()) {
+                throw new ApiException(
+                        HttpStatus.CONFLICT,
+                        "CREDENTIAL_REQUIRED",
+                        "Active OpenAI/Azure providers require a credential reference");
+            }
+            if (credentialResolver
+                    .resolve(provider.getCredentialReference(), provider.getOrganizationId())
+                    .isEmpty()) {
+                throw new ApiException(
+                        HttpStatus.CONFLICT,
+                        "CREDENTIAL_UNRESOLVABLE",
+                        "Credential reference could not be resolved to an active secret");
+            }
+        }
+    }
+
+    private void applyEndpointFields(
+            AiProviderType providerType,
+            EndpointProfile endpointProfile,
+            String azureResourceName,
+            String azureApiVersion,
+            boolean allowNullProfile) {
+        if (providerType == AiProviderType.OPENAI) {
+            if (endpointProfile == null) {
+                if (!allowNullProfile) {
+                    throw new ApiException(
+                            HttpStatus.BAD_REQUEST,
+                            "ENDPOINT_PROFILE_REQUIRED",
+                            "OPENAI providers require endpointProfile OPENAI_PUBLIC");
+                }
+                return;
+            }
+            if (endpointProfile != EndpointProfile.OPENAI_PUBLIC) {
+                throw new ApiException(
+                        HttpStatus.BAD_REQUEST,
+                        "ENDPOINT_PROFILE_INVALID",
+                        "OPENAI providers must use OPENAI_PUBLIC");
+            }
+            if (azureResourceName != null && !azureResourceName.isBlank()) {
+                throw new ApiException(
+                        HttpStatus.BAD_REQUEST,
+                        "AZURE_FIELDS_INVALID",
+                        "OPENAI providers must not set azureResourceName");
+            }
+            return;
+        }
+        if (providerType == AiProviderType.AZURE_OPENAI) {
+            if (endpointProfile == null) {
+                if (!allowNullProfile) {
+                    throw new ApiException(
+                            HttpStatus.BAD_REQUEST,
+                            "ENDPOINT_PROFILE_REQUIRED",
+                            "AZURE_OPENAI providers require endpointProfile AZURE_OPENAI_RESOURCE");
+                }
+                return;
+            }
+            if (endpointProfile != EndpointProfile.AZURE_OPENAI_RESOURCE) {
+                throw new ApiException(
+                        HttpStatus.BAD_REQUEST,
+                        "ENDPOINT_PROFILE_INVALID",
+                        "AZURE_OPENAI providers must use AZURE_OPENAI_RESOURCE");
+            }
+            String resource = trimToNull(azureResourceName);
+            String apiVersion = trimToNull(azureApiVersion);
+            if (resource == null || apiVersion == null) {
+                throw new ApiException(
+                        HttpStatus.BAD_REQUEST,
+                        "AZURE_ENDPOINT_INCOMPLETE",
+                        "AZURE_OPENAI requires azureResourceName and azureApiVersion");
+            }
+            if (!AZURE_RESOURCE_PATTERN.matcher(resource).matches()) {
+                throw new ApiException(
+                        HttpStatus.BAD_REQUEST,
+                        "AZURE_RESOURCE_INVALID",
+                        "Invalid azureResourceName");
+            }
+        }
+    }
+
+    private void setEndpointMetadata(
+            AiProvider provider,
+            AiProviderType providerType,
+            EndpointProfile endpointProfile,
+            String azureResourceName,
+            String azureApiVersion) {
+        if (providerType == AiProviderType.OPENAI) {
+            provider.setEndpointProfile(endpointProfile != null ? endpointProfile : null);
+            provider.setAzureResourceName(null);
+            provider.setAzureApiVersion(null);
+            return;
+        }
+        if (providerType == AiProviderType.AZURE_OPENAI) {
+            provider.setEndpointProfile(endpointProfile);
+            provider.setAzureResourceName(trimToNull(azureResourceName));
+            provider.setAzureApiVersion(trimToNull(azureApiVersion));
+            return;
+        }
+        provider.setEndpointProfile(endpointProfile);
+        provider.setAzureResourceName(trimToNull(azureResourceName));
+        provider.setAzureApiVersion(trimToNull(azureApiVersion));
     }
 
     private ProviderAdapterResponse toAdapterResponse(AiModelProvider provider) {

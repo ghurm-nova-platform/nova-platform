@@ -2,10 +2,14 @@
   <header class="page__header">
     <div>
       <h1>{{ editMode() ? 'Edit model provider' : 'Create model provider' }}</h1>
-      <p>Credential references only (for example <code>env:NOVA_PROVIDER_OPENAI</code>). Never store raw API keys.</p>
+      <p>
+        Credential references only:
+        <code>env:NOVA_PROVIDER_…</code> or <code>vault:provider-secret:&lt;uuid&gt;</code>. Never store raw API keys.
+      </p>
     </div>
     <div class="page__actions">
       <a mat-stroked-button routerLink="/model-providers">Back to providers</a>
+      <a mat-stroked-button routerLink="/provider-secrets">Provider secrets</a>
       @if (editMode() && providerId()) {
         <a mat-stroked-button [routerLink]="['/model-providers', providerId(), 'models']">Models</a>
       }
@@ -63,13 +67,47 @@
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>Credential reference</mat-label>
-        <input matInput formControlName="credentialReference" aria-label="Credential reference" placeholder="env:NOVA_PROVIDER_OPENAI" />
-        <mat-hint>Reference only. Leave empty for deterministic local providers.</mat-hint>
+        <input
+          matInput
+          formControlName="credentialReference"
+          aria-label="Credential reference"
+          placeholder="vault:provider-secret:… or env:NOVA_PROVIDER_…"
+          autocomplete="off"
+        />
+        @if (form.controls.credentialReference.hasError('credentialReference')) {
+          <mat-error>Use env:NOVA_PROVIDER_… or vault:provider-secret:&lt;uuid&gt; — not a raw API key.</mat-error>
+        } @else {
+          <mat-hint>Reference only. Leave empty for deterministic local providers.</mat-hint>
+        }
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>Region</mat-label>
         <input matInput formControlName="region" aria-label="Region" />
       </mat-form-field>
+
+      @if (showEndpointFields()) {
+        <mat-form-field appearance="outline">
+          <mat-label>Endpoint profile</mat-label>
+          <mat-select formControlName="endpointProfile" aria-label="Endpoint profile">
+            @for (profile of endpointProfiles; track profile) {
+              <mat-option [value]="profile">{{ profile }}</mat-option>
+            }
+          </mat-select>
+          <mat-hint>Allowlisted profile only. Provider URLs are built server-side.</mat-hint>
+        </mat-form-field>
+      }
+
+      @if (showAzureFields()) {
+        <mat-form-field appearance="outline">
+          <mat-label>Azure resource name</mat-label>
+          <input matInput formControlName="azureResourceName" aria-label="Azure resource name" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Azure API version</mat-label>
+          <input matInput formControlName="azureApiVersion" aria-label="Azure API version" />
+        </mat-form-field>
+      }
+
       <mat-form-field appearance="outline">
         <mat-label>Request timeout (seconds)</mat-label>
         <input matInput type="number" formControlName="requestTimeoutSeconds" aria-label="Request timeout" />

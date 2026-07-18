@@ -20,6 +20,11 @@ const MODEL_GATEWAY_PERMISSIONS = {
   routeRead: 'MODEL_ROUTE_READ',
   routeManage: 'MODEL_ROUTE_MANAGE',
   usageRead: 'MODEL_USAGE_READ',
+  providerSecretRead: 'PROVIDER_SECRET_READ',
+  providerSecretCreate: 'PROVIDER_SECRET_CREATE',
+  providerSecretRotate: 'PROVIDER_SECRET_ROTATE',
+  providerSecretRevoke: 'PROVIDER_SECRET_REVOKE',
+  providerConnectionTest: 'PROVIDER_CONNECTION_TEST',
 } as const;
 
 @Injectable({ providedIn: 'root' })
@@ -92,6 +97,26 @@ export class ModelGatewayPermissionHelper {
 
   canReadUsage(): boolean {
     return this.has(MODEL_GATEWAY_PERMISSIONS.usageRead);
+  }
+
+  canReadProviderSecrets(): boolean {
+    return this.has(MODEL_GATEWAY_PERMISSIONS.providerSecretRead);
+  }
+
+  canCreateProviderSecret(): boolean {
+    return this.has(MODEL_GATEWAY_PERMISSIONS.providerSecretCreate);
+  }
+
+  canRotateProviderSecret(): boolean {
+    return this.has(MODEL_GATEWAY_PERMISSIONS.providerSecretRotate);
+  }
+
+  canRevokeProviderSecret(): boolean {
+    return this.has(MODEL_GATEWAY_PERMISSIONS.providerSecretRevoke);
+  }
+
+  canTestProviderConnection(): boolean {
+    return this.has(MODEL_GATEWAY_PERMISSIONS.providerConnectionTest);
   }
 
   private has(permission: string): boolean {
