@@ -134,7 +134,7 @@ See [`docs/024_CODING_AGENT.md`](../../docs/024_CODING_AGENT.md) and ADR-0014.
 
 ## Review Agent
 
-See [`docs/025_REVIEW_AGENT.md`](../../docs/025_REVIEW_AGENT.md) and ADR-0015.
+See [`docs/026_REVIEW_AGENT.md`](../../docs/026_REVIEW_AGENT.md) and ADR-0015.
 
 Migrations: `V29`–`V32`. Durable runs, tasks, dependencies, attempts, events; claim leases; TX1/external/TX2 execution.
 Migration `V34` planner templates; `V35` generated artifacts; `V36` review results/findings.
