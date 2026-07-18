@@ -140,8 +140,12 @@ See [`docs/026_REVIEW_AGENT.md`](../../docs/026_REVIEW_AGENT.md) and ADR-0015.
 
 See [`docs/027_TESTING_AGENT.md`](../../docs/027_TESTING_AGENT.md) and ADR-0016.
 
+## Patch Agent
+
+See [`docs/028_PATCH_AGENT.md`](../../docs/028_PATCH_AGENT.md) and ADR-0017.
+
 Migrations: `V29`–`V32`. Durable runs, tasks, dependencies, attempts, events; claim leases; TX1/external/TX2 execution.
-Migration `V34` planner templates; `V35` generated artifacts; `V36` review results/findings; `V37` testing results.
+Migration `V34` planner templates; `V35` generated artifacts; `V36` review results/findings; `V37` testing results; `V38` patch results.
 
 Local demo user (Flyway seed, local only):
 

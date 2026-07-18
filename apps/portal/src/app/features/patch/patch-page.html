@@ -1,0 +1,92 @@
+<section class="patch-page">
+  <header class="page-header">
+    <div>
+      <h1>Patch Agent</h1>
+      <p class="subtitle">
+        Generate Git-compatible Unified Diff patches from approved Coding artifacts. Does not apply
+        patches or modify repositories.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">You need PATCH_RUN or PATCH_READ to use this page.</p>
+  } @else {
+    <form class="run-form" [formGroup]="form" (ngSubmit)="runPatch()">
+      <mat-form-field appearance="outline" class="task-field">
+        <mat-label>Orchestration task ID</mat-label>
+        <input matInput formControlName="taskId" placeholder="UUID" />
+      </mat-form-field>
+      <div class="actions">
+        @if (permissions.canRun()) {
+          <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
+            Generate patch
+          </button>
+        }
+        @if (permissions.canRead()) {
+          <button mat-stroked-button type="button" (click)="loadLatest()" [disabled]="loading()">
+            Load latest
+          </button>
+        }
+      </div>
+    </form>
+
+    @if (loading()) {
+      <div class="loading">
+        <mat-spinner diameter="36"></mat-spinner>
+      </div>
+    }
+
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    @if (result(); as patch) {
+      <section class="summary-panel">
+        <div class="validation-badge" [attr.data-valid]="patch.validation.valid">
+          {{ patch.status }}
+        </div>
+        <div class="summary-meta">
+          <p>{{ patch.summary }}</p>
+          <p class="meta">
+            model={{ patch.model }} · tokens={{ patch.tokensUsed ?? '—' }} ·
+            {{ patch.generationTimeMs ?? '—' }} ms
+          </p>
+          <p class="meta">{{ patch.validation.message }}</p>
+          <div class="stats-row">
+            <span>Files: {{ patch.statistics.filesChanged }}</span>
+            <span>+{{ patch.statistics.insertions }}</span>
+            <span>-{{ patch.statistics.deletions }}</span>
+            <span>{{ patch.statistics.patchSize }} bytes</span>
+          </div>
+          <button mat-stroked-button type="button" (click)="downloadPatch()">
+            <mat-icon>download</mat-icon>
+            Download patch
+          </button>
+        </div>
+      </section>
+
+      <section class="files">
+        <h2>Changed files ({{ patch.files.length }})</h2>
+        @for (file of patch.files; track file.id) {
+          <article class="file-card">
+            <button type="button" class="file-header" (click)="toggleFile(file.id)">
+              <span class="change-type">{{ file.changeType }}</span>
+              <strong>{{ file.path }}</strong>
+              <span class="meta">+{{ file.insertions }} / -{{ file.deletions }}</span>
+              <mat-icon>{{ expanded()[file.id] ? 'expand_less' : 'expand_more' }}</mat-icon>
+            </button>
+            @if (expanded()[file.id] && file.patchExcerpt) {
+              <pre class="diff-viewer">{{ file.patchExcerpt }}</pre>
+            }
+          </article>
+        }
+      </section>
+
+      <section class="diff-section">
+        <h2>Unified diff</h2>
+        <pre class="diff-viewer full">{{ patch.patch }}</pre>
+      </section>
+    }
+  }
+</section>

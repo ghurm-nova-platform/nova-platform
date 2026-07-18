@@ -93,6 +93,12 @@ export class Shell {
       icon: 'science',
     },
     {
+      labelEn: 'Patch Agent',
+      labelAr: 'وكيل التصحيح',
+      path: '/patch',
+      icon: 'difference',
+    },
+    {
       labelEn: 'AI Orchestration',
       labelAr: 'تنسيق الوكلاء',
       path: '/orchestration-runs',

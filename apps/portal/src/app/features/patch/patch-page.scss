@@ -1,0 +1,134 @@
+.patch-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+.subtitle,
+.meta {
+  color: var(--mat-sys-on-surface-variant, #5f6368);
+  margin: 0.35rem 0 0;
+}
+
+.run-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.task-field {
+  min-width: min(100%, 28rem);
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.35rem;
+}
+
+.banner.error {
+  background: color-mix(in srgb, #c62828 12%, transparent);
+  border: 1px solid color-mix(in srgb, #c62828 35%, transparent);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.summary-panel {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--mat-sys-outline, #79747e) 40%, transparent);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: color-mix(in srgb, var(--mat-sys-surface, #fff) 92%, #eef5f0);
+}
+
+.validation-badge {
+  min-width: 5rem;
+  height: 5rem;
+  border-radius: 0.75rem;
+  display: grid;
+  place-content: center;
+  font-weight: 700;
+  color: #fff;
+  background: #2e7d32;
+}
+
+.validation-badge[data-valid='false'] {
+  background: #c62828;
+}
+
+.stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+  font-weight: 600;
+}
+
+.files,
+.diff-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.file-card {
+  border: 1px solid color-mix(in srgb, var(--mat-sys-outline, #79747e) 35%, transparent);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.file-header {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.change-type {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, #1565c0 15%, transparent);
+  color: #1565c0;
+}
+
+.diff-viewer {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  overflow: auto;
+  max-height: 24rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  white-space: pre;
+}
+
+.diff-viewer.full {
+  max-height: 32rem;
+  border-radius: 0.5rem;
+}
