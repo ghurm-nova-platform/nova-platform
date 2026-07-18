@@ -146,3 +146,5 @@ Nested `/api/model-providers/{id}/models` remains for compatibility; primary sur
 4. Re-sync updates `last_seen_at`; missing models are retained for history.
 
 See [ADR-0011](adr/ADR-0011-model-catalog.md).
+
+Orchestration runs may pass optional `modelReference` into the gateway; see [`022_MULTI_AGENT_ORCHESTRATION_FOUNDATION.md`](022_MULTI_AGENT_ORCHESTRATION_FOUNDATION.md).

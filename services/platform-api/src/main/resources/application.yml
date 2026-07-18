@@ -98,6 +98,19 @@ nova:
       azure-openai:
         # empty = https://{resource}.openai.azure.com
         base-url-template: ${NOVA_AZURE_OPENAI_BASE_URL_TEMPLATE:}
+  orchestration:
+    enabled: true
+    poll-interval-ms: 2000
+    claim-limit: 10
+    claim-lease-seconds: 30
+    maximum-parallel-tasks: 20
+    maximum-task-attempts: 10
+    maximum-task-timeout-seconds: 600
+    maximum-run-duration-ms: 3600000
+    retry-backoff-cap-ms: 60000
+    worker-id: platform-api
+    max-json-chars: 100000
+    max-objective-length: 4000
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 

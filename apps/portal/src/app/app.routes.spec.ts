@@ -87,6 +87,15 @@ describe('App routing', () => {
       'MODEL_CATALOG_SYNC',
       'MODEL_ALIAS_MANAGE',
       'MODEL_CAPABILITY_MANAGE',
+      'ORCHESTRATION_RUN_READ',
+      'ORCHESTRATION_RUN_CREATE',
+      'ORCHESTRATION_RUN_UPDATE',
+      'ORCHESTRATION_RUN_START',
+      'ORCHESTRATION_RUN_CANCEL',
+      'ORCHESTRATION_RUN_ARCHIVE',
+      'ORCHESTRATION_TASK_MANAGE',
+      'ORCHESTRATION_TASK_EXECUTE',
+      'ORCHESTRATION_EVENT_READ',
     ],
   };
 
@@ -129,6 +138,7 @@ describe('App routing', () => {
       '/model-providers',
       '/ai-models',
       '/provider-secrets',
+      '/orchestration-runs',
       '/feedback',
       '/settings',
     ]) {
@@ -156,6 +166,7 @@ describe('App routing', () => {
     const modelId = '99999999-9999-9999-9999-999999999911';
     const policyId = '99999999-9999-9999-9999-999999999941';
     const secretId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01';
+    const runId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01';
 
     for (const [path, expected] of [
       ['/model-providers/new', '/model-providers/new'],
@@ -169,6 +180,10 @@ describe('App routing', () => {
       [`/ai-models/${modelId}/edit`, `/ai-models/${modelId}/edit`],
       ['/provider-secrets/new', '/provider-secrets/new'],
       [`/provider-secrets/${secretId}`, `/provider-secrets/${secretId}`],
+      ['/orchestration-runs/new', '/orchestration-runs/new'],
+      [`/orchestration-runs/${runId}`, `/orchestration-runs/${runId}`],
+      [`/orchestration-runs/${runId}/edit`, `/orchestration-runs/${runId}/edit`],
+      [`/orchestration-runs/${runId}/graph`, `/orchestration-runs/${runId}/graph`],
       [`/projects/${projectId}/models`, `/projects/${projectId}/models`],
       [`/projects/${projectId}/agents/${agentId}/models`, `/projects/${projectId}/agents/${agentId}/models`],
       [

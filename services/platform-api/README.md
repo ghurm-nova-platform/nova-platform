@@ -120,6 +120,12 @@ See [`docs/021_MODEL_CATALOG.md`](../../docs/021_MODEL_CATALOG.md).
 
 Migrations: `V26`–`V28`. Catalog CRUD, capabilities, aliases, provider sync, optional gateway `modelReference`.
 
+## Multi-agent orchestration
+
+See [`docs/022_MULTI_AGENT_ORCHESTRATION_FOUNDATION.md`](../../docs/022_MULTI_AGENT_ORCHESTRATION_FOUNDATION.md).
+
+Migrations: `V29`–`V32`. Durable runs, tasks, dependencies, attempts, events; claim leases; TX1/external/TX2 execution.
+
 Local demo user (Flyway seed, local only):
 
 - `admin@nova.local` / `ChangeMe123!`

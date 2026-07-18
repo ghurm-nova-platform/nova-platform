@@ -25,3 +25,4 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0009](ADR-0009-provider-neutral-model-gateway.md) | Provider-neutral AI model gateway and routing on Platform API | Accepted |
 | [ADR-0010](ADR-0010-provider-secret-vault.md) | Provider secret vault and production OpenAI / Azure adapters | Accepted |
 | [ADR-0011](ADR-0011-model-catalog.md) | Database-driven model catalog, capabilities, aliases, and sync | Accepted |
+| [ADR-0012](ADR-0012-durable-agent-orchestration.md) | Durable multi-agent orchestration foundation | Accepted |

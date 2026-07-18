@@ -67,6 +67,41 @@ export const routes: Routes = [
           import('./features/model-gateway/provider-secret-detail-page').then((m) => m.ProviderSecretDetailPage),
       },
       {
+        path: 'orchestration-runs',
+        loadComponent: () =>
+          import('./features/orchestration/orchestration-runs-list-page').then(
+            (m) => m.OrchestrationRunsListPage,
+          ),
+      },
+      {
+        path: 'orchestration-runs/new',
+        loadComponent: () =>
+          import('./features/orchestration/orchestration-run-form-page').then(
+            (m) => m.OrchestrationRunFormPage,
+          ),
+      },
+      {
+        path: 'orchestration-runs/:runId/edit',
+        loadComponent: () =>
+          import('./features/orchestration/orchestration-run-form-page').then(
+            (m) => m.OrchestrationRunFormPage,
+          ),
+      },
+      {
+        path: 'orchestration-runs/:runId/graph',
+        loadComponent: () =>
+          import('./features/orchestration/orchestration-graph-builder-page').then(
+            (m) => m.OrchestrationGraphBuilderPage,
+          ),
+      },
+      {
+        path: 'orchestration-runs/:runId',
+        loadComponent: () =>
+          import('./features/orchestration/orchestration-run-detail-page').then(
+            (m) => m.OrchestrationRunDetailPage,
+          ),
+      },
+      {
         path: 'model-providers/new',
         loadComponent: () =>
           import('./features/model-gateway/model-provider-form-page').then((m) => m.ModelProviderFormPage),
