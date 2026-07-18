@@ -431,6 +431,19 @@ erDiagram
     string event_type
   }
 
+  GENERATED_ARTIFACTS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    uuid run_id FK
+    uuid task_id FK
+    string artifact_type
+    string language
+    string path
+    string filename
+    string sha256
+  }
+
   PLANNER_TEMPLATES {
     uuid id PK
     uuid organization_id FK
@@ -517,7 +530,10 @@ Unique constraints:
 Migrations: `V16__knowledge_base.sql`, `V17__knowledge_embeddings.sql`, `V18__knowledge_permissions_seed.sql`,
 `V19__execution_knowledge_snapshot.sql`, `V20__ai_model_gateway.sql`, `V21__model_routing_and_usage.sql`,
 `V22__model_gateway_permissions.sql`, `V23__provider_secret_vault.sql`,
-`V24__provider_connection_metadata.sql`, `V25__provider_secret_permissions.sql`.
+`V24__provider_connection_metadata.sql`, `V25__provider_secret_permissions.sql`,
+`V34__planner_templates.sql`, `V35__generated_artifacts.sql`.
 See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
-[`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md), and
-[`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md).
+[`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md),
+[`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md),
+[`023_PLANNER_AGENT.md`](023_PLANNER_AGENT.md), and
+[`024_CODING_AGENT.md`](024_CODING_AGENT.md).

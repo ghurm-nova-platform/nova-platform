@@ -100,6 +100,8 @@ describe('App routing', () => {
       'PLANNER_IMPORT',
       'PLANNER_TEMPLATE_READ',
       'PLANNER_TEMPLATE_MANAGE',
+      'CODING_GENERATE',
+      'CODING_READ',
     ],
   };
 
@@ -143,6 +145,7 @@ describe('App routing', () => {
       '/ai-models',
       '/provider-secrets',
       '/planner',
+      '/coding',
       '/orchestration-runs',
       '/feedback',
       '/settings',

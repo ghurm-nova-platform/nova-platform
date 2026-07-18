@@ -72,6 +72,11 @@ export const routes: Routes = [
           import('./features/planner/planner-page').then((m) => m.PlannerPage),
       },
       {
+        path: 'coding',
+        loadComponent: () =>
+          import('./features/coding/coding-page').then((m) => m.CodingPage),
+      },
+      {
         path: 'orchestration-runs',
         loadComponent: () =>
           import('./features/orchestration/orchestration-runs-list-page').then(

@@ -11,6 +11,14 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 2 Phase 3 scope
+
+- Coding Agent under `/coding`
+- Generate / load artifacts for an orchestration task
+- Search and filter by filename, language, artifact type
+- Lightweight diff preview (no Monaco / VS Code), copy, download
+- CODING_* permission helper (Platform API only)
+
 ## Sprint 2 Phase 2 scope
 
 - AI Planner under `/planner`

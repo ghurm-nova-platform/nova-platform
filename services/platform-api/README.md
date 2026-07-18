@@ -128,7 +128,12 @@ See [`docs/022_MULTI_AGENT_ORCHESTRATION_FOUNDATION.md`](../../docs/022_MULTI_AG
 
 See [`docs/023_PLANNER_AGENT.md`](../../docs/023_PLANNER_AGENT.md) and ADR-0013.
 
+## Coding Agent
+
+See [`docs/024_CODING_AGENT.md`](../../docs/024_CODING_AGENT.md) and ADR-0014.
+
 Migrations: `V29`–`V32`. Durable runs, tasks, dependencies, attempts, events; claim leases; TX1/external/TX2 execution.
+Migration `V34` planner templates; `V35` generated artifacts.
 
 Local demo user (Flyway seed, local only):
 
