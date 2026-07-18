@@ -116,6 +116,58 @@
   background: color-mix(in srgb, #c62828 18%, transparent);
 }
 
+.status--deprecated {
+  background: color-mix(in srgb, #8e24aa 18%, transparent);
+}
+
+.status--stale {
+  background: color-mix(in srgb, #ef6c00 18%, transparent);
+}
+
+.status--unsupported {
+  background: color-mix(in srgb, #616161 18%, transparent);
+}
+
+.status--rotated {
+  background: color-mix(in srgb, #ef6c00 18%, transparent);
+}
+
+.page__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.page__section h2 {
+  margin: 0;
+}
+
+.capability-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.capability-grid h3 {
+  grid-column: 1 / -1;
+  margin: 0.25rem 0 0;
+}
+
+.alias-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.alias-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .details {
   display: grid;
   gap: 0.75rem;

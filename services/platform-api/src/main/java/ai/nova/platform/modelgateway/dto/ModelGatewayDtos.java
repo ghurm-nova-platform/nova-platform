@@ -16,6 +16,7 @@ import ai.nova.platform.modelgateway.entity.AiProviderType;
 import ai.nova.platform.modelgateway.entity.AssignmentRole;
 import ai.nova.platform.modelgateway.entity.ConnectionTestStatus;
 import ai.nova.platform.modelgateway.entity.EndpointProfile;
+import ai.nova.platform.modelgateway.entity.ModelSyncStatus;
 import ai.nova.platform.modelgateway.entity.RoutingPolicyStatus;
 import ai.nova.platform.modelgateway.entity.RoutingStrategy;
 
@@ -77,6 +78,13 @@ public final class ModelGatewayDtos {
             ConnectionTestStatus lastConnectionTestStatus,
             Instant lastConnectionTestAt,
             String lastConnectionTestErrorCode,
+            Instant lastModelSyncAt,
+            ModelSyncStatus lastModelSyncStatus,
+            String lastModelSyncErrorCode,
+            Integer lastModelSyncDiscoveredCount,
+            Integer lastModelSyncCreatedCount,
+            Integer lastModelSyncUpdatedCount,
+            Integer lastModelSyncUnchangedCount,
             AiProviderStatus status,
             Integer requestTimeoutSeconds,
             Integer maxConcurrentRequests,

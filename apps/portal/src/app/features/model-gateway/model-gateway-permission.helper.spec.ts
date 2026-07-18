@@ -22,6 +22,8 @@ describe('ModelGatewayPermissionHelper', () => {
     expect(helper.canReadProviders()).toBeFalse();
     expect(helper.canAssignProjectModels()).toBeFalse();
     expect(helper.canReadUsage()).toBeFalse();
+    expect(helper.canReadCatalog()).toBeFalse();
+    expect(helper.canSyncCatalog()).toBeFalse();
   });
 
   it('grants all model gateway permissions to ORG_ADMIN', () => {
@@ -47,6 +49,13 @@ describe('ModelGatewayPermissionHelper', () => {
     expect(helper.canRotateProviderSecret()).toBeTrue();
     expect(helper.canRevokeProviderSecret()).toBeTrue();
     expect(helper.canTestProviderConnection()).toBeTrue();
+    expect(helper.canReadCatalog()).toBeTrue();
+    expect(helper.canCreateCatalog()).toBeTrue();
+    expect(helper.canUpdateCatalog()).toBeTrue();
+    expect(helper.canDeleteCatalog()).toBeTrue();
+    expect(helper.canSyncCatalog()).toBeTrue();
+    expect(helper.canManageAliases()).toBeTrue();
+    expect(helper.canManageCapabilities()).toBeTrue();
   });
 
   it('checks explicit model gateway permissions for non-admin users', () => {
@@ -62,6 +71,8 @@ describe('ModelGatewayPermissionHelper', () => {
         'MODEL_USAGE_READ',
         'PROVIDER_SECRET_READ',
         'PROVIDER_CONNECTION_TEST',
+        'MODEL_CATALOG_READ',
+        'MODEL_ALIAS_MANAGE',
       ],
     };
     session.setSession({ accessToken: 'token', refreshToken: 'refresh' }, member);
@@ -71,10 +82,15 @@ describe('ModelGatewayPermissionHelper', () => {
     expect(helper.canReadUsage()).toBeTrue();
     expect(helper.canReadProviderSecrets()).toBeTrue();
     expect(helper.canTestProviderConnection()).toBeTrue();
+    expect(helper.canReadCatalog()).toBeTrue();
+    expect(helper.canManageAliases()).toBeTrue();
     expect(helper.canCreateProvider()).toBeFalse();
     expect(helper.canAssignAgentModels()).toBeFalse();
     expect(helper.canCreateProviderSecret()).toBeFalse();
     expect(helper.canRotateProviderSecret()).toBeFalse();
     expect(helper.canRevokeProviderSecret()).toBeFalse();
+    expect(helper.canCreateCatalog()).toBeFalse();
+    expect(helper.canSyncCatalog()).toBeFalse();
+    expect(helper.canManageCapabilities()).toBeFalse();
   });
 });

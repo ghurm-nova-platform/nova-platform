@@ -22,7 +22,7 @@ public class AiModel {
     private UUID organizationId;
     @Column(name = "provider_id", nullable = false)
     private UUID providerId;
-    @Column(name = "model_key", nullable = false, length = 100)
+    @Column(name = "model_key", nullable = false, length = 150)
     private String modelKey;
     @Column(name = "provider_model_id", nullable = false)
     private String providerModelId;
@@ -36,10 +36,27 @@ public class AiModel {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private AiModelStatus status;
+    @Column(name = "model_family", length = 150)
+    private String modelFamily;
+    @Column(name = "model_version", length = 100)
+    private String modelVersion;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private AiModelSource source;
     @Column(name = "context_window_tokens", nullable = false)
     private Integer contextWindowTokens;
+    @Column(name = "context_window")
+    private Integer contextWindow;
+    @Column(name = "max_input_tokens")
+    private Integer maxInputTokens;
     @Column(name = "max_output_tokens", nullable = false)
     private Integer maxOutputTokens;
+    @Column(name = "default_temperature", precision = 5, scale = 4)
+    private BigDecimal defaultTemperature;
+    @Column(name = "default_top_p", precision = 5, scale = 4)
+    private BigDecimal defaultTopP;
+    @Column(name = "default_max_output_tokens")
+    private Integer defaultMaxOutputTokens;
     @Column(name = "supports_tools", nullable = false)
     private boolean supportsTools;
     @Column(name = "supports_knowledge_context", nullable = false)
@@ -56,6 +73,14 @@ public class AiModel {
     private BigDecimal outputCostPerMillion;
     @Column(name = "currency_code", length = 3)
     private String currencyCode;
+    @Column(length = 10)
+    private String currency;
+    @Column(name = "discovered_at")
+    private Instant discoveredAt;
+    @Column(name = "last_synced_at")
+    private Instant lastSyncedAt;
+    @Column(name = "last_seen_at")
+    private Instant lastSeenAt;
     @Column(name = "created_by", nullable = false)
     private UUID createdBy;
     @Column(name = "updated_by", nullable = false)
@@ -89,26 +114,60 @@ public class AiModel {
     public void setModelType(AiModelType modelType) { this.modelType = modelType; }
     public AiModelStatus getStatus() { return status; }
     public void setStatus(AiModelStatus status) { this.status = status; }
+    public String getModelFamily() { return modelFamily; }
+    public void setModelFamily(String modelFamily) { this.modelFamily = modelFamily; }
+    public String getModelVersion() { return modelVersion; }
+    public void setModelVersion(String modelVersion) { this.modelVersion = modelVersion; }
+    public AiModelSource getSource() { return source; }
+    public void setSource(AiModelSource source) { this.source = source; }
     public Integer getContextWindowTokens() { return contextWindowTokens; }
     public void setContextWindowTokens(Integer contextWindowTokens) { this.contextWindowTokens = contextWindowTokens; }
+    public Integer getContextWindow() { return contextWindow; }
+    public void setContextWindow(Integer contextWindow) { this.contextWindow = contextWindow; }
+    public Integer getMaxInputTokens() { return maxInputTokens; }
+    public void setMaxInputTokens(Integer maxInputTokens) { this.maxInputTokens = maxInputTokens; }
     public Integer getMaxOutputTokens() { return maxOutputTokens; }
     public void setMaxOutputTokens(Integer maxOutputTokens) { this.maxOutputTokens = maxOutputTokens; }
+    public BigDecimal getDefaultTemperature() { return defaultTemperature; }
+    public void setDefaultTemperature(BigDecimal defaultTemperature) { this.defaultTemperature = defaultTemperature; }
+    public BigDecimal getDefaultTopP() { return defaultTopP; }
+    public void setDefaultTopP(BigDecimal defaultTopP) { this.defaultTopP = defaultTopP; }
+    public Integer getDefaultMaxOutputTokens() { return defaultMaxOutputTokens; }
+    public void setDefaultMaxOutputTokens(Integer defaultMaxOutputTokens) {
+        this.defaultMaxOutputTokens = defaultMaxOutputTokens;
+    }
     public boolean isSupportsTools() { return supportsTools; }
     public void setSupportsTools(boolean supportsTools) { this.supportsTools = supportsTools; }
     public boolean isSupportsKnowledgeContext() { return supportsKnowledgeContext; }
-    public void setSupportsKnowledgeContext(boolean supportsKnowledgeContext) { this.supportsKnowledgeContext = supportsKnowledgeContext; }
+    public void setSupportsKnowledgeContext(boolean supportsKnowledgeContext) {
+        this.supportsKnowledgeContext = supportsKnowledgeContext;
+    }
     public boolean isSupportsJsonOutput() { return supportsJsonOutput; }
     public void setSupportsJsonOutput(boolean supportsJsonOutput) { this.supportsJsonOutput = supportsJsonOutput; }
     public boolean isSupportsStreaming() { return supportsStreaming; }
     public void setSupportsStreaming(boolean supportsStreaming) { this.supportsStreaming = supportsStreaming; }
     public boolean isSupportsSystemMessages() { return supportsSystemMessages; }
-    public void setSupportsSystemMessages(boolean supportsSystemMessages) { this.supportsSystemMessages = supportsSystemMessages; }
+    public void setSupportsSystemMessages(boolean supportsSystemMessages) {
+        this.supportsSystemMessages = supportsSystemMessages;
+    }
     public BigDecimal getInputCostPerMillion() { return inputCostPerMillion; }
-    public void setInputCostPerMillion(BigDecimal inputCostPerMillion) { this.inputCostPerMillion = inputCostPerMillion; }
+    public void setInputCostPerMillion(BigDecimal inputCostPerMillion) {
+        this.inputCostPerMillion = inputCostPerMillion;
+    }
     public BigDecimal getOutputCostPerMillion() { return outputCostPerMillion; }
-    public void setOutputCostPerMillion(BigDecimal outputCostPerMillion) { this.outputCostPerMillion = outputCostPerMillion; }
+    public void setOutputCostPerMillion(BigDecimal outputCostPerMillion) {
+        this.outputCostPerMillion = outputCostPerMillion;
+    }
     public String getCurrencyCode() { return currencyCode; }
     public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
+    public String getCurrency() { return currency; }
+    public void setCurrency(String currency) { this.currency = currency; }
+    public Instant getDiscoveredAt() { return discoveredAt; }
+    public void setDiscoveredAt(Instant discoveredAt) { this.discoveredAt = discoveredAt; }
+    public Instant getLastSyncedAt() { return lastSyncedAt; }
+    public void setLastSyncedAt(Instant lastSyncedAt) { this.lastSyncedAt = lastSyncedAt; }
+    public Instant getLastSeenAt() { return lastSeenAt; }
+    public void setLastSeenAt(Instant lastSeenAt) { this.lastSeenAt = lastSeenAt; }
     public UUID getCreatedBy() { return createdBy; }
     public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
     public UUID getUpdatedBy() { return updatedBy; }

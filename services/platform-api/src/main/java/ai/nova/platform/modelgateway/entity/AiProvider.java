@@ -79,6 +79,28 @@ public class AiProvider {
     @Column(name = "last_connection_test_error_code", length = 100)
     private String lastConnectionTestErrorCode;
 
+    @Column(name = "last_model_sync_at")
+    private Instant lastModelSyncAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "last_model_sync_status", length = 30)
+    private ModelSyncStatus lastModelSyncStatus;
+
+    @Column(name = "last_model_sync_error_code", length = 100)
+    private String lastModelSyncErrorCode;
+
+    @Column(name = "last_model_sync_discovered_count")
+    private Integer lastModelSyncDiscoveredCount;
+
+    @Column(name = "last_model_sync_created_count")
+    private Integer lastModelSyncCreatedCount;
+
+    @Column(name = "last_model_sync_updated_count")
+    private Integer lastModelSyncUpdatedCount;
+
+    @Column(name = "last_model_sync_unchanged_count")
+    private Integer lastModelSyncUnchangedCount;
+
     @Column(name = "created_by", nullable = false)
     private UUID createdBy;
 
@@ -256,6 +278,62 @@ public class AiProvider {
 
     public void setLastConnectionTestErrorCode(String lastConnectionTestErrorCode) {
         this.lastConnectionTestErrorCode = lastConnectionTestErrorCode;
+    }
+
+    public Instant getLastModelSyncAt() {
+        return lastModelSyncAt;
+    }
+
+    public void setLastModelSyncAt(Instant lastModelSyncAt) {
+        this.lastModelSyncAt = lastModelSyncAt;
+    }
+
+    public ModelSyncStatus getLastModelSyncStatus() {
+        return lastModelSyncStatus;
+    }
+
+    public void setLastModelSyncStatus(ModelSyncStatus lastModelSyncStatus) {
+        this.lastModelSyncStatus = lastModelSyncStatus;
+    }
+
+    public String getLastModelSyncErrorCode() {
+        return lastModelSyncErrorCode;
+    }
+
+    public void setLastModelSyncErrorCode(String lastModelSyncErrorCode) {
+        this.lastModelSyncErrorCode = lastModelSyncErrorCode;
+    }
+
+    public Integer getLastModelSyncDiscoveredCount() {
+        return lastModelSyncDiscoveredCount;
+    }
+
+    public void setLastModelSyncDiscoveredCount(Integer lastModelSyncDiscoveredCount) {
+        this.lastModelSyncDiscoveredCount = lastModelSyncDiscoveredCount;
+    }
+
+    public Integer getLastModelSyncCreatedCount() {
+        return lastModelSyncCreatedCount;
+    }
+
+    public void setLastModelSyncCreatedCount(Integer lastModelSyncCreatedCount) {
+        this.lastModelSyncCreatedCount = lastModelSyncCreatedCount;
+    }
+
+    public Integer getLastModelSyncUpdatedCount() {
+        return lastModelSyncUpdatedCount;
+    }
+
+    public void setLastModelSyncUpdatedCount(Integer lastModelSyncUpdatedCount) {
+        this.lastModelSyncUpdatedCount = lastModelSyncUpdatedCount;
+    }
+
+    public Integer getLastModelSyncUnchangedCount() {
+        return lastModelSyncUnchangedCount;
+    }
+
+    public void setLastModelSyncUnchangedCount(Integer lastModelSyncUnchangedCount) {
+        this.lastModelSyncUnchangedCount = lastModelSyncUnchangedCount;
     }
 
     public UUID getCreatedBy() {

@@ -1,8 +1,8 @@
 package ai.nova.platform.modelgateway.service;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -10,11 +10,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ai.nova.platform.modelcatalog.entity.AiModelCapability;
+import ai.nova.platform.modelcatalog.entity.AiModelCapabilityEntity;
+import ai.nova.platform.modelcatalog.entity.AiModelCapabilityEntity.AiModelCapabilityId;
+import ai.nova.platform.modelcatalog.repository.AiModelCapabilityRepository;
+import ai.nova.platform.modelcatalog.service.AiModelCatalogService;
 import ai.nova.platform.modelgateway.dto.ModelGatewayDtos.CreateModelRequest;
 import ai.nova.platform.modelgateway.dto.ModelGatewayDtos.ModelResponse;
 import ai.nova.platform.modelgateway.dto.ModelGatewayDtos.UpdateModelRequest;
 import ai.nova.platform.modelgateway.entity.AiModel;
+import ai.nova.platform.modelgateway.entity.AiModelSource;
 import ai.nova.platform.modelgateway.entity.AiModelStatus;
+import ai.nova.platform.modelgateway.entity.AiModelType;
 import ai.nova.platform.modelgateway.entity.AiProvider;
 import ai.nova.platform.modelgateway.entity.AiProviderStatus;
 import ai.nova.platform.modelgateway.mapper.ModelGatewayMapper;
@@ -26,20 +33,24 @@ import ai.nova.platform.web.error.ApiException;
 @Service
 public class AiModelService {
 
-    private static final Pattern MODEL_KEY_PATTERN = Pattern.compile("^[A-Z][A-Z0-9_]*$");
-
     private final AiModelRepository modelRepository;
     private final AiProviderService providerService;
+    private final AiModelCapabilityRepository capabilityRepository;
+    private final AiModelCatalogService catalogService;
     private final ModelGatewayMapper mapper;
     private final ModelGatewayAuthorizationService authorizationService;
 
     public AiModelService(
             AiModelRepository modelRepository,
             AiProviderService providerService,
+            AiModelCapabilityRepository capabilityRepository,
+            AiModelCatalogService catalogService,
             ModelGatewayMapper mapper,
             ModelGatewayAuthorizationService authorizationService) {
         this.modelRepository = modelRepository;
         this.providerService = providerService;
+        this.capabilityRepository = capabilityRepository;
+        this.catalogService = catalogService;
         this.mapper = mapper;
         this.authorizationService = authorizationService;
     }
@@ -65,11 +76,9 @@ public class AiModelService {
     public ModelResponse create(UUID providerId, CreateModelRequest request, AuthenticatedUser user) {
         authorizationService.require(user, ModelGatewayAuthorizationService.MODEL_CREATE);
         AiProvider provider = providerService.requireProvider(providerId, user.getOrganizationId());
-        String key = request.modelKey().trim().toUpperCase();
-        if (!MODEL_KEY_PATTERN.matcher(key).matches()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "MODEL_KEY_INVALID", "Invalid model key");
-        }
-        if (modelRepository.existsByProviderIdAndModelKey(providerId, key)) {
+        String key = AiModelCatalogService.normalizeModelKey(request.modelKey());
+        AiModelCatalogService.validateModelKey(key);
+        if (modelRepository.existsByOrganizationIdAndModelKey(user.getOrganizationId(), key)) {
             throw new ApiException(HttpStatus.CONFLICT, "MODEL_KEY_EXISTS", "Model key already exists");
         }
         if (request.maxOutputTokens() > request.contextWindowTokens()) {
@@ -87,7 +96,9 @@ public class AiModelService {
         model.setDescription(trim(request.description()));
         model.setModelType(request.modelType());
         model.setStatus(AiModelStatus.DRAFT);
+        model.setSource(AiModelSource.MANUAL);
         model.setContextWindowTokens(request.contextWindowTokens());
+        model.setContextWindow(request.contextWindowTokens());
         model.setMaxOutputTokens(request.maxOutputTokens());
         model.setSupportsTools(Boolean.TRUE.equals(request.supportsTools()));
         model.setSupportsKnowledgeContext(
@@ -99,12 +110,35 @@ public class AiModelService {
         model.setInputCostPerMillion(request.inputCostPerMillion());
         model.setOutputCostPerMillion(request.outputCostPerMillion());
         model.setCurrencyCode(trim(request.currencyCode()));
+        model.setCurrency(trim(request.currencyCode()));
         model.setCreatedBy(user.getUserId());
         model.setUpdatedBy(user.getUserId());
         model.setCreatedAt(now);
         model.setUpdatedAt(now);
-        model.setVersion(0);
-        return mapper.toModelResponse(modelRepository.save(model));
+        modelRepository.save(model);
+
+        if (isChatLike(request.modelType())) {
+            AiModelCapabilityEntity chat = new AiModelCapabilityEntity();
+            chat.setId(new AiModelCapabilityId(model.getId(), AiModelCapability.CHAT));
+            chat.setEnabled(true);
+            chat.setCreatedAt(now);
+            capabilityRepository.save(chat);
+        }
+        List<AiModelCapabilityEntity> caps = capabilityRepository.findByIdModelId(model.getId());
+        if (Boolean.TRUE.equals(request.supportsTools())) {
+            saveCap(model.getId(), AiModelCapability.TOOL_CALLING, now);
+            saveCap(model.getId(), AiModelCapability.FUNCTION_CALLING, now);
+        }
+        if (Boolean.TRUE.equals(request.supportsJsonOutput())) {
+            saveCap(model.getId(), AiModelCapability.JSON_MODE, now);
+        }
+        if (Boolean.TRUE.equals(request.supportsStreaming())) {
+            saveCap(model.getId(), AiModelCapability.STREAMING, now);
+        }
+        caps = capabilityRepository.findByIdModelId(model.getId());
+        catalogService.syncBooleanCache(model, caps);
+        modelRepository.save(model);
+        return mapper.toModelResponse(model);
     }
 
     @Transactional
@@ -120,6 +154,7 @@ public class AiModelService {
         model.setDisplayName(request.displayName().trim());
         model.setDescription(trim(request.description()));
         model.setContextWindowTokens(request.contextWindowTokens());
+        model.setContextWindow(request.contextWindowTokens());
         model.setMaxOutputTokens(request.maxOutputTokens());
         if (request.supportsTools() != null) {
             model.setSupportsTools(request.supportsTools());
@@ -139,6 +174,7 @@ public class AiModelService {
         model.setInputCostPerMillion(request.inputCostPerMillion());
         model.setOutputCostPerMillion(request.outputCostPerMillion());
         model.setCurrencyCode(trim(request.currencyCode()));
+        model.setCurrency(trim(request.currencyCode()));
         model.setUpdatedBy(user.getUserId());
         model.setUpdatedAt(Instant.now());
         return mapper.toModelResponse(modelRepository.save(model));
@@ -182,6 +218,21 @@ public class AiModelService {
         return modelRepository
                 .findByIdAndProviderIdAndOrganizationId(modelId, providerId, organizationId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MODEL_NOT_FOUND", "Model not found"));
+    }
+
+    private void saveCap(UUID modelId, AiModelCapability capability, Instant now) {
+        AiModelCapabilityEntity entity = new AiModelCapabilityEntity();
+        entity.setId(new AiModelCapabilityId(modelId, capability));
+        entity.setEnabled(true);
+        entity.setCreatedAt(now);
+        capabilityRepository.save(entity);
+    }
+
+    private static boolean isChatLike(AiModelType type) {
+        return type == AiModelType.CHAT
+                || type == AiModelType.TEXT_GENERATION
+                || type == AiModelType.REASONING
+                || type == AiModelType.MULTIMODAL;
     }
 
     private static String trim(String value) {

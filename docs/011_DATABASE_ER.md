@@ -348,6 +348,7 @@ erDiagram
     string azure_resource_name
     string azure_api_version
     string last_connection_test_status
+    string last_model_sync_status
     string status
   }
 
@@ -366,10 +367,29 @@ erDiagram
 
   AI_MODELS {
     uuid id PK
+    uuid organization_id FK
     uuid provider_id FK
     string model_key
+    string provider_model_id
     string model_type
     string status
+    string source
+    int context_window
+    datetime last_synced_at
+  }
+
+  AI_MODEL_CAPABILITIES {
+    uuid model_id FK
+    string capability
+    boolean enabled
+  }
+
+  AI_MODEL_ALIASES {
+    uuid id PK
+    uuid organization_id FK
+    uuid model_id FK
+    string alias
+    string normalized_alias
   }
 
   PROJECT_MODELS {

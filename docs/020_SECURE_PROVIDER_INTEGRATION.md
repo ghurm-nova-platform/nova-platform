@@ -144,6 +144,8 @@ Must never include: plaintext secrets, Authorization headers, ciphertext as leak
 
 V1–V22 unchanged (including model gateway V20–V22 and knowledge V16–V19).
 
+Phase 11 catalog migrations continue at V26–V28; see [`021_MODEL_CATALOG.md`](021_MODEL_CATALOG.md).
+
 ## Compatibility
 
 | Concern | Behavior |

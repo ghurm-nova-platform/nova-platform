@@ -1,0 +1,142 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <h1>AI Models</h1>
+      <p>Organization model catalog with provider sync and manual entries.</p>
+    </div>
+    <div class="page__actions">
+      @if (permissions.canCreateCatalog()) {
+        <button mat-flat-button color="primary" type="button" (click)="create()">
+          <mat-icon>add</mat-icon>
+          Create model
+        </button>
+      }
+    </div>
+  </header>
+
+  <div class="page__filters">
+    <mat-form-field appearance="outline">
+      <mat-label>Search models</mat-label>
+      <input matInput [formControl]="searchControl" aria-label="Search models" />
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Status</mat-label>
+      <mat-select [formControl]="statusControl">
+        <mat-option value="">All</mat-option>
+        @for (status of statuses; track status) {
+          <mat-option [value]="status">{{ status }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Source</mat-label>
+      <mat-select [formControl]="sourceControl">
+        <mat-option value="">All</mat-option>
+        @for (source of sources; track source) {
+          <mat-option [value]="source">{{ source }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Capability</mat-label>
+      <mat-select [formControl]="capabilityControl">
+        <mat-option value="">All</mat-option>
+        @for (capability of capabilities; track capability) {
+          <mat-option [value]="capability">{{ capability }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Provider</mat-label>
+      <mat-select [formControl]="providerControl">
+        <mat-option value="">All</mat-option>
+        @for (provider of providers(); track provider.id) {
+          <mat-option [value]="provider.id">{{ provider.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  @if (unauthorized()) {
+    <div class="page__empty" role="status">
+      <mat-icon>lock</mat-icon>
+      <h2>Unauthorized</h2>
+      <p>You do not have permission to view the AI model catalog.</p>
+    </div>
+  } @else if (error()) {
+    <p class="page__error" role="alert">{{ error() }}</p>
+  } @else if (loading()) {
+    <div class="page__loading" role="status">
+      <mat-spinner diameter="36" />
+      <span>Loading models…</span>
+    </div>
+  } @else if (rows().length === 0) {
+    <div class="page__empty">
+      <mat-icon>model_training</mat-icon>
+      <h2>No models found</h2>
+      <p>Create a manual catalog model or sync models from a provider.</p>
+    </div>
+  } @else {
+    <div class="page__table-wrap">
+      <table mat-table [dataSource]="rows()" matSort (matSortChange)="onSort($event)" class="page__table">
+        <ng-container matColumnDef="modelKey">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Model key</th>
+          <td mat-cell *matCellDef="let row">
+            <button class="linkish" type="button" (click)="open(row)"><code>{{ row.modelKey }}</code></button>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="providerName">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Provider</th>
+          <td mat-cell *matCellDef="let row">{{ row.providerName }}</td>
+        </ng-container>
+        <ng-container matColumnDef="providerModelId">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Provider model ID</th>
+          <td mat-cell *matCellDef="let row"><code>{{ row.providerModelId }}</code></td>
+        </ng-container>
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+          <td mat-cell *matCellDef="let row">
+            <span [class]="statusClass(row.status)">{{ row.status }}</span>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="contextWindowTokens">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Context</th>
+          <td mat-cell *matCellDef="let row">{{ row.contextWindowTokens }}</td>
+        </ng-container>
+        <ng-container matColumnDef="capabilities">
+          <th mat-header-cell *matHeaderCellDef>Capabilities</th>
+          <td mat-cell *matCellDef="let row">{{ capabilitiesSummary(row) }}</td>
+        </ng-container>
+        <ng-container matColumnDef="lastSyncedAt">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Last synced</th>
+          <td mat-cell *matCellDef="let row">
+            {{ row.lastSyncedAt ? (row.lastSyncedAt | date: 'medium') : '—' }}
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Actions</th>
+          <td mat-cell *matCellDef="let row">
+            <button mat-icon-button type="button" aria-label="Open model" (click)="open(row)">
+              <mat-icon>visibility</mat-icon>
+            </button>
+            @if (permissions.canUpdateCatalog() && row.status !== 'ARCHIVED') {
+              <button mat-icon-button type="button" aria-label="Edit model" (click)="edit(row)">
+                <mat-icon>edit</mat-icon>
+              </button>
+            }
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+    </div>
+    <mat-paginator
+      [length]="total()"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="[5, 10, 25]"
+      (page)="onPage($event)"
+    />
+  }
+</section>

@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.nova.platform.modelcatalog.dto.ModelCatalogDtos.SyncResultResponse;
+import ai.nova.platform.modelcatalog.sync.ModelCatalogSyncService;
 import ai.nova.platform.modelgateway.dto.ModelGatewayDtos.ConnectionTestResponse;
 import ai.nova.platform.modelgateway.dto.ModelGatewayDtos.CreateProviderRequest;
 import ai.nova.platform.modelgateway.dto.ModelGatewayDtos.ProviderAdaptersResponse;
@@ -35,11 +37,15 @@ public class AiProviderController {
 
     private final AiProviderService providerService;
     private final ProviderConnectionTestService connectionTestService;
+    private final ModelCatalogSyncService modelCatalogSyncService;
 
     public AiProviderController(
-            AiProviderService providerService, ProviderConnectionTestService connectionTestService) {
+            AiProviderService providerService,
+            ProviderConnectionTestService connectionTestService,
+            ModelCatalogSyncService modelCatalogSyncService) {
         this.providerService = providerService;
         this.connectionTestService = connectionTestService;
+        this.modelCatalogSyncService = modelCatalogSyncService;
     }
 
     @GetMapping
@@ -95,5 +101,11 @@ public class AiProviderController {
     public ConnectionTestResponse connectionTest(
             @PathVariable UUID providerId, @AuthenticationPrincipal AuthenticatedUser user) {
         return connectionTestService.testConnection(providerId, user);
+    }
+
+    @PostMapping("/{providerId}/models/sync")
+    public SyncResultResponse syncModels(
+            @PathVariable UUID providerId, @AuthenticationPrincipal AuthenticatedUser user) {
+        return modelCatalogSyncService.syncModels(providerId, user);
     }
 }
