@@ -1,0 +1,133 @@
+<section class="testing-page">
+  <header class="page-header">
+    <div>
+      <h1>Testing Agent</h1>
+      <p class="subtitle">
+        Generate structured test plans and cases for Coding Agent artifacts. Does not execute tests.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">You need TESTING_RUN or TESTING_READ to use this page.</p>
+  } @else {
+    <form class="run-form" [formGroup]="form" (ngSubmit)="runTesting()">
+      <mat-form-field appearance="outline" class="task-field">
+        <mat-label>Orchestration task ID</mat-label>
+        <input matInput formControlName="taskId" placeholder="UUID" />
+      </mat-form-field>
+      <div class="actions">
+        @if (permissions.canRun()) {
+          <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
+            Generate tests
+          </button>
+        }
+        @if (permissions.canRead()) {
+          <button mat-stroked-button type="button" (click)="loadLatest()" [disabled]="loading()">
+            Load latest
+          </button>
+        }
+      </div>
+    </form>
+
+    @if (loading()) {
+      <div class="loading">
+        <mat-spinner diameter="36"></mat-spinner>
+      </div>
+    }
+
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    @if (result(); as testing) {
+      <section class="coverage-panel">
+        <div class="coverage-gauge" [attr.data-tone]="coverageClass()">
+          <span class="value">{{ testing.coverageEstimate }}</span>
+          <span class="label">Coverage est.</span>
+        </div>
+        <div class="coverage-meta">
+          <p>{{ testing.summary }}</p>
+          <p class="meta">
+            model={{ testing.model }} · tokens={{ testing.tokensUsed ?? '—' }} ·
+            {{ testing.generationTimeMs ?? '—' }} ms
+          </p>
+          <div class="count-row">
+            @for (entry of testing.priorityCounts | keyvalue; track entry.key) {
+              <span class="priority-badge" [attr.data-priority]="entry.key">
+                {{ entry.key }}: {{ entry.value }}
+              </span>
+            }
+          </div>
+        </div>
+      </section>
+
+      <section class="filters">
+        <mat-form-field appearance="outline">
+          <mat-label>Search</mat-label>
+          <input
+            matInput
+            [value]="search()"
+            (input)="onSearch($any($event.target).value)"
+            placeholder="title, description, type"
+          />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Type</mat-label>
+          <mat-select [value]="filterType()" (selectionChange)="onTypeFilter($event.value)">
+            <mat-option value="">All</mat-option>
+            @for (type of typeOptions; track type) {
+              <mat-option [value]="type">{{ type }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Priority</mat-label>
+          <mat-select [value]="filterPriority()" (selectionChange)="onPriorityFilter($event.value)">
+            <mat-option value="">All</mat-option>
+            @for (priority of priorityOptions; track priority) {
+              <mat-option [value]="priority">{{ priority }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </section>
+
+      <section class="suites">
+        <h2>Generated suites ({{ filteredTests().length }})</h2>
+        @for (test of filteredTests(); track test.id) {
+          <article class="test-card">
+            <button type="button" class="test-header" (click)="toggleTest(test.id)">
+              <span class="type">{{ test.type }}</span>
+              <span class="priority-badge" [attr.data-priority]="test.priority">{{ test.priority }}</span>
+              <strong>{{ test.title }}</strong>
+              <mat-icon>{{ expanded()[test.id] ? 'expand_less' : 'expand_more' }}</mat-icon>
+            </button>
+            @if (expanded()[test.id]) {
+              <div class="test-body">
+                <p>{{ test.description }}</p>
+                @if (test.artifactPath) {
+                  <p class="meta">Artifact: {{ test.artifactPath }}</p>
+                }
+                <h3>Test cases</h3>
+                @for (testCase of test.cases; track testCase.id) {
+                  <div class="case-row">
+                    <strong>{{ testCase.name }}</strong>
+                    <span class="priority-badge" [attr.data-priority]="testCase.priority">
+                      {{ testCase.priority }}
+                    </span>
+                    @if (testCase.steps) {
+                      <p>{{ testCase.steps }}</p>
+                    }
+                    @if (testCase.expectedResult) {
+                      <p class="meta">Expected: {{ testCase.expectedResult }}</p>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </article>
+        }
+      </section>
+    }
+  }
+</section>

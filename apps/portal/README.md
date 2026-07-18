@@ -11,6 +11,15 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 2 Phase 5 scope
+
+- Testing Agent under `/testing`
+- Generate / load latest test plans for an orchestration task with generated artifacts
+- Coverage gauge (green/yellow/red), suites, cases, priority badges
+- Type / priority filters and search; expandable suite details
+- TESTING_* permission helper (Platform API only)
+- Does not execute tests
+
 ## Sprint 2 Phase 4 scope
 
 - Review Agent under `/review`
