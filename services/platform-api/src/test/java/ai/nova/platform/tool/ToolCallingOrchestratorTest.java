@@ -45,6 +45,7 @@ import ai.nova.platform.execution.repository.AgentExecutionRepository;
 import ai.nova.platform.execution.repository.ExecutionMessageRepository;
 import ai.nova.platform.execution.service.ExecutionLifecycleService;
 import ai.nova.platform.knowledge.config.KnowledgeProperties;
+import ai.nova.platform.knowledge.service.ExecutionKnowledgeSnapshotService;
 import ai.nova.platform.knowledge.service.KnowledgeRetrievalService;
 import ai.nova.platform.security.AuthenticatedUser;
 import ai.nova.platform.tool.config.ToolProperties;
@@ -98,6 +99,8 @@ class ToolCallingOrchestratorTest {
     private ConversationService conversationService;
     @Mock
     private KnowledgeRetrievalService knowledgeRetrievalService;
+    @Mock
+    private ExecutionKnowledgeSnapshotService knowledgeSnapshotService;
 
     private ToolCallingOrchestrator orchestrator;
     private ObjectMapper objectMapper;
@@ -131,7 +134,8 @@ class ToolCallingOrchestratorTest {
                 objectMapper,
                 executorService,
                 knowledgeRetrievalService,
-                knowledgeProperties);
+                knowledgeProperties,
+                knowledgeSnapshotService);
     }
 
     @AfterEach
@@ -206,7 +210,12 @@ class ToolCallingOrchestratorTest {
                         any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(pending);
         when(executionMapper.toExecuteResponse(
-                        any(AgentExecution.class), eq(null), eq(null), eq(true), eq(toolCallId)))
+                        any(AgentExecution.class),
+                        eq(null),
+                        eq(null),
+                        eq(true),
+                        eq(toolCallId),
+                        any()))
                 .thenReturn(new ExecuteResponse(
                         EXECUTION_ID, ExecutionStatus.RUNNING, null, 0L, null, null, null, true, toolCallId, List.of()));
 

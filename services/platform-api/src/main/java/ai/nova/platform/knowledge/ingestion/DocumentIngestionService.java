@@ -81,12 +81,15 @@ public class DocumentIngestionService {
             failureService.markFailed(managed.getId(), actorId, ex.getCode());
             throw ex;
         } catch (RuntimeException ex) {
-            log.warn("Document ingestion failed for document {}: {}", managed.getId(), ex.toString(), ex);
-            failureService.markFailed(managed.getId(), actorId, "INGESTION_FAILED");
+            log.warn(
+                    "Document ingestion failed for document {} with safeErrorCode={}",
+                    managed.getId(),
+                    "DOCUMENT_EXTRACTION_FAILED");
+            failureService.markFailed(managed.getId(), actorId, "DOCUMENT_EXTRACTION_FAILED");
             throw new ApiException(
                     HttpStatus.BAD_REQUEST,
-                    "INGESTION_FAILED",
-                    "Document ingestion failed: " + ex.getClass().getSimpleName() + ": " + ex.getMessage());
+                    "DOCUMENT_EXTRACTION_FAILED",
+                    "Document ingestion failed");
         }
     }
 
@@ -106,12 +109,15 @@ public class DocumentIngestionService {
             failureService.markFailed(managed.getId(), actorId, ex.getCode());
             throw ex;
         } catch (RuntimeException ex) {
-            log.warn("Document reprocess failed for document {}: {}", managed.getId(), ex.toString(), ex);
-            failureService.markFailed(managed.getId(), actorId, "INGESTION_FAILED");
+            log.warn(
+                    "Document reprocess failed for document {} with safeErrorCode={}",
+                    managed.getId(),
+                    "DOCUMENT_STORAGE_FAILED");
+            failureService.markFailed(managed.getId(), actorId, "DOCUMENT_STORAGE_FAILED");
             throw new ApiException(
                     HttpStatus.BAD_REQUEST,
-                    "INGESTION_FAILED",
-                    "Document ingestion failed: " + ex.getClass().getSimpleName() + ": " + ex.getMessage());
+                    "DOCUMENT_STORAGE_FAILED",
+                    "Document ingestion failed");
         }
     }
 

@@ -136,6 +136,8 @@ Execute responses include citation metadata separately (no chunk content unless 
 
 May store: retrieval configuration, citation identifiers, bounded chunk content for reproducibility, scores, knowledge-base/document IDs.
 
+Persisted in `execution_knowledge_snapshots` (Flyway V19) so tool-approval continuation restores the same bounded `RuntimeKnowledgeContext` without re-retrieval. Snapshots never include embeddings.
+
 Must not store: embeddings, provider secrets, internal paths, unbounded document content.
 
 ## Conversation policy
