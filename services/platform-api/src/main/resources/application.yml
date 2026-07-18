@@ -142,6 +142,14 @@ nova:
     max-artifact-chars-in-prompt: 100000
     default-provider: LOCAL
     default-model: testing-local
+  patch:
+    enabled: true
+    max-patch-chars: 500000
+    max-files: 200
+    max-artifact-chars-in-prompt: 100000
+    max-path-length: 1000
+    default-provider: LOCAL
+    default-model: patch-local
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 

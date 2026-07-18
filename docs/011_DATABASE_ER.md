@@ -505,6 +505,37 @@ erDiagram
     string sha256
   }
 
+  PATCH_RESULTS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    uuid run_id FK
+    uuid task_id FK
+    string summary
+    string status
+    int files_changed
+    int insertions
+    int deletions
+    int patch_size
+  }
+
+  GENERATED_PATCHES {
+    uuid id PK
+    uuid patch_result_id FK
+    string path
+    string change_type
+    int insertions
+    int deletions
+  }
+
+  PATCH_ARTIFACTS {
+    uuid id PK
+    uuid patch_result_id FK
+    uuid artifact_id FK
+    string path
+    string sha256
+  }
+
   PLANNER_TEMPLATES {
     uuid id PK
     uuid organization_id FK
@@ -593,11 +624,12 @@ Migrations: `V16__knowledge_base.sql`, `V17__knowledge_embeddings.sql`, `V18__kn
 `V22__model_gateway_permissions.sql`, `V23__provider_secret_vault.sql`,
 `V24__provider_connection_metadata.sql`, `V25__provider_secret_permissions.sql`,
 `V34__planner_templates.sql`, `V35__generated_artifacts.sql`, `V36__review_findings.sql`,
-`V37__testing_results.sql`.
+`V37__testing_results.sql`, `V38__patch_results.sql`.
 See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md),
 [`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md),
 [`023_PLANNER_AGENT.md`](023_PLANNER_AGENT.md),
 [`024_CODING_AGENT.md`](024_CODING_AGENT.md),
-[`026_REVIEW_AGENT.md`](026_REVIEW_AGENT.md), and
-[`027_TESTING_AGENT.md`](027_TESTING_AGENT.md).
+[`026_REVIEW_AGENT.md`](026_REVIEW_AGENT.md),
+[`027_TESTING_AGENT.md`](027_TESTING_AGENT.md), and
+[`028_PATCH_AGENT.md`](028_PATCH_AGENT.md).

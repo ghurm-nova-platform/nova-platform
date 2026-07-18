@@ -11,6 +11,14 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 3 Phase 1 scope
+
+- Patch Agent under `/patch`
+- Generate / load latest Unified Diff for an approved orchestration task
+- Summary, statistics, changed files, validation badge, download `.patch`
+- Unified Diff viewer (no Monaco); PATCH_* permission helper (Platform API only)
+- Does not apply patches or invoke git
+
 ## Sprint 2 Phase 5 scope
 
 - Testing Agent under `/testing`

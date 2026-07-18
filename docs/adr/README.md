@@ -30,3 +30,4 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0014](ADR-0014-coding-agent.md) | Coding Agent generates artifacts only | Accepted |
 | [ADR-0015](ADR-0015-review-agent.md) | Review Agent evaluates artifacts only | Accepted |
 | [ADR-0016](ADR-0016-testing-agent.md) | Testing Agent generates plans only | Accepted |
+| [ADR-0017](ADR-0017-patch-agent.md) | Patch Agent generates diffs only | Accepted |
