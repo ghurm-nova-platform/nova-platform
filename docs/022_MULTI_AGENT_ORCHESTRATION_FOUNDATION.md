@@ -64,7 +64,7 @@ Scheduler never blocks the poll loop on AI calls; dispatch is asynchronous withi
 
 ## Event sequencing
 
-`agent_orchestration_event_counters.next_sequence` is incremented with `UPDATE … RETURNING` (not `MAX+1`, not JVM sync). Reservation does not bump `AgentOrchestrationRun.version`, so concurrent task claim/completion TXs do not fail solely due to audit events.
+`agent_orchestration_event_counters.next_sequence` is advanced under a short `SELECT … FOR UPDATE` on the counter row (not `MAX+1`, not JVM sync). Reservation does not bump `AgentOrchestrationRun.version`, so concurrent task claim/completion TXs do not fail solely due to audit events.
 
 ## TX1 / external / TX2
 

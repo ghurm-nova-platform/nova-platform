@@ -10,7 +10,7 @@ Nova needs multi-agent workflows with durable state, dependency graphs, retries,
 
 ## Decision
 
-1. Persist orchestration runs, tasks, dependencies, attempts, and events in PostgreSQL (Flyway V29–V32) as the durable source of truth.
+1. Persist orchestration runs, tasks, dependencies, attempts, and events in PostgreSQL (Flyway V29–V33) as the durable source of truth.
 2. Use short TX1 / external AI work / short TX2 boundaries with optimistic locking and stale-result rejection (aligned with connection-test and catalog sync).
 3. Claim tasks with atomic compare-and-set updates and time-bounded leases so multiple application nodes are safe without JVM-only locks.
 4. Keep scheduler and executor as replaceable Spring components (`nova.orchestration.*`) so an external queue or workflow engine can be introduced later without rewriting the domain model.
