@@ -328,6 +328,15 @@ erDiagram
     bigint duration_ms
   }
 
+  EXECUTION_KNOWLEDGE_SNAPSHOTS {
+    uuid execution_id PK
+    uuid organization_id FK
+    uuid project_id FK
+    text snapshot_json
+    int citation_count
+    int total_characters
+  }
+
   REFRESH_TOKENS {
     uuid id PK
     uuid user_id FK
