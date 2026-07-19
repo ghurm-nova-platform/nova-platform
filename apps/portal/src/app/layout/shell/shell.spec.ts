@@ -39,6 +39,7 @@ describe('Shell', () => {
     expect(text).toContain('Patch Agent');
     expect(text).toContain('Git Integration');
     expect(text).toContain('Pull Request Agent');
+    expect(text).toContain('CI Observation');
     expect(text).toContain('AI Orchestration');
     expect(text).toContain('Agents');
     expect(text).toContain('Feedback');

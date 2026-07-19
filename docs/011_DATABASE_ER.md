@@ -616,6 +616,62 @@ erDiagram
     string state
   }
 
+  CI_OBSERVATION_OPERATIONS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    uuid task_id FK
+    uuid pull_request_operation_id FK
+    string status
+    string provider
+    string repository_owner
+    string repository_name
+    string source_branch
+    string target_branch
+    string commit_hash
+    bigint pull_request_number
+    string overall_status
+    string failure_summary
+    string retry_recommendation
+    string error_code
+  }
+
+  CI_WORKFLOW_RUNS {
+    uuid id PK
+    uuid ci_observation_operation_id FK
+    string external_workflow_id
+    string workflow_name
+    string external_run_id
+    string run_url
+    string status
+    string conclusion
+    bigint duration_ms
+    string trigger_event
+    string failure_reason
+  }
+
+  CI_JOBS {
+    uuid id PK
+    uuid ci_workflow_run_id FK
+    string external_job_id
+    string job_name
+    string status
+    string conclusion
+    bigint duration_ms
+    string failure_reason
+  }
+
+  CI_STEPS {
+    uuid id PK
+    uuid ci_job_id FK
+    int step_number
+    string step_name
+    string status
+    string conclusion
+    bigint duration_ms
+    string failure_reason
+  }
+
   PLANNER_TEMPLATES {
     uuid id PK
     uuid organization_id FK
@@ -704,7 +760,7 @@ Migrations: `V16__knowledge_base.sql`, `V17__knowledge_embeddings.sql`, `V18__kn
 `V22__model_gateway_permissions.sql`, `V23__provider_secret_vault.sql`,
 `V24__provider_connection_metadata.sql`, `V25__provider_secret_permissions.sql`,
 `V34__planner_templates.sql`, `V35__generated_artifacts.sql`, `V36__review_findings.sql`,
-`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`, `V40__pull_request_operations.sql`.
+`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`, `V40__pull_request_operations.sql`, `V41__ci_observation.sql`.
 See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md),
 [`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md),
@@ -714,4 +770,5 @@ See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`027_TESTING_AGENT.md`](027_TESTING_AGENT.md),
 [`028_PATCH_AGENT.md`](028_PATCH_AGENT.md), and
 [`029_GIT_INTEGRATION_AGENT.md`](029_GIT_INTEGRATION_AGENT.md),
-[`030_PULL_REQUEST_AGENT.md`](030_PULL_REQUEST_AGENT.md).
+[`030_PULL_REQUEST_AGENT.md`](030_PULL_REQUEST_AGENT.md),
+[`031_CI_OBSERVATION_AGENT.md`](031_CI_OBSERVATION_AGENT.md).

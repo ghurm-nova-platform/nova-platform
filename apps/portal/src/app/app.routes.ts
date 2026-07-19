@@ -101,6 +101,10 @@ export const routes: Routes = [
           import('./features/pull-requests/pull-request-page').then((m) => m.PullRequestPage),
       },
       {
+        path: 'ci',
+        loadComponent: () => import('./features/ci/ci-page').then((m) => m.CiPage),
+      },
+      {
         path: 'orchestration-runs',
         loadComponent: () =>
           import('./features/orchestration/orchestration-runs-list-page').then(

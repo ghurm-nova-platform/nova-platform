@@ -111,6 +111,12 @@ export class Shell {
       icon: 'call_merge',
     },
     {
+      labelEn: 'CI Observation',
+      labelAr: 'مراقبة CI',
+      path: '/ci',
+      icon: 'monitoring',
+    },
+    {
       labelEn: 'AI Orchestration',
       labelAr: 'تنسيق الوكلاء',
       path: '/orchestration-runs',

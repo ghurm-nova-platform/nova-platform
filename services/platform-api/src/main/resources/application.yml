@@ -173,6 +173,13 @@ nova:
     request-timeout-seconds: 30
     github-api-base-url: https://api.github.com
     github-token: ${NOVA_GITHUB_TOKEN:}
+  ci-observation:
+    enabled: false
+    provider: GITHUB
+    request-timeout-seconds: 30
+    github-api-base-url: https://api.github.com
+    github-token: ${NOVA_GITHUB_TOKEN:}
+    max-runs-per-observation: 20
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 

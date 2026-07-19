@@ -1,0 +1,239 @@
+<section class="ci-page">
+  <header class="page-header">
+    <div>
+      <h1>CI Observation Agent</h1>
+      <p class="subtitle safety">
+        This agent observes CI only. It never reruns, approves, merges, or deploys.
+      </p>
+      <p class="subtitle">
+        Fetches GitHub Actions workflow runs for a successful Pull Request operation and surfaces
+        overall health, failed jobs/steps, and retry guidance. Read-only — no workflow triggers or
+        deployment actions.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">You need CI_RUN or CI_READ to use this page.</p>
+  } @else {
+    <form class="run-form" [formGroup]="form" (ngSubmit)="runObservation()">
+      <mat-form-field appearance="outline" class="task-field">
+        <mat-label>Orchestration task ID</mat-label>
+        <input matInput formControlName="taskId" placeholder="UUID" />
+      </mat-form-field>
+      <div class="actions">
+        @if (permissions.canRun()) {
+          <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
+            Run
+          </button>
+        }
+        @if (permissions.canRead()) {
+          <button mat-stroked-button type="button" (click)="loadLatest()" [disabled]="loading()">
+            Load latest
+          </button>
+          <button mat-stroked-button type="button" (click)="loadHistory()" [disabled]="loading()">
+            Load history
+          </button>
+        }
+      </div>
+    </form>
+
+    @if (loading()) {
+      <div class="loading">
+        <mat-spinner diameter="36"></mat-spinner>
+      </div>
+    }
+
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    @if (result(); as op) {
+      <section class="summary-panel">
+        <div class="status-badge" [attr.data-status]="op.status">{{ op.status }}</div>
+        <div class="summary-meta">
+          <div class="overall-row">
+            <span class="label">Overall CI</span>
+            <span class="overall-badge" [attr.data-overall]="op.overallStatus">{{ op.overallStatus }}</span>
+          </div>
+          <div class="field-row">
+            <span class="label">Provider</span>
+            <code>{{ op.provider }}</code>
+          </div>
+          <div class="field-row">
+            <span class="label">Repository</span>
+            <code>{{ repositoryLabel(op) }}</code>
+          </div>
+          <div class="field-row">
+            <span class="label">Branches</span>
+            <code>{{ op.sourceBranch }} → {{ op.targetBranch ?? '—' }}</code>
+          </div>
+          <div class="field-row">
+            <span class="label">Commit</span>
+            <code>{{ op.commitHash ?? '—' }}</code>
+          </div>
+          @if (op.pullRequestNumber !== null) {
+            <div class="field-row">
+              <span class="label">Pull request</span>
+              <code>#{{ op.pullRequestNumber }}</code>
+            </div>
+          }
+          @if (op.errorCode) {
+            <div class="field-row error-code">
+              <span class="label">Error code</span>
+              <code>{{ op.errorCode }}</code>
+            </div>
+          }
+          @if (op.errorMessage) {
+            <p class="meta error-text">{{ op.errorMessage }}</p>
+          }
+          @if (op.failureSummary) {
+            <div class="insight failure-summary">
+              <h3>Failure summary</h3>
+              <p>{{ op.failureSummary }}</p>
+            </div>
+          }
+          @if (op.retryRecommendation) {
+            <div class="insight retry">
+              <h3>Retry recommendation</h3>
+              <p>{{ op.retryRecommendation }}</p>
+            </div>
+          }
+        </div>
+      </section>
+
+      @if (op.workflowRuns.length > 0) {
+        <section class="workflows">
+          <h2>Workflow runs ({{ op.workflowRuns.length }})</h2>
+          @for (workflow of op.workflowRuns; track workflow.id) {
+            <article class="workflow-card">
+              <header class="workflow-header">
+                <div>
+                  <h3>{{ workflow.workflowName }}</h3>
+                  <p class="meta">
+                    Run {{ workflow.externalRunId }}
+                    @if (workflow.triggerEvent) {
+                      · {{ workflow.triggerEvent }}
+                    }
+                    · Duration {{ formatDuration(workflow.durationMs) }}
+                  </p>
+                </div>
+                <div class="workflow-badges">
+                  <span class="run-status" [attr.data-status]="workflow.status">{{ workflow.status }}</span>
+                  @if (workflow.conclusion) {
+                    <span class="run-conclusion" [attr.data-conclusion]="workflow.conclusion">
+                      {{ workflow.conclusion }}
+                    </span>
+                  }
+                  @if (workflow.runUrl) {
+                    <a
+                      class="actions-link"
+                      [href]="workflow.runUrl"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open in GitHub Actions
+                    </a>
+                  }
+                </div>
+              </header>
+
+              @if (workflow.failureReason) {
+                <p class="failure-reason">{{ workflow.failureReason }}</p>
+              }
+
+              @if (failedJobs(workflow).length > 0) {
+                <section class="failed-jobs">
+                  <h4>Failed jobs</h4>
+                  <ul>
+                    @for (job of failedJobs(workflow); track job.id) {
+                      <li>{{ job.jobName }} — {{ job.failureReason ?? job.conclusion ?? job.status }}</li>
+                    }
+                  </ul>
+                </section>
+              }
+
+              <section class="jobs">
+                <h4>Jobs ({{ workflow.jobs.length }})</h4>
+                @for (job of workflow.jobs; track job.id) {
+                  <article class="job-card" [class.failed]="isFailedJob(job)">
+                    <header class="job-header">
+                      <strong>{{ job.jobName }}</strong>
+                      <span class="job-meta">
+                        {{ job.status }}
+                        @if (job.conclusion) {
+                          · {{ job.conclusion }}
+                        }
+                        · {{ formatDuration(job.durationMs) }}
+                      </span>
+                    </header>
+                    @if (job.failureReason) {
+                      <p class="failure-reason">{{ job.failureReason }}</p>
+                    }
+
+                    @if (failedSteps(job).length > 0) {
+                      <section class="failed-steps">
+                        <h5>Failed steps</h5>
+                        <ul>
+                          @for (step of failedSteps(job); track step.id) {
+                            <li>
+                              {{ step.stepNumber }}. {{ step.stepName }} —
+                              {{ step.failureReason ?? step.conclusion ?? step.status }}
+                            </li>
+                          }
+                        </ul>
+                      </section>
+                    }
+
+                    @if (job.steps.length > 0) {
+                      <ol class="step-timeline">
+                        @for (step of job.steps; track step.id) {
+                          <li [class.failed]="isFailedStep(step)">
+                            <span class="step-number">{{ step.stepNumber }}</span>
+                            <div class="step-body">
+                              <strong>{{ step.stepName }}</strong>
+                              <span class="step-meta">
+                                {{ step.status }}
+                                @if (step.conclusion) {
+                                  · {{ step.conclusion }}
+                                }
+                                · {{ formatDuration(step.durationMs) }}
+                              </span>
+                              @if (step.failureReason) {
+                                <p class="failure-reason">{{ step.failureReason }}</p>
+                              }
+                            </div>
+                          </li>
+                        }
+                      </ol>
+                    }
+                  </article>
+                }
+              </section>
+            </article>
+          }
+        </section>
+      }
+    }
+
+    @if (history().length > 1) {
+      <section class="history">
+        <h2>Observation history</h2>
+        <ul>
+          @for (item of history(); track item.id) {
+            <li>
+              <span class="status-badge inline" [attr.data-status]="item.status">{{ item.status }}</span>
+              <span class="overall-badge inline" [attr.data-overall]="item.overallStatus">
+                {{ item.overallStatus }}
+              </span>
+              <span class="meta">{{ item.createdAt }}</span>
+              @if (item.errorCode) {
+                <code>{{ item.errorCode }}</code>
+              }
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+</section>
