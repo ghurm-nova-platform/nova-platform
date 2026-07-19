@@ -1,6 +1,7 @@
 package ai.nova.platform.merge.provider;
 
 import java.net.http.HttpClient;
+import java.time.Instant;
 import java.time.Duration;
 import java.util.Locale;
 
@@ -19,7 +20,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import ai.nova.platform.merge.config.MergeProperties;
 import ai.nova.platform.merge.entity.MergeMethod;
 import ai.nova.platform.pullrequest.config.PullRequestProperties;
-import ai.nova.platform.pullrequest.provider.ProviderPullRequest;
 import ai.nova.platform.pullrequest.provider.RepositoryRef;
 import ai.nova.platform.web.error.ApiException;
 
@@ -54,12 +54,14 @@ public class GitHubMergeProvider implements MergeProvider {
         String effectiveToken = resolveToken(token);
         requireToken(effectiveToken);
         RepositoryRef ref = request.repository();
-        ProviderPullRequest current = getPullRequest(ref, request.pullRequestNumber(), effectiveToken);
-        if ("merged".equalsIgnoreCase(current.state())) {
-            return new MergeOutcome(
-                    true,
-                    true,
+        RemotePullRequestState current = getPullRequest(ref, request.pullRequestNumber(), effectiveToken);
+        if (current.isMerged()) {
+            // Never store head SHA as merge commit SHA.
+            return MergeOutcome.alreadyMerged(
                     current.headSha(),
+                    blankToNull(current.mergeCommitSha()),
+                    current.mergedAt(),
+                    current.mergedBy(),
                     current.url(),
                     "Pull request already merged");
         }
@@ -83,24 +85,43 @@ public class GitHubMergeProvider implements MergeProvider {
                     .retrieve()
                     .body(JsonNode.class);
             if (response == null) {
-                throw invalidResponse("Merge returned empty response");
+                return MergeOutcome.ambiguous(request.headSha(), request.pullRequestUrl(), "Merge returned empty response");
             }
-            String mergedSha = response.has("sha") ? response.get("sha").asText() : request.headSha();
+            boolean mergedFlag = !response.has("merged") || response.get("merged").asBoolean(true);
+            String mergeCommitSha = textOrNull(response, "sha");
             String message = response.has("message") ? response.get("message").asText() : "Pull request merged";
             String url = request.pullRequestUrl() != null ? request.pullRequestUrl() : current.url();
-            return new MergeOutcome(true, false, mergedSha, url, message);
+            if (!mergedFlag) {
+                return MergeOutcome.ambiguous(request.headSha(), url, message);
+            }
+            // Do not fall back to headSha for merge commit.
+            return MergeOutcome.success(
+                    request.headSha(), mergeCommitSha, Instant.now(), null, url, message);
         } catch (RestClientResponseException ex) {
+            int status = ex.getStatusCode().value();
+            if (status == HttpStatus.METHOD_NOT_ALLOWED.value()
+                    || status == HttpStatus.CONFLICT.value()
+                    || status >= 500
+                    || status == HttpStatus.GATEWAY_TIMEOUT.value()
+                    || status == HttpStatus.REQUEST_TIMEOUT.value()) {
+                return MergeOutcome.ambiguous(
+                        request.headSha(),
+                        request.pullRequestUrl(),
+                        "Merge provider response ambiguous (" + status + ")");
+            }
             throw mapHttpError(ex, "MERGE_PROVIDER_FAILED", "GitHub merge failed");
         } catch (ApiException ex) {
             throw ex;
         } catch (RuntimeException ex) {
-            throw new ApiException(
-                    HttpStatus.BAD_GATEWAY, "MERGE_PROVIDER_FAILED", "GitHub merge failed: " + safeMessage(ex));
+            return MergeOutcome.ambiguous(
+                    request.headSha(),
+                    request.pullRequestUrl(),
+                    "Merge provider request failed: " + safeMessage(ex));
         }
     }
 
     @Override
-    public ProviderPullRequest getPullRequest(RepositoryRef ref, long pullRequestNumber, String token) {
+    public RemotePullRequestState getPullRequest(RepositoryRef ref, long pullRequestNumber, String token) {
         String effectiveToken = resolveToken(token);
         requireToken(effectiveToken);
         try {
@@ -114,7 +135,7 @@ public class GitHubMergeProvider implements MergeProvider {
             if (response == null) {
                 throw invalidResponse("Pull request lookup returned empty response");
             }
-            return parsePullRequest(response);
+            return parsePullRequest(response, ref);
         } catch (RestClientResponseException ex) {
             throw mapHttpError(ex, "MERGE_PROVIDER_FAILED", "GitHub pull request lookup failed");
         } catch (ApiException ex) {
@@ -181,7 +202,7 @@ public class GitHubMergeProvider implements MergeProvider {
         };
     }
 
-    private static ProviderPullRequest parsePullRequest(JsonNode node) {
+    private static RemotePullRequestState parsePullRequest(JsonNode node, RepositoryRef ref) {
         if (!node.has("number") || !node.has("html_url") || !node.has("title") || !node.has("state")) {
             throw invalidResponse("Pull request response missing required fields");
         }
@@ -194,16 +215,66 @@ public class GitHubMergeProvider implements MergeProvider {
                 || !head.has("sha")) {
             throw invalidResponse("Pull request response missing head/base metadata");
         }
-        String externalId = node.has("id") ? node.get("id").asText() : String.valueOf(node.get("number").asLong());
-        return new ProviderPullRequest(
-                externalId,
+        boolean merged = node.has("merged") && node.get("merged").asBoolean(false);
+        String mergeCommitSha = textOrNull(node, "merge_commit_sha");
+        Instant mergedAt = parseInstant(textOrNull(node, "merged_at"));
+        String mergedBy = null;
+        if (node.has("merged_by") && node.get("merged_by") != null && !node.get("merged_by").isNull()) {
+            JsonNode by = node.get("merged_by");
+            if (by.has("login")) {
+                mergedBy = by.get("login").asText();
+            }
+        }
+        String owner = ref != null ? ref.owner() : null;
+        String name = ref != null ? ref.name() : null;
+        if (node.has("base") && node.get("base").has("repo") && node.get("base").get("repo").has("full_name")) {
+            String fullName = node.get("base").get("repo").get("full_name").asText();
+            int slash = fullName.indexOf('/');
+            if (slash > 0) {
+                owner = fullName.substring(0, slash);
+                name = fullName.substring(slash + 1);
+            }
+        }
+        return new RemotePullRequestState(
                 node.get("number").asLong(),
                 node.get("html_url").asText(),
                 node.get("title").asText(),
                 head.get("ref").asText(),
                 base.get("ref").asText(),
                 node.get("state").asText(),
-                head.get("sha").asText());
+                merged,
+                head.get("sha").asText(),
+                blankToNull(mergeCommitSha),
+                mergedAt,
+                mergedBy,
+                owner,
+                name);
+    }
+
+    private static Instant parseInstant(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Instant.parse(value);
+        } catch (RuntimeException ex) {
+            return null;
+        }
+    }
+
+    private static String textOrNull(JsonNode node, String field) {
+        if (node == null || !node.has(field) || node.get(field).isNull()) {
+            return null;
+        }
+        String text = node.get(field).asText();
+        return blankToNull(text);
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null || value.isBlank() || "null".equalsIgnoreCase(value)) {
+            return null;
+        }
+        return value.trim();
     }
 
     private static RestClient buildClient(MergeProperties properties) {

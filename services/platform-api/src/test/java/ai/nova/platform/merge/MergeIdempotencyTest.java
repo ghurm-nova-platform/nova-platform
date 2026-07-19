@@ -113,9 +113,7 @@ class MergeIdempotencyTest {
                 any(), any(), any(), any(), any());
         doAnswer(invocation -> null).when(agentRuntimeClient).archiveAgentDefinition(any(), any(), any());
         doAnswer(invocation -> null).when(agentRuntimeClient).cancel(any());
-        when(mergeProvider.providerId()).thenReturn("MOCK");
-        when(mergeProvider.merge(any(), anyString()))
-                .thenReturn(new MergeOutcome(true, false, "merged-sha-idem", "https://github.com/pr/99", "merged"));
+        MergeTestFixture.stubSuccessfulMergeProvider(mergeProvider, "merged-sha-idem");
         accessToken = MergeTestFixture.loginAdmin(mockMvc, objectMapper);
         user = MergeTestFixture.mergeAdminUser();
     }

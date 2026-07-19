@@ -1,6 +1,6 @@
 package ai.nova.platform.merge.provider;
 
-import java.util.Locale;
+import java.time.Instant;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -8,14 +8,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
-import ai.nova.platform.merge.entity.MergeMethod;
-import ai.nova.platform.pullrequest.provider.ProviderPullRequest;
 import ai.nova.platform.pullrequest.provider.RepositoryRef;
 import ai.nova.platform.web.error.ApiException;
 
 /**
  * In-memory merge provider for tests and local development.
- * Never stores or logs credentials.
+ * Distinguishes headSha from mergeCommitSha. Never stores credentials.
  */
 @Component
 @ConditionalOnProperty(name = "nova.merge.provider", havingValue = "LOCAL")
@@ -23,7 +21,7 @@ public class LocalMergeProvider implements MergeProvider {
 
     private static final String PROVIDER_ID = "LOCAL";
 
-    private final ConcurrentMap<String, ProviderPullRequest> pullRequests = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, RemotePullRequestState> pullRequests = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Boolean> protectedBranches = new ConcurrentHashMap<>();
 
     @Override
@@ -35,56 +33,74 @@ public class LocalMergeProvider implements MergeProvider {
     public MergeOutcome merge(MergeRequest request, String token) {
         requireRepository(request.repository());
         String key = key(request.repository(), request.pullRequestNumber());
-        ProviderPullRequest current = pullRequests.get(key);
-        if (current != null && "merged".equalsIgnoreCase(current.state())) {
-            return new MergeOutcome(
-                    true,
-                    true,
+        RemotePullRequestState current = pullRequests.get(key);
+        if (current != null && current.isMerged()) {
+            return MergeOutcome.alreadyMerged(
                     current.headSha(),
+                    current.mergeCommitSha(),
+                    current.mergedAt(),
+                    current.mergedBy(),
                     current.url(),
                     "Pull request already merged");
         }
-        String mergedSha = request.headSha() != null ? request.headSha() : "local-merged-sha";
-        ProviderPullRequest merged = new ProviderPullRequest(
-                current != null ? current.externalId() : String.valueOf(request.pullRequestNumber()),
+        String headSha = request.headSha() != null ? request.headSha() : "local-head-sha";
+        // Distinct merge commit — never reuse head SHA as merge commit.
+        String mergeCommitSha = "local-merge-" + Integer.toHexString(headSha.hashCode());
+        Instant mergedAt = Instant.now();
+        RemotePullRequestState merged = new RemotePullRequestState(
                 request.pullRequestNumber(),
-                request.pullRequestUrl() != null ? request.pullRequestUrl() : "https://local/pull/" + request.pullRequestNumber(),
+                request.pullRequestUrl() != null
+                        ? request.pullRequestUrl()
+                        : "https://local/pull/" + request.pullRequestNumber(),
                 current != null ? current.title() : "Local PR",
                 current != null ? current.sourceBranch() : "feature/local",
                 request.targetBranch() != null ? request.targetBranch() : "main",
-                "merged",
-                mergedSha);
+                "closed",
+                true,
+                headSha,
+                mergeCommitSha,
+                mergedAt,
+                "local-bot",
+                request.repository().owner(),
+                request.repository().name());
         pullRequests.put(key, merged);
-        return new MergeOutcome(true, false, mergedSha, merged.url(), "Merged locally");
+        return MergeOutcome.success(headSha, mergeCommitSha, mergedAt, "local-bot", merged.url(), "Merged locally");
     }
 
     @Override
-    public ProviderPullRequest getPullRequest(RepositoryRef repository, long pullRequestNumber, String token) {
+    public RemotePullRequestState getPullRequest(RepositoryRef repository, long pullRequestNumber, String token) {
         requireRepository(repository);
-        String key = key(repository, pullRequestNumber);
-        ProviderPullRequest pr = pullRequests.get(key);
+        String mapKey = key(repository, pullRequestNumber);
+        RemotePullRequestState pr = pullRequests.get(mapKey);
         if (pr != null) {
             return pr;
         }
-        return new ProviderPullRequest(
-                String.valueOf(pullRequestNumber),
+        return new RemotePullRequestState(
                 pullRequestNumber,
                 "https://local/" + repository.owner() + "/" + repository.name() + "/pull/" + pullRequestNumber,
                 "Local PR",
                 "feature/local",
                 "main",
                 "open",
-                "local-head-sha");
+                false,
+                "local-head-sha",
+                null,
+                null,
+                null,
+                repository.owner(),
+                repository.name());
     }
 
     @Override
     public BranchProtectionStatus checkBranchProtection(RepositoryRef repository, String branch, String token) {
         requireRepository(repository);
         String key = repository.owner() + "/" + repository.name() + ":" + branch;
-        return protectedBranches.getOrDefault(key, false) ? BranchProtectionStatus.PROTECTED : BranchProtectionStatus.NOT_PROTECTED;
+        return protectedBranches.getOrDefault(key, false)
+                ? BranchProtectionStatus.PROTECTED
+                : BranchProtectionStatus.NOT_PROTECTED;
     }
 
-    public void registerPullRequest(RepositoryRef repository, ProviderPullRequest pullRequest) {
+    public void registerPullRequest(RepositoryRef repository, RemotePullRequestState pullRequest) {
         pullRequests.put(key(repository, pullRequest.number()), pullRequest);
     }
 

@@ -22,7 +22,7 @@ import ai.nova.platform.orchestration.entity.AgentOrchestrationTask;
 import ai.nova.platform.patch.dto.PatchDtos.PatchResult;
 import ai.nova.platform.pullrequest.dto.PullRequestDtos.PullRequestOperation;
 import ai.nova.platform.pullrequest.dto.PullRequestDtos.PullRequestRecord;
-import ai.nova.platform.pullrequest.provider.ProviderPullRequest;
+import ai.nova.platform.merge.provider.MergeProvider.RemotePullRequestState;
 import ai.nova.platform.pullrequest.provider.RepositoryRef;
 
 @Service
@@ -386,26 +386,36 @@ public class MergeValidator {
     }
 
     private String resolvePrHeadSha(PullRequestOperation pullRequest, MergeValidationContext context) {
-        ProviderPullRequest remote = refreshPullRequest(pullRequest, context);
-        if (remote != null && remote.headSha() != null && !remote.headSha().isBlank()) {
-            return remote.headSha();
-        }
+        // Prefer persisted PR evidence for approval alignment. Live remote head is used in
+        // post-merge verification, not to override stored pre-merge head during validation.
         if (pullRequest.remoteCommitHash() != null && !pullRequest.remoteCommitHash().isBlank()) {
             return pullRequest.remoteCommitHash();
         }
-        return pullRequest.localCommitHash();
+        if (pullRequest.localCommitHash() != null && !pullRequest.localCommitHash().isBlank()) {
+            return pullRequest.localCommitHash();
+        }
+        RemotePullRequestState remote = refreshPullRequest(pullRequest, context);
+        if (remote != null && remote.headSha() != null && !remote.headSha().isBlank()) {
+            return remote.headSha();
+        }
+        return null;
     }
 
     private String resolvePrState(PullRequestOperation pullRequest, MergeValidationContext context) {
-        ProviderPullRequest remote = refreshPullRequest(pullRequest, context);
-        if (remote != null && remote.state() != null) {
-            return remote.state();
+        RemotePullRequestState remote = refreshPullRequest(pullRequest, context);
+        if (remote != null) {
+            if (remote.isMerged()) {
+                return "merged";
+            }
+            if (remote.state() != null) {
+                return remote.state();
+            }
         }
         PullRequestRecord record = pullRequest.pullRequestRecord();
         return record != null ? record.state() : null;
     }
 
-    private ProviderPullRequest refreshPullRequest(PullRequestOperation pullRequest, MergeValidationContext context) {
+    private RemotePullRequestState refreshPullRequest(PullRequestOperation pullRequest, MergeValidationContext context) {
         if (context.mergeProvider() == null
                 || pullRequest.pullRequestNumber() == null
                 || pullRequest.repositoryOwner() == null

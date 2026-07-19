@@ -146,7 +146,20 @@ Seeded in V44:
 
 ## Error codes
 
-`MERGE_DISABLED`, `MERGE_TASK_NOT_FOUND`, `MERGE_APPROVAL_NOT_FOUND`, `MERGE_APPROVAL_NOT_APPROVED`, `MERGE_APPROVAL_STALE`, `MERGE_FINGERPRINT_MISMATCH`, `MERGE_PR_NOT_MERGEABLE`, `MERGE_PROVIDER_ERROR`, `MERGE_ALREADY_COMPLETED`, …
+`MERGE_DISABLED`, `MERGE_APPROVAL_REQUIRED`, `MERGE_APPROVAL_EXPIRED`, `MERGE_APPROVAL_INVALIDATED`, `MERGE_APPROVAL_SUPERSEDED`, `MERGE_PATCH_MISMATCH`, `MERGE_COMMIT_MISMATCH`, `MERGE_PR_CHANGED`, `MERGE_CI_CHANGED`, `MERGE_BRANCH_PROTECTED`, `MERGE_ALREADY_COMPLETED`, `MERGE_PROVIDER_FAILED`, `MERGE_VERIFICATION_FAILED`, `MERGE_REMOTE_STATE_MISMATCH`, `MERGE_REMOTE_HEAD_MISMATCH`, `MERGE_COMMIT_NOT_VERIFIED`, `MERGE_OUTCOME_AMBIGUOUS`
+
+## Post-merge remote verification
+
+After `MergeProvider.merge` returns, Merge Agent always re-fetches the Pull Request and requires:
+
+- remote state is merged
+- repository owner/name and PR number match
+- remote head SHA matches the approved pre-merge head
+- a real merge commit SHA is present — never substitute the PR head SHA
+- `VERIFY_PASSED` only after successful remote verification
+- verification failure never yields `SUCCEEDED`
+
+Ambiguous provider responses are resolved by remote refetch without a duplicate merge.
 
 ## Known limitations
 

@@ -23,7 +23,10 @@ import ai.nova.platform.merge.entity.MergeStatus;
 import ai.nova.platform.merge.provider.MergeProvider;
 import ai.nova.platform.merge.provider.MergeProvider.MergeOutcome;
 import ai.nova.platform.merge.provider.MergeProvider.MergeRequest;
+import ai.nova.platform.merge.provider.MergeProvider.RemotePullRequestState;
 import ai.nova.platform.merge.security.MergeAuthorizationService;
+import ai.nova.platform.merge.service.MergeRemoteVerifier.VerificationRequest;
+import ai.nova.platform.merge.service.MergeRemoteVerifier.VerificationResult;
 import ai.nova.platform.merge.service.MergeValidator.MergeValidationContext;
 import ai.nova.platform.merge.service.MergeValidator.ValidationOutcome;
 import ai.nova.platform.orchestration.entity.AgentOrchestrationTask;
@@ -33,7 +36,6 @@ import ai.nova.platform.patch.service.PatchStorageService;
 import ai.nova.platform.project.ProjectRepository;
 import ai.nova.platform.pullrequest.config.PullRequestProperties;
 import ai.nova.platform.pullrequest.dto.PullRequestDtos.PullRequestOperation;
-import ai.nova.platform.pullrequest.provider.ProviderPullRequest;
 import ai.nova.platform.pullrequest.provider.RepositoryRef;
 import ai.nova.platform.pullrequest.service.PullRequestStorageService;
 import ai.nova.platform.security.AuthenticatedUser;
@@ -42,6 +44,7 @@ import ai.nova.platform.web.error.ApiException;
 /**
  * Merge Agent: the sole component allowed to merge pull requests after Approval Gate validation.
  * Never bypasses approvals, modifies evidence, reruns CI, deploys, or stores secrets.
+ * SUCCEEDED requires successful remote verification; VERIFY_PASSED only after that verification.
  */
 @Service
 public class MergeAgentService {
@@ -57,6 +60,7 @@ public class MergeAgentService {
     private final PullRequestStorageService pullRequestStorageService;
     private final CiStorageService ciStorageService;
     private final MergeValidator mergeValidator;
+    private final MergeRemoteVerifier remoteVerifier;
     private final MergeStorageService storageService;
     private final MergeProvider mergeProvider;
 
@@ -72,6 +76,7 @@ public class MergeAgentService {
             PullRequestStorageService pullRequestStorageService,
             CiStorageService ciStorageService,
             MergeValidator mergeValidator,
+            MergeRemoteVerifier remoteVerifier,
             MergeStorageService storageService,
             MergeProvider mergeProvider) {
         this.authorizationService = authorizationService;
@@ -85,6 +90,7 @@ public class MergeAgentService {
         this.pullRequestStorageService = pullRequestStorageService;
         this.ciStorageService = ciStorageService;
         this.mergeValidator = mergeValidator;
+        this.remoteVerifier = remoteVerifier;
         this.storageService = storageService;
         this.mergeProvider = mergeProvider;
     }
@@ -178,18 +184,17 @@ public class MergeAgentService {
         storageService.updateStatus(operationId, MergeStatus.MERGING);
         storageService.appendEvent(operationId, MergeEventType.MERGE_STARTED, "Calling merge provider", Instant.now());
 
+        RepositoryRef repository =
+                new RepositoryRef("github.com", pullRequest.repositoryOwner(), pullRequest.repositoryName());
+        long prNumber = pullRequest.pullRequestNumber() != null
+                ? pullRequest.pullRequestNumber()
+                : approval.pullRequestNumber();
+        String prUrl = pullRequest.pullRequestUrl() != null ? pullRequest.pullRequestUrl() : approval.pullRequestUrl();
+
         MergeOutcome outcome;
         try {
             outcome = mergeProvider.merge(
-                    new MergeRequest(
-                            new RepositoryRef("github.com", pullRequest.repositoryOwner(), pullRequest.repositoryName()),
-                            pullRequest.pullRequestNumber() != null
-                                    ? pullRequest.pullRequestNumber()
-                                    : approval.pullRequestNumber(),
-                            pullRequest.pullRequestUrl() != null ? pullRequest.pullRequestUrl() : approval.pullRequestUrl(),
-                            headSha,
-                            pullRequest.targetBranch(),
-                            mergeMethod),
+                    new MergeRequest(repository, prNumber, prUrl, headSha, pullRequest.targetBranch(), mergeMethod),
                     resolveGithubToken());
         } catch (ApiException ex) {
             storageService.appendEvent(operationId, MergeEventType.MERGE_FAILED, ex.getMessage(), Instant.now());
@@ -201,31 +206,62 @@ public class MergeAgentService {
         }
 
         storageService.updateStatus(operationId, MergeStatus.VERIFYING);
-        storageService.appendEvent(operationId, MergeEventType.VERIFY_STARTED, "Verifying merge outcome", Instant.now());
+        storageService.appendEvent(operationId, MergeEventType.VERIFY_STARTED, "Verifying merge outcome remotely", Instant.now());
 
-        if (outcome == null || !outcome.succeeded()) {
-            storageService.appendEvent(operationId, MergeEventType.VERIFY_FAILED, "Merge provider returned failure", Instant.now());
-            return storageService.markFailed(
-                    operationId, "MERGE_PROVIDER_FAILED", "Merge provider did not succeed", eligible);
+        if (outcome == null) {
+            return failVerification(operationId, "MERGE_VERIFICATION_FAILED", "Merge provider returned null outcome", eligible);
         }
 
-        if (properties.isVerifyBeforeMerge()) {
-            if (outcome.mergedCommitSha() == null || outcome.mergedCommitSha().isBlank()) {
-                storageService.appendEvent(operationId, MergeEventType.VERIFY_FAILED, "Missing merged commit", Instant.now());
-                return storageService.markFailed(
-                        operationId, "MERGE_PROVIDER_FAILED", "Merge provider did not return merged commit", eligible);
+        VerificationRequest verificationRequest = new VerificationRequest(
+                repository,
+                prNumber,
+                headSha,
+                pullRequest.repositoryOwner(),
+                pullRequest.repositoryName(),
+                outcome.mergeCommitSha(),
+                outcome.alreadyMerged());
+
+        VerificationResult verified;
+        try {
+            if (outcome.ambiguous()) {
+                verified = remoteVerifier.resolveAmbiguous(verificationRequest, resolveGithubToken());
+            } else if (!outcome.succeeded() && !outcome.alreadyMerged()) {
+                return failVerification(
+                        operationId,
+                        "MERGE_PROVIDER_FAILED",
+                        outcome.providerMessage() != null
+                                ? outcome.providerMessage()
+                                : "Merge provider did not succeed",
+                        eligible);
+            } else {
+                // Always perform remote verification before SUCCEEDED / VERIFY_PASSED.
+                verified = remoteVerifier.verify(verificationRequest, resolveGithubToken());
             }
+        } catch (ApiException ex) {
+            storageService.appendEvent(operationId, MergeEventType.VERIFY_FAILED, ex.getMessage(), Instant.now());
+            return storageService.markFailed(
+                    operationId,
+                    ex.getCode() != null ? ex.getCode() : "MERGE_VERIFICATION_FAILED",
+                    ex.getMessage(),
+                    eligible);
         }
 
-        storageService.appendEvent(operationId, MergeEventType.VERIFY_PASSED, "Merge verified", Instant.now());
+        // VERIFY_PASSED only after successful remote verification.
+        storageService.appendEvent(
+                operationId,
+                MergeEventType.VERIFY_PASSED,
+                "Remote merge verified (mergeCommit=" + verified.mergeCommitSha() + ")",
+                Instant.now());
+
+        MergeOutcome persisted = MergeRemoteVerifier.toPersistedOutcome(verified, outcome);
         return storageService.markSucceeded(
                 operationId,
                 mergeProvider.providerId(),
-                outcome.mergedCommitSha(),
-                outcome.pullRequestUrl() != null ? outcome.pullRequestUrl() : pullRequest.pullRequestUrl(),
+                persisted.mergeCommitSha(),
+                persisted.pullRequestUrl() != null ? persisted.pullRequestUrl() : prUrl,
                 user.getUserId(),
-                outcome.providerMessage(),
-                outcome.alreadyMerged(),
+                persisted.providerMessage(),
+                persisted.alreadyMerged(),
                 eligible);
     }
 
@@ -261,12 +297,12 @@ public class MergeAgentService {
                 || pullRequest.repositoryName() == null) {
             return null;
         }
+        RepositoryRef repository =
+                new RepositoryRef("github.com", pullRequest.repositoryOwner(), pullRequest.repositoryName());
         try {
-            ProviderPullRequest remote = mergeProvider.getPullRequest(
-                    new RepositoryRef("github.com", pullRequest.repositoryOwner(), pullRequest.repositoryName()),
-                    pullRequest.pullRequestNumber(),
-                    resolveGithubToken());
-            if (remote == null || !"merged".equalsIgnoreCase(remote.state())) {
+            RemotePullRequestState remote = mergeProvider.getPullRequest(
+                    repository, pullRequest.pullRequestNumber(), resolveGithubToken());
+            if (remote == null || !remote.isMerged()) {
                 return null;
             }
             MergeOperation existing =
@@ -274,6 +310,8 @@ public class MergeAgentService {
             if (existing != null && existing.status() == MergeStatus.SUCCEEDED) {
                 return existing;
             }
+
+            String approvedHead = resolveHeadSha(pullRequest);
             UUID operationId = existing != null ? existing.id() : UUID.randomUUID();
             Instant startedAt = Instant.now();
             PatchResult patch = patchStorageService.findLatest(task.getId(), user.getOrganizationId());
@@ -289,22 +327,56 @@ public class MergeAgentService {
                         pullRequest,
                         ci,
                         mergeMethod,
-                        remote.headSha(),
+                        approvedHead,
                         startedAt);
             }
-            storageService.appendEvent(operationId, MergeEventType.ALREADY_MERGED, "Pull request already merged remotely", Instant.now());
-            return storageService.markSucceeded(
-                    operationId,
-                    mergeProvider.providerId(),
-                    remote.headSha(),
-                    remote.url(),
-                    user.getUserId(),
-                    "Pull request already merged",
-                    true,
-                    eligible);
+            storageService.appendEvent(
+                    operationId, MergeEventType.ALREADY_MERGED, "Pull request already merged remotely", Instant.now());
+            storageService.updateStatus(operationId, MergeStatus.VERIFYING);
+            storageService.appendEvent(operationId, MergeEventType.VERIFY_STARTED, "Verifying already-merged remote state", Instant.now());
+
+            try {
+                VerificationResult verified = remoteVerifier.verify(
+                        new VerificationRequest(
+                                repository,
+                                pullRequest.pullRequestNumber(),
+                                approvedHead,
+                                pullRequest.repositoryOwner(),
+                                pullRequest.repositoryName(),
+                                remote.mergeCommitSha(),
+                                true),
+                        resolveGithubToken());
+
+                storageService.appendEvent(
+                        operationId,
+                        MergeEventType.VERIFY_PASSED,
+                        "Already-merged remote state verified (mergeCommit=" + verified.mergeCommitSha() + ")",
+                        Instant.now());
+                return storageService.markSucceeded(
+                        operationId,
+                        mergeProvider.providerId(),
+                        verified.mergeCommitSha(),
+                        verified.pullRequestUrl() != null ? verified.pullRequestUrl() : remote.url(),
+                        user.getUserId(),
+                        "Pull request already merged",
+                        true,
+                        eligible);
+            } catch (ApiException ex) {
+                storageService.appendEvent(operationId, MergeEventType.VERIFY_FAILED, ex.getMessage(), Instant.now());
+                return storageService.markFailed(
+                        operationId,
+                        ex.getCode() != null ? ex.getCode() : "MERGE_VERIFICATION_FAILED",
+                        ex.getMessage(),
+                        eligible);
+            }
         } catch (RuntimeException ex) {
             return null;
         }
+    }
+
+    private MergeOperation failVerification(UUID operationId, String code, String message, boolean eligible) {
+        storageService.appendEvent(operationId, MergeEventType.VERIFY_FAILED, message, Instant.now());
+        return storageService.markFailed(operationId, code, message, eligible);
     }
 
     private UUID resolveOperationId(AgentOrchestrationTask task, ApprovalDecision approval, UUID organizationId) {

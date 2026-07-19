@@ -110,9 +110,7 @@ class MergeControllerTest {
                 any(), any(), any(), any(), any());
         doAnswer(invocation -> null).when(agentRuntimeClient).archiveAgentDefinition(any(), any(), any());
         doAnswer(invocation -> null).when(agentRuntimeClient).cancel(any());
-        when(mergeProvider.providerId()).thenReturn("MOCK");
-        when(mergeProvider.merge(any(), anyString()))
-                .thenReturn(new MergeOutcome(true, false, "merged-sha", "https://github.com/pr/1", "merged"));
+        MergeTestFixture.stubSuccessfulMergeProvider(mergeProvider, "merged-sha");
         accessToken = MergeTestFixture.loginAdmin(mockMvc, objectMapper);
     }
 
