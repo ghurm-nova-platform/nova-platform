@@ -26,6 +26,13 @@ public final class DeploymentTestFixture {
                 true);
     }
 
+    public static String uniqueVersion(String prefix) {
+        // Avoid colliding with ReleaseManagerServiceTest fixed versions (1.x–9.x) in shared H2.
+        long mid = Math.floorMod((long) prefix.hashCode(), 900L) + 100L;
+        long patch = Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 900_000L) + 100_000L;
+        return "80." + mid + "." + patch;
+    }
+
     public static String observeBody(
             UUID releaseId, String environment, String provider, String externalKey, String status, String health) {
         return """

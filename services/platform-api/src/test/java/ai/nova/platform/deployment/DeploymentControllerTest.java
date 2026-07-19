@@ -62,7 +62,7 @@ class DeploymentControllerTest {
 
     @Test
     void observeEndpointAndListEnvironments() throws Exception {
-        UUID releaseId = seedPublished("4.0.0");
+        UUID releaseId = seedPublished(DeploymentTestFixture.uniqueVersion("ctrl"));
         mockMvc.perform(post("/api/deployments/observe")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)

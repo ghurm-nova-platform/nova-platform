@@ -56,7 +56,7 @@ class DeploymentStorageTest {
 
     @Test
     void persistsObservationArtifactsHealthAndTimeline() {
-        UUID releaseId = seedPublished("3.0.0");
+        UUID releaseId = seedPublished(DeploymentTestFixture.uniqueVersion("store"));
         var env = environmentRepository.findByCodeIgnoreCase("PRODUCTION").orElseThrow();
         Instant start = Instant.parse("2026-07-19T10:00:00Z");
         Instant end = Instant.parse("2026-07-19T10:05:00Z");
@@ -68,7 +68,7 @@ class DeploymentStorageTest {
                 releaseId,
                 env,
                 null,
-                "3.0.0",
+                "80.0.1",
                 "manifest",
                 DeploymentStatus.RUNNING,
                 DeploymentHealthLevel.WARNING,

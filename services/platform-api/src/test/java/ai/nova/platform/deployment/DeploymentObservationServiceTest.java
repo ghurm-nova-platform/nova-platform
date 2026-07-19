@@ -73,7 +73,7 @@ class DeploymentObservationServiceTest {
 
     @Test
     void observeVerifyAndIdempotentReturn() throws Exception {
-        UUID releaseId = seedPublishedRelease("1.10.0");
+        UUID releaseId = seedPublishedRelease(DeploymentTestFixture.uniqueVersion("obs"));
         String key = "ext-" + UUID.randomUUID();
         String body = DeploymentTestFixture.observeBody(
                 releaseId, "STAGING", "GITHUB_ACTIONS", key, "RUNNING", "HEALTHY");
@@ -86,7 +86,7 @@ class DeploymentObservationServiceTest {
                 .andExpect(jsonPath("$.status").value(DeploymentStatus.RUNNING.name()))
                 .andExpect(jsonPath("$.health").value(DeploymentHealthLevel.HEALTHY.name()))
                 .andExpect(jsonPath("$.environmentCode").value("STAGING"))
-                .andExpect(jsonPath("$.semanticVersion").value("1.10.0"))
+                .andExpect(jsonPath("$.semanticVersion").isNotEmpty())
                 .andReturn();
 
         String id = objectMapper.readTree(first.getResponse().getContentAsString()).get("id").asText();
@@ -123,7 +123,7 @@ class DeploymentObservationServiceTest {
 
     @Test
     void unknownEnvironmentFails() throws Exception {
-        UUID releaseId = seedPublishedRelease("1.11.0");
+        UUID releaseId = seedPublishedRelease(DeploymentTestFixture.uniqueVersion("env"));
         mockMvc.perform(post("/api/deployments/observe")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)

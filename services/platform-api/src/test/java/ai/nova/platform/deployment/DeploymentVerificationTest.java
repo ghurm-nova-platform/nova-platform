@@ -54,7 +54,7 @@ class DeploymentVerificationTest {
 
     @Test
     void degradedHealthFailsVerification() {
-        UUID releaseId = seedPublished("2.0.0");
+        UUID releaseId = seedPublished(DeploymentTestFixture.uniqueVersion("deg"));
         var observed = observationService.observe(
                 new ObserveDeploymentRequest(
                         releaseId,
@@ -79,7 +79,7 @@ class DeploymentVerificationTest {
 
     @Test
     void healthyObservationVerifiesSuccessfully() {
-        UUID releaseId = seedPublished("2.1.0");
+        UUID releaseId = seedPublished(DeploymentTestFixture.uniqueVersion("ok"));
         var observed = observationService.observe(
                 new ObserveDeploymentRequest(
                         releaseId,
