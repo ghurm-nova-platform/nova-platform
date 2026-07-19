@@ -105,6 +105,12 @@ export class Shell {
       icon: 'merge',
     },
     {
+      labelEn: 'Pull Request Agent',
+      labelAr: 'وكيل طلبات السحب',
+      path: '/pull-requests',
+      icon: 'call_merge',
+    },
+    {
       labelEn: 'AI Orchestration',
       labelAr: 'تنسيق الوكلاء',
       path: '/orchestration-runs',

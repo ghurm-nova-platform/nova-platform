@@ -11,6 +11,14 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 3 Phase 3 scope
+
+- Pull Request Agent under `/pull-requests`
+- Publish successful Git Integration branch to configured remote; create PR; no merge/approve/force-push
+- Status badge for all PR lifecycle states, provider, repository, branches, hashes, PR link, timeline, error code
+- PR_* permission helper (Platform API only)
+- Safety statement: creates PRs but never approves or merges them
+
 ## Sprint 3 Phase 2 scope
 
 - Git Integration under `/git`

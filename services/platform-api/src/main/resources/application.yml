@@ -160,6 +160,19 @@ nova:
     allow-init-repository: false
     # Failed operation workspaces are preserved for diagnosis by default.
     cleanup-failed-workspaces: false
+  pull-request:
+    enabled: false
+    provider: GITHUB
+    remote-name: origin
+    target-base-ref: main
+    allowed-base-refs: main,develop
+    allowed-repository-hosts: github.com
+    allow-force-push: false
+    draft-by-default: true
+    delete-branch-on-close: false
+    request-timeout-seconds: 30
+    github-api-base-url: https://api.github.com
+    github-token: ${NOVA_GITHUB_TOKEN:}
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 

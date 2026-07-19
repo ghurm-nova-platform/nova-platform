@@ -1,0 +1,159 @@
+.pull-request-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+.subtitle,
+.meta {
+  color: var(--mat-sys-on-surface-variant, #5f6368);
+  margin: 0.35rem 0 0;
+}
+
+.subtitle.safety {
+  color: var(--mat-sys-primary, #1565c0);
+  font-weight: 600;
+}
+
+.run-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.task-field {
+  min-width: min(100%, 28rem);
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.35rem;
+}
+
+.banner.error {
+  background: color-mix(in srgb, #c62828 12%, transparent);
+  border: 1px solid color-mix(in srgb, #c62828 35%, transparent);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.summary-panel {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--mat-sys-outline, #79747e) 40%, transparent);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: color-mix(in srgb, var(--mat-sys-surface, #fff) 92%, #eef3f8);
+}
+
+.status-badge {
+  min-width: 6rem;
+  min-height: 5rem;
+  border-radius: 0.75rem;
+  display: grid;
+  place-content: center;
+  font-weight: 700;
+  color: #fff;
+  background: #546e7a;
+  font-size: 0.7rem;
+  text-align: center;
+  padding: 0.35rem;
+}
+
+.status-badge.inline {
+  display: inline-grid;
+  min-width: auto;
+  min-height: auto;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.65rem;
+  margin-right: 0.5rem;
+}
+
+.status-badge[data-status='PENDING'],
+.status-badge[data-status='VALIDATING'],
+.status-badge[data-status='PUSHING'],
+.status-badge[data-status='PUSHED'],
+.status-badge[data-status='CREATING_PR'] {
+  background: #546e7a;
+}
+
+.status-badge[data-status='SUCCEEDED'] {
+  background: #2e7d32;
+}
+
+.status-badge[data-status='FAILED'] {
+  background: #c62828;
+}
+
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+
+.field-row.error-code code {
+  color: #c62828;
+}
+
+.field-row .label {
+  min-width: 6.5rem;
+  font-weight: 600;
+}
+
+.field-row code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  background: color-mix(in srgb, #000 6%, transparent);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.3rem;
+  word-break: break-all;
+}
+
+.pr-link {
+  font-weight: 600;
+}
+
+.copied {
+  color: #2e7d32;
+  font-weight: 600;
+  margin: 0.35rem 0 0;
+}
+
+.timeline ol,
+.history ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.timeline li p {
+  margin: 0.25rem 0 0;
+}
+
+.history li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+}

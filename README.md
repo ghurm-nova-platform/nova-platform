@@ -63,6 +63,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Testing Agent](docs/027_TESTING_AGENT.md)
 - [Patch Agent](docs/028_PATCH_AGENT.md)
 - [Git Integration Agent](docs/029_GIT_INTEGRATION_AGENT.md)
+- [Pull Request Agent](docs/030_PULL_REQUEST_AGENT.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles

@@ -96,6 +96,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/git/git-page').then((m) => m.GitPage),
       },
       {
+        path: 'pull-requests',
+        loadComponent: () =>
+          import('./features/pull-requests/pull-request-page').then((m) => m.PullRequestPage),
+      },
+      {
         path: 'orchestration-runs',
         loadComponent: () =>
           import('./features/orchestration/orchestration-runs-list-page').then(
