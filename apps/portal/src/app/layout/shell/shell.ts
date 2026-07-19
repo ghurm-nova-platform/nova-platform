@@ -123,6 +123,12 @@ export class Shell {
       icon: 'build',
     },
     {
+      labelEn: 'Approval Gate',
+      labelAr: 'بوابة الموافقة',
+      path: '/approval-gate',
+      icon: 'verified_user',
+    },
+    {
       labelEn: 'AI Orchestration',
       labelAr: 'تنسيق الوكلاء',
       path: '/orchestration-runs',

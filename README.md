@@ -66,6 +66,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Pull Request Agent](docs/030_PULL_REQUEST_AGENT.md)
 - [CI Observation Agent](docs/031_CI_OBSERVATION_AGENT.md)
 - [Repair Agent](docs/032_REPAIR_AGENT.md)
+- [Approval Gate](docs/033_APPROVAL_GATE.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles

@@ -109,6 +109,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/repair/repair-page').then((m) => m.RepairPage),
       },
       {
+        path: 'approval-gate',
+        loadComponent: () =>
+          import('./features/approval-gate/approval-gate-page').then((m) => m.ApprovalGatePage),
+      },
+      {
         path: 'orchestration-runs',
         loadComponent: () =>
           import('./features/orchestration/orchestration-runs-list-page').then(

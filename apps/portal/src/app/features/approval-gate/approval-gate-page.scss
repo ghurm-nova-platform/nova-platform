@@ -1,0 +1,273 @@
+.approval-gate-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+.subtitle,
+.meta {
+  color: var(--mat-sys-on-surface-variant, #5f6368);
+  margin: 0.35rem 0 0;
+}
+
+.subtitle.safety {
+  color: var(--mat-sys-primary, #1565c0);
+  font-weight: 600;
+}
+
+.run-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.task-field,
+.comment-field {
+  min-width: min(100%, 28rem);
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.35rem;
+}
+
+.banner {
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.banner.error {
+  background: color-mix(in srgb, #c62828 12%, transparent);
+  border: 1px solid color-mix(in srgb, #c62828 35%, transparent);
+}
+
+.banner.warn {
+  background: color-mix(in srgb, #ef6c00 12%, transparent);
+  border: 1px solid color-mix(in srgb, #ef6c00 35%, transparent);
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.summary-panel {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--mat-sys-outline, #79747e) 40%, transparent);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+}
+
+.badge-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.decision-badge,
+.merge-badge {
+  border-radius: 0.75rem;
+  display: grid;
+  place-content: center;
+  font-weight: 700;
+  text-align: center;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.7rem;
+}
+
+.decision-badge {
+  min-width: 6.5rem;
+  min-height: 4.5rem;
+  color: #fff;
+  background: #546e7a;
+}
+
+.decision-badge.inline {
+  display: inline-grid;
+  min-width: auto;
+  min-height: auto;
+  padding: 0.2rem 0.5rem;
+  margin-right: 0.5rem;
+}
+
+.decision-badge[data-decision='APPROVED'],
+.decision-badge[data-decision='ELIGIBLE'] {
+  background: #2e7d32;
+}
+
+.decision-badge[data-decision='BLOCKED'],
+.decision-badge[data-decision='REJECTED'],
+.decision-badge[data-decision='ERROR'] {
+  background: #c62828;
+}
+
+.decision-badge[data-decision='REQUIRES_HUMAN_APPROVAL'] {
+  background: #1565c0;
+}
+
+.decision-badge[data-decision='EXPIRED'],
+.decision-badge[data-decision='SUPERSEDED'],
+.decision-badge[data-decision='INVALIDATED'] {
+  background: #ef6c00;
+}
+
+.merge-badge.eligible {
+  color: #1b5e20;
+  border: 1px solid #2e7d32;
+}
+
+.merge-badge.ineligible {
+  color: #37474f;
+  border: 1px solid #90a4ae;
+}
+
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+
+.field-row .label {
+  min-width: 7rem;
+  font-weight: 600;
+}
+
+.field-row code {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  background: #0000000f;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.3rem;
+  word-break: break-all;
+}
+
+.insight {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #1565c040;
+}
+
+.insight h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.insight p,
+.notice {
+  margin: 0;
+}
+
+.approved-notice {
+  color: #1565c0;
+  font-weight: 600;
+}
+
+.error-code code,
+.error-text {
+  color: #c62828;
+}
+
+.requirements h2,
+.evidence h2,
+.human-approvals h2,
+.human-actions h2,
+.timeline h2,
+.history h2 {
+  margin: 0 0 0.75rem;
+}
+
+.req-heading {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.req-heading.passed {
+  color: #2e7d32;
+}
+
+.req-heading.failed {
+  color: #c62828;
+}
+
+.req-heading.pending {
+  color: #ef6c00;
+}
+
+.panel-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.panel-list li {
+  border: 1px solid #0000001a;
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.85rem;
+}
+
+.evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.75rem;
+}
+
+.evidence-card {
+  border: 1px solid #0000001a;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+.evidence-card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+}
+
+.evidence-card p {
+  margin: 0.15rem 0;
+}
+
+.external-link {
+  display: inline-block;
+  margin-top: 0.35rem;
+  color: #1565c0;
+}
+
+.timeline li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  align-items: baseline;
+}
+
+.timeline .phase {
+  font-weight: 700;
+}
+
+.timeline p {
+  flex-basis: 100%;
+  margin: 0.15rem 0 0;
+}
+
+.copied {
+  color: #2e7d32;
+  font-size: 0.85rem;
+}

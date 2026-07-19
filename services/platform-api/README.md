@@ -160,8 +160,12 @@ See [`docs/031_CI_OBSERVATION_AGENT.md`](../../docs/031_CI_OBSERVATION_AGENT.md)
 
 See [`docs/032_REPAIR_AGENT.md`](../../docs/032_REPAIR_AGENT.md) and ADR-0021.
 
+## Approval Gate
+
+See [`docs/033_APPROVAL_GATE.md`](../../docs/033_APPROVAL_GATE.md) and ADR-0022.
+
 Migrations: `V29`–`V32`. Durable runs, tasks, dependencies, attempts, events; claim leases; TX1/external/TX2 execution.
-Migration `V34` planner templates; `V35` generated artifacts; `V36` review results/findings; `V37` testing results; `V38` patch results; `V39` git operations; `V40` pull request operations; `V41` CI observation; `V42` repair agent.
+Migration `V34` planner templates; `V35` generated artifacts; `V36` review results/findings; `V37` testing results; `V38` patch results; `V39` git operations; `V40` pull request operations; `V41` CI observation; `V42` repair agent; `V43` approval gate.
 
 Local demo user (Flyway seed, local only):
 
