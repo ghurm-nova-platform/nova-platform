@@ -1,0 +1,185 @@
+<section class="repair-page">
+  <header class="page-header">
+    <div>
+      <h1>Repair Agent</h1>
+      <p class="subtitle safety">
+        Repair Agent proposes fixes only. It never merges code.
+      </p>
+      <p class="subtitle">
+        Collects failure signals from review, testing, and CI; analyzes root causes; generates a
+        new PatchResult without overwriting prior patches. Does not apply patches, commit, push,
+        merge, or trigger CI.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">You need REPAIR_RUN or REPAIR_READ to use this page.</p>
+  } @else {
+    <form class="run-form" [formGroup]="form" (ngSubmit)="runRepair()">
+      <mat-form-field appearance="outline" class="task-field">
+        <mat-label>Orchestration task ID</mat-label>
+        <input matInput formControlName="taskId" placeholder="UUID" />
+      </mat-form-field>
+      <div class="actions">
+        @if (permissions.canRun()) {
+          <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
+            Run
+          </button>
+        }
+        @if (permissions.canRead()) {
+          <button mat-stroked-button type="button" (click)="loadLatest()" [disabled]="loading()">
+            Load latest
+          </button>
+          <button mat-stroked-button type="button" (click)="loadHistory()" [disabled]="loading()">
+            Load history
+          </button>
+        }
+      </div>
+    </form>
+
+    @if (loading()) {
+      <div class="loading">
+        <mat-spinner diameter="36"></mat-spinner>
+      </div>
+    }
+
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    @if (result(); as op) {
+      <section class="summary-panel">
+        <div class="status-badge" [attr.data-status]="op.status">{{ op.status }}</div>
+        <div class="summary-meta">
+          <div class="field-row">
+            <span class="label">Attempt</span>
+            <code>#{{ op.attemptNumber }}</code>
+          </div>
+          <div class="field-row">
+            <span class="label">Reason</span>
+            <span>{{ op.reason }}</span>
+          </div>
+          @if (op.summary) {
+            <div class="insight summary">
+              <h3>Summary</h3>
+              <p>{{ op.summary }}</p>
+            </div>
+          }
+          <div class="field-row">
+            <span class="label">Prior patch</span>
+            <code>{{ op.priorPatchResultId }}</code>
+          </div>
+          <div class="field-row">
+            <span class="label">Patch result</span>
+            <code>{{ op.patchResultId ?? '—' }}</code>
+          </div>
+          <div class="field-row">
+            <span class="label">Confidence</span>
+            <code>{{ formatConfidence(op.confidence) }}</code>
+          </div>
+          @if (op.errorCode) {
+            <div class="field-row error-code">
+              <span class="label">Error code</span>
+              <code>{{ op.errorCode }}</code>
+            </div>
+          }
+          @if (op.errorMessage) {
+            <p class="meta error-text">{{ op.errorMessage }}</p>
+          }
+        </div>
+      </section>
+
+      @if (op.inputs.length > 0) {
+        <section class="inputs">
+          <h2>Failure inputs ({{ op.inputs.length }})</h2>
+          <ul>
+            @for (input of op.inputs; track input.id) {
+              <li>
+                <span class="source-badge">{{ input.sourceType }}</span>
+                @if (input.sourceRef) {
+                  <code>{{ input.sourceRef }}</code>
+                }
+                <span class="meta">priority {{ input.priority }}</span>
+                <p>{{ input.detail }}</p>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      @if (op.repairedFiles.length > 0) {
+        <section class="files">
+          <h2>Affected files ({{ op.repairedFiles.length }})</h2>
+          <ul>
+            @for (file of op.repairedFiles; track file.path) {
+              <li>
+                <code>{{ file.path }}</code>
+                @if (file.changeType) {
+                  <span class="change-type">{{ file.changeType }}</span>
+                }
+                @if (file.summary) {
+                  <span class="meta">{{ file.summary }}</span>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      @if (op.actions.length > 0) {
+        <section class="actions-list">
+          <h2>Proposed actions ({{ op.actions.length }})</h2>
+          <ul>
+            @for (action of op.actions; track action.id) {
+              <li>
+                <strong>{{ action.actionType }}</strong>
+                @if (action.targetPath) {
+                  <code>{{ action.targetPath }}</code>
+                }
+                <span>{{ action.description }}</span>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      @if (op.timeline.length > 0) {
+        <section class="timeline">
+          <h2>Timeline</h2>
+          <ol>
+            @for (event of op.timeline; track event.at + event.phase) {
+              <li>
+                <span class="phase">{{ event.phase }}</span>
+                <span class="meta">{{ event.at }}</span>
+                @if (event.detail) {
+                  <p>{{ event.detail }}</p>
+                }
+              </li>
+            }
+          </ol>
+        </section>
+      }
+    }
+
+    @if (history().length > 1) {
+      <section class="history">
+        <h2>Repair history</h2>
+        <ul>
+          @for (item of history(); track item.id) {
+            <li>
+              <span class="status-badge inline" [attr.data-status]="item.status">{{ item.status }}</span>
+              <span class="meta">attempt #{{ item.attemptNumber }} · {{ item.createdAt }}</span>
+              @if (item.patchResultId) {
+                <code>{{ item.patchResultId }}</code>
+              }
+              @if (item.errorCode) {
+                <code>{{ item.errorCode }}</code>
+              }
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+</section>

@@ -19,4 +19,6 @@ public interface PatchResultRepository extends JpaRepository<PatchResultEntity, 
     @Query("DELETE FROM PatchResultEntity r WHERE r.taskId = :taskId AND r.organizationId = :organizationId")
     void deleteByTaskIdAndOrganizationId(
             @Param("taskId") UUID taskId, @Param("organizationId") UUID organizationId);
+
+    long countByTaskIdAndOrganizationId(UUID taskId, UUID organizationId);
 }

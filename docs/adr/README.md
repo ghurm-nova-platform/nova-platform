@@ -34,3 +34,4 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0018](ADR-0018-git-integration-agent.md) | Git Integration Agent applies patches on isolated branches only | Accepted |
 | [ADR-0019](ADR-0019-pull-request-agent.md) | Pull Request Agent creates PRs only | Accepted |
 | [ADR-0020](ADR-0020-ci-observation-agent.md) | Read-only CI observation via provider abstraction | Accepted |
+| [ADR-0021](ADR-0021-repair-agent.md) | Repair Agent creates new PatchResults only | Accepted |

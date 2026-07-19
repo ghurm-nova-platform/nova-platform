@@ -117,6 +117,12 @@ export class Shell {
       icon: 'monitoring',
     },
     {
+      labelEn: 'Repair Agent',
+      labelAr: 'وكيل الإصلاح',
+      path: '/repair',
+      icon: 'build',
+    },
+    {
       labelEn: 'AI Orchestration',
       labelAr: 'تنسيق الوكلاء',
       path: '/orchestration-runs',

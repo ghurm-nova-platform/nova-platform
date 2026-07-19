@@ -57,7 +57,35 @@ public class PatchStorageService {
             String provider,
             Long generationTimeMs) {
         resultRepository.deleteByTaskIdAndOrganizationId(task.getId(), task.getOrganizationId());
+        return persistNewResult(task, artifacts, parsed, diff, tokensUsed, model, provider, generationTimeMs);
+    }
 
+    /**
+     * Appends a new PatchResult without deleting prior rows.
+     * Used by Repair Agent so previous patches remain immutable history.
+     */
+    @Transactional
+    public PatchResult appendResult(
+            AgentOrchestrationTask task,
+            List<GeneratedArtifactResponse> artifacts,
+            ParsedPatchOutput parsed,
+            ParsedDiff diff,
+            Long tokensUsed,
+            String model,
+            String provider,
+            Long generationTimeMs) {
+        return persistNewResult(task, artifacts, parsed, diff, tokensUsed, model, provider, generationTimeMs);
+    }
+
+    private PatchResult persistNewResult(
+            AgentOrchestrationTask task,
+            List<GeneratedArtifactResponse> artifacts,
+            ParsedPatchOutput parsed,
+            ParsedDiff diff,
+            Long tokensUsed,
+            String model,
+            String provider,
+            Long generationTimeMs) {
         Instant now = Instant.now();
         UUID resultId = UUID.randomUUID();
         String patchContent = diff.normalizedPatch();
