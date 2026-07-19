@@ -1,0 +1,16 @@
+package ai.nova.platform.merge.entity;
+
+public enum MergeEventType {
+    OPERATION_CREATED,
+    VALIDATION_STARTED,
+    VALIDATION_PASSED,
+    VALIDATION_FAILED,
+    MERGE_STARTED,
+    MERGE_SUCCEEDED,
+    MERGE_FAILED,
+    VERIFY_STARTED,
+    VERIFY_PASSED,
+    VERIFY_FAILED,
+    ALREADY_MERGED,
+    COMPLETED
+}

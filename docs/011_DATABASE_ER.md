@@ -822,6 +822,56 @@ erDiagram
     uuid actor_user_id FK
   }
 
+  MERGE_OPERATIONS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    uuid task_id FK
+    uuid approval_decision_id FK
+    uuid pull_request_operation_id FK
+    uuid git_operation_id FK
+    uuid patch_result_id FK
+    string status
+    string merge_method
+    string evidence_fingerprint
+    string decision_fingerprint
+    string expected_patch_hash
+    string expected_commit_hash
+    string expected_pr_head_sha
+    bigint pull_request_number
+    string repository_owner
+    string repository_name
+    string error_code
+  }
+
+  MERGE_VALIDATIONS {
+    uuid id PK
+    uuid merge_operation_id FK
+    string check_code
+    string expected_value
+    string actual_value
+    string result
+    string failure_reason
+  }
+
+  MERGE_RESULTS {
+    uuid id PK
+    uuid merge_operation_id FK
+    string merge_method
+    string merged_commit
+    bigint pull_request_number
+    string pull_request_url
+    string provider
+    uuid merged_by_user_id FK
+  }
+
+  MERGE_EVENTS {
+    uuid id PK
+    uuid merge_operation_id FK
+    string event_type
+    string detail
+  }
+
   PLANNER_TEMPLATES {
     uuid id PK
     uuid organization_id FK
@@ -910,7 +960,7 @@ Migrations: `V16__knowledge_base.sql`, `V17__knowledge_embeddings.sql`, `V18__kn
 `V22__model_gateway_permissions.sql`, `V23__provider_secret_vault.sql`,
 `V24__provider_connection_metadata.sql`, `V25__provider_secret_permissions.sql`,
 `V34__planner_templates.sql`, `V35__generated_artifacts.sql`, `V36__review_findings.sql`,
-`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`, `V40__pull_request_operations.sql`, `V41__ci_observation.sql`, `V42__repair_agent.sql`, `V43__approval_gate.sql`.
+`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`, `V40__pull_request_operations.sql`, `V41__ci_observation.sql`, `V42__repair_agent.sql`, `V43__approval_gate.sql`, `V44__merge_agent.sql`.
 See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md),
 [`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md),
@@ -923,4 +973,5 @@ See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`030_PULL_REQUEST_AGENT.md`](030_PULL_REQUEST_AGENT.md),
 [`031_CI_OBSERVATION_AGENT.md`](031_CI_OBSERVATION_AGENT.md),
 [`032_REPAIR_AGENT.md`](032_REPAIR_AGENT.md),
-[`033_APPROVAL_GATE.md`](033_APPROVAL_GATE.md).
+[`033_APPROVAL_GATE.md`](033_APPROVAL_GATE.md),
+[`034_MERGE_AGENT.md`](034_MERGE_AGENT.md).

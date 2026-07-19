@@ -36,3 +36,4 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0020](ADR-0020-ci-observation-agent.md) | Read-only CI observation via provider abstraction | Accepted |
 | [ADR-0021](ADR-0021-repair-agent.md) | Repair Agent creates new PatchResults only | Accepted |
 | [ADR-0022](ADR-0022-approval-gate.md) | Approval Gate evaluates eligibility only | Accepted |
+| [ADR-0023](ADR-0023-merge-agent.md) | Merge Agent merges only after Approval Gate | Accepted |

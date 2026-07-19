@@ -1,0 +1,220 @@
+<section class="merge-page">
+  <header class="page-header">
+    <div>
+      <h1>Merge Agent</h1>
+      <p class="subtitle safety">
+        Merge Agent performs repository merge only after successful Approval Gate validation.
+      </p>
+      <p class="subtitle">
+        Validates an approved Approval Gate decision and matching evidence fingerprints; merges the
+        associated Pull Request via the configured provider; verifies post-merge state. Does not
+        deploy, rerun CI, or bypass Approval Gate.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">You need MERGE_RUN or MERGE_READ to use this page.</p>
+  } @else {
+    <form class="run-form" [formGroup]="form" (ngSubmit)="runMerge()">
+      <mat-form-field appearance="outline" class="task-field">
+        <mat-label>Orchestration task ID</mat-label>
+        <input matInput formControlName="taskId" placeholder="UUID" />
+      </mat-form-field>
+      <div class="actions">
+        @if (permissions.canRun()) {
+          <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
+            Run Merge
+          </button>
+        }
+        @if (permissions.canRead()) {
+          <button mat-stroked-button type="button" (click)="loadLatest()" [disabled]="loading()">
+            Load latest
+          </button>
+          <button mat-stroked-button type="button" (click)="loadHistory()" [disabled]="loading()">
+            Load history
+          </button>
+        }
+      </div>
+    </form>
+
+    @if (loading()) {
+      <div class="loading">
+        <mat-spinner diameter="36"></mat-spinner>
+      </div>
+    }
+
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    @if (result(); as operation) {
+      <section class="summary-panel">
+        <div class="badge-stack">
+          <div class="status-badge" [attr.data-status]="operation.status">{{ operation.status }}</div>
+          <div
+            class="eligibility-badge"
+            [class.eligible]="mergeEligibilityEligible(operation) === true"
+            [class.ineligible]="mergeEligibilityEligible(operation) === false"
+            [class.pending]="mergeEligibilityEligible(operation) === null"
+          >
+            {{ mergeEligibilityLabel(operation) }}
+          </div>
+        </div>
+        <div class="summary-meta">
+          <div class="field-row">
+            <span class="label">Task ID</span>
+            <code>{{ operation.taskId }}</code>
+          </div>
+          <div class="field-row">
+            <span class="label">Approval decision</span>
+            <code>{{ operation.approvalDecisionId }}</code>
+          </div>
+          <div class="field-row">
+            <span class="label">Evidence fingerprint</span>
+            <code>{{ maskedFingerprint(operation.evidenceFingerprint) }}</code>
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="copy(operation.evidenceFingerprint, 'evidence fingerprint')"
+            >
+              <mat-icon>content_copy</mat-icon>
+              Copy
+            </button>
+          </div>
+          <div class="field-row">
+            <span class="label">Decision fingerprint</span>
+            <code>{{ maskedFingerprint(operation.decisionFingerprint) }}</code>
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="copy(operation.decisionFingerprint, 'decision fingerprint')"
+            >
+              <mat-icon>content_copy</mat-icon>
+              Copy
+            </button>
+          </div>
+          <div class="field-row">
+            <span class="label">Merge method</span>
+            <code>{{ operation.mergeMethod }}</code>
+          </div>
+          <div class="field-row">
+            <span class="label">Repository</span>
+            <code>{{ operation.repositoryOwner }}/{{ operation.repositoryName }}</code>
+          </div>
+          <div class="field-row">
+            <span class="label">Pull request</span>
+            <code>#{{ operation.pullRequestNumber }}</code>
+          </div>
+          @if (operation.mergedCommit; as merged) {
+            <div class="field-row">
+              <span class="label">Merged commit</span>
+              <code>{{ merged.hash }}</code>
+              @if (safeExternalUrl(merged.pullRequestUrl); as prUrl) {
+                <a class="external-link" [href]="prUrl" target="_blank" rel="noopener noreferrer">
+                  Open PR
+                </a>
+              }
+            </div>
+            @if (merged.mergedAt) {
+              <div class="field-row">
+                <span class="label">Merged at</span>
+                <span>{{ merged.mergedAt }}</span>
+              </div>
+            }
+          }
+          @if (operation.errorCode) {
+            <div class="field-row error-code">
+              <span class="label">Error code</span>
+              <code>{{ operation.errorCode }}</code>
+            </div>
+          }
+          @if (operation.errorMessage) {
+            <p class="meta error-text">{{ operation.errorMessage }}</p>
+          }
+          @if (copied(); as label) {
+            <p class="copied">Copied {{ label }}</p>
+          }
+        </div>
+      </section>
+
+      @if (operation.validations.length > 0) {
+        <section class="validations">
+          <h2>Validation summary</h2>
+          @if (passedValidations().length > 0) {
+            <h3 class="check-heading passed">Passed ({{ passedValidations().length }})</h3>
+            <ul class="panel-list">
+              @for (check of passedValidations(); track validationTrack($index, check)) {
+                <li>
+                  <strong>{{ check.checkCode }}</strong>
+                  @if (check.actualValue) {
+                    <code>{{ check.actualValue }}</code>
+                  }
+                </li>
+              }
+            </ul>
+          }
+          @if (failedValidations().length > 0) {
+            <h3 class="check-heading failed">Failed ({{ failedValidations().length }})</h3>
+            <ul class="panel-list">
+              @for (check of failedValidations(); track validationTrack($index, check)) {
+                <li>
+                  <strong>{{ check.checkCode }}</strong>
+                  @if (check.failureReason) {
+                    <p>{{ check.failureReason }}</p>
+                  }
+                </li>
+              }
+            </ul>
+          }
+          @if (skippedValidations().length > 0) {
+            <h3 class="check-heading skipped">Skipped / error ({{ skippedValidations().length }})</h3>
+            <ul class="panel-list">
+              @for (check of skippedValidations(); track validationTrack($index, check)) {
+                <li>
+                  <strong>{{ check.checkCode }}</strong>
+                  <span class="meta">{{ check.result }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      }
+
+      @if (operation.timeline.length > 0) {
+        <section class="timeline">
+          <h2>Timeline</h2>
+          <ol class="panel-list">
+            @for (event of operation.timeline; track event.createdAt + event.eventType) {
+              <li>
+                <span class="phase">{{ event.eventType }}</span>
+                <span class="meta">{{ event.createdAt }}</span>
+                @if (event.detail) {
+                  <p>{{ event.detail }}</p>
+                }
+              </li>
+            }
+          </ol>
+        </section>
+      }
+    }
+
+    @if (history().length > 1) {
+      <section class="history">
+        <h2>Merge history</h2>
+        <ul class="panel-list">
+          @for (item of history(); track item.id) {
+            <li>
+              <span class="status-badge inline" [attr.data-status]="item.status">{{ item.status }}</span>
+              <span class="meta">{{ item.createdAt }} · {{ item.mergeMethod }}</span>
+              <code>{{ maskedFingerprint(item.decisionFingerprint) }}</code>
+              @if (item.mergedCommit) {
+                <code>{{ item.mergedCommit.hash }}</code>
+              }
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+</section>

@@ -114,6 +114,10 @@ export const routes: Routes = [
           import('./features/approval-gate/approval-gate-page').then((m) => m.ApprovalGatePage),
       },
       {
+        path: 'merge',
+        loadComponent: () => import('./features/merge/merge-page').then((m) => m.MergePage),
+      },
+      {
         path: 'orchestration-runs',
         loadComponent: () =>
           import('./features/orchestration/orchestration-runs-list-page').then(

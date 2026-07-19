@@ -195,6 +195,17 @@ nova:
     fail-closed: true
     maximum-comment-length: 2000
     max-repair-attempts: 5
+  merge:
+    enabled: true
+    default-method: SQUASH
+    verify-before-merge: true
+    require-protected-branch: false
+    allow-auto-delete-branch: false
+    allowed-methods: MERGE,SQUASH,REBASE
+    provider: LOCAL
+    github-api-base-url: https://api.github.com
+    github-token: test-token-not-real
+    request-timeout-seconds: 30
   secrets:
     # Test-only 32-byte AES key (all zeros). Never use in production.
     master-key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="

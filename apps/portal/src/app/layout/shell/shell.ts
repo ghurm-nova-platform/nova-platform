@@ -129,6 +129,12 @@ export class Shell {
       icon: 'verified_user',
     },
     {
+      labelEn: 'Merge Agent',
+      labelAr: 'وكيل الدمج',
+      path: '/merge',
+      icon: 'call_merge',
+    },
+    {
       labelEn: 'AI Orchestration',
       labelAr: 'تنسيق الوكلاء',
       path: '/orchestration-runs',
