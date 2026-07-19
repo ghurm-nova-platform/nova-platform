@@ -1,0 +1,166 @@
+<section class="rollback-page">
+  <header class="page-header">
+    <div>
+      <h1>Rollback Manager</h1>
+      <p class="subtitle safety">
+        Rollback Manager plans and validates rollbacks. It does not execute rollback.
+      </p>
+      <p class="subtitle">
+        Associate plans with Releases and Deployments, validate eligibility, and retain an immutable plan hash.
+        Execution remains out of scope.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">You need ROLLBACK_RUN or ROLLBACK_READ to use this page.</p>
+  } @else {
+    <form class="run-form" [formGroup]="form" (ngSubmit)="create()">
+      <mat-form-field appearance="outline">
+        <mat-label>Project ID (optional filter)</mat-label>
+        <input matInput formControlName="projectId" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Current Release ID</mat-label>
+        <input matInput formControlName="releaseId" placeholder="UUID" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Deployment ID</mat-label>
+        <input matInput formControlName="deploymentId" placeholder="UUID" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Target Release ID</mat-label>
+        <input matInput formControlName="targetReleaseId" placeholder="UUID" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Environment</mat-label>
+        <mat-select formControlName="environment">
+          <mat-option value="DEVELOPMENT">Development</mat-option>
+          <mat-option value="TESTING">Testing</mat-option>
+          <mat-option value="QA">QA</mat-option>
+          <mat-option value="STAGING">Staging</mat-option>
+          <mat-option value="PRODUCTION">Production</mat-option>
+          <mat-option value="CUSTOM">Custom</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Strategy</mat-label>
+        <mat-select formControlName="strategy">
+          <mat-option value="PREVIOUS_RELEASE">PREVIOUS_RELEASE</mat-option>
+          <mat-option value="PREVIOUS_STABLE">PREVIOUS_STABLE</mat-option>
+          <mat-option value="SPECIFIC_RELEASE">SPECIFIC_RELEASE</mat-option>
+          <mat-option value="HOTFIX_ONLY">HOTFIX_ONLY</mat-option>
+          <mat-option value="CUSTOM">CUSTOM</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="reason-field">
+        <mat-label>Reason</mat-label>
+        <input matInput formControlName="reason" />
+      </mat-form-field>
+      <div class="actions">
+        @if (permissions.canRun()) {
+          <button mat-flat-button color="primary" type="submit" [disabled]="loading()">Create plan</button>
+          <button mat-stroked-button type="button" (click)="validateSelected()" [disabled]="loading() || !selected()">
+            Validate
+          </button>
+        }
+        @if (permissions.canRead()) {
+          <button mat-stroked-button type="button" (click)="loadList()" [disabled]="loading()">Load list</button>
+          <button mat-stroked-button type="button" (click)="loadHistory()" [disabled]="loading() || !selected()">
+            Load history
+          </button>
+        }
+      </div>
+    </form>
+
+    @if (loading()) {
+      <div class="loading"><mat-spinner diameter="36"></mat-spinner></div>
+    }
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    <div class="layout">
+      <section class="list-panel">
+        <h2>Rollbacks</h2>
+        @if (rollbacks().length === 0) {
+          <p class="muted">No rollback plans loaded.</p>
+        }
+        <ul class="rollback-list">
+          @for (item of rollbacks(); track item.id) {
+            <li>
+              <button
+                type="button"
+                class="rollback-item"
+                [class.active]="selected()?.id === item.id"
+                (click)="selectRollback(item)"
+              >
+                <span class="status-badge" [attr.data-status]="item.status">{{ item.status }}</span>
+                <span class="validation-badge" [attr.data-validation]="item.plan.validationResult">
+                  {{ item.plan.validationResult }}
+                </span>
+                <strong>{{ item.currentVersion }} → {{ item.targetVersion }}</strong>
+                <span>{{ item.environmentCode }} · {{ item.strategy }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+
+      @if (selected(); as rollback) {
+        <section class="detail-panel">
+          <div class="badge-stack">
+            <div class="status-badge" [attr.data-status]="rollback.status">{{ rollback.status }}</div>
+            <div class="validation-badge" [attr.data-validation]="rollback.plan.validationResult">
+              {{ rollback.plan.validationResult }}
+            </div>
+            <div class="strategy-badge">{{ rollback.strategy }}</div>
+          </div>
+          <div class="summary-meta">
+            <div class="field-row"><span class="label">Environment</span><code>{{ rollback.environmentCode }}</code></div>
+            <div class="field-row"><span class="label">Current version</span><code>{{ rollback.currentVersion }}</code></div>
+            <div class="field-row"><span class="label">Target version</span><code>{{ rollback.targetVersion }}</code></div>
+            <div class="field-row"><span class="label">Strategy</span><code>{{ rollback.strategy }}</code></div>
+            <div class="field-row">
+              <span class="label">Validation</span>
+              <code>{{ rollback.plan.validationResult }}</code>
+            </div>
+            <div class="field-row"><span class="label">Plan hash</span><code>{{ rollback.rollbackPlanHash }}</code></div>
+          </div>
+
+          <section>
+            <h3>Timeline</h3>
+            <ol class="timeline">
+              @for (event of rollback.timeline; track event.eventType + event.at) {
+                <li>
+                  <strong>{{ event.eventType }}</strong>
+                  <span class="muted">{{ event.at }}</span>
+                  <div>{{ event.detail }}</div>
+                </li>
+              }
+            </ol>
+          </section>
+
+          <section>
+            <h3>History</h3>
+            <p class="muted">
+              Created {{ rollback.createdAt }} · validated {{ rollback.validatedAt || '—' }} · checks
+              {{ rollback.validations.length }}
+            </p>
+            <ul class="check-list">
+              @for (check of rollback.validations; track check.id) {
+                <li>
+                  <span class="validation-badge" [attr.data-validation]="check.passed ? 'PASSED' : 'FAILED'">
+                    {{ check.passed ? 'PASSED' : 'FAILED' }}
+                  </span>
+                  <code>{{ check.checkCode }}</code>
+                  <span>{{ check.message }}</span>
+                </li>
+              }
+            </ul>
+          </section>
+        </section>
+      }
+    </div>
+  }
+</section>

@@ -39,3 +39,4 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0023](ADR-0023-merge-agent.md) | Merge Agent merges only after Approval Gate | Accepted |
 | [ADR-0024](ADR-0024-release-manager.md) | Release Manager owns immutable release lifecycle | Accepted |
 | [ADR-0025](ADR-0025-deployment-observation.md) | Deployment Observation is observe-only | Accepted |
+| [ADR-0026](ADR-0026-rollback-manager.md) | Rollback Manager is planning-only | Accepted |

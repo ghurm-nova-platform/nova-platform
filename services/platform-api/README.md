@@ -176,8 +176,12 @@ See [`docs/035_RELEASE_MANAGER.md`](../../docs/035_RELEASE_MANAGER.md) and ADR-0
 
 See [`docs/036_DEPLOYMENT_OBSERVATION.md`](../../docs/036_DEPLOYMENT_OBSERVATION.md) and ADR-0025.
 
+## Rollback Manager
+
+See [`docs/037_ROLLBACK_MANAGER.md`](../../docs/037_ROLLBACK_MANAGER.md) and ADR-0026.
+
 Migrations: `V29`–`V32`. Durable runs, tasks, dependencies, attempts, events; claim leases; TX1/external/TX2 execution.
-Migration `V34` planner templates; `V35` generated artifacts; `V36` review results/findings; `V37` testing results; `V38` patch results; `V39` git operations; `V40` pull request operations; `V41` CI observation; `V42` repair agent; `V43` approval gate; `V44` merge agent; `V45` release manager; `V46` deployment observation.
+Migration `V34` planner templates; `V35` generated artifacts; `V36` review results/findings; `V37` testing results; `V38` patch results; `V39` git operations; `V40` pull request operations; `V41` CI observation; `V42` repair agent; `V43` approval gate; `V44` merge agent; `V45` release manager; `V46` deployment observation; `V47` rollback manager.
 
 Local demo user (Flyway seed, local only):
 

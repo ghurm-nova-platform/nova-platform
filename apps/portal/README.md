@@ -11,6 +11,14 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 4 Phase 3 scope
+
+- Rollback Manager under `/rollbacks`
+- Create / validate rollback plans linked to Releases and Deployments
+- Rollback list, status, environment, current/target version, strategy, validation badges, plan hash, timeline, history
+- ROLLBACK_* permission helper (Platform API only)
+- Safety statement: plans and validates rollbacks; does not execute rollback
+
 ## Sprint 4 Phase 2 scope
 
 - Deployment Observation under `/deployments`

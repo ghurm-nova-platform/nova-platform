@@ -216,6 +216,11 @@ nova:
     observe-only: true
     allow-external-events: true
     retain-history: true
+  rollback:
+    enabled: true
+    execution-enabled: false
+    allow-plan-edit: false
+    retain-history: true
   secrets:
     # Test-only 32-byte AES key (all zeros). Never use in production.
     master-key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="

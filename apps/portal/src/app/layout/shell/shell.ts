@@ -147,6 +147,12 @@ export class Shell {
       icon: 'cloud_done',
     },
     {
+      labelEn: 'Rollbacks',
+      labelAr: 'التراجع',
+      path: '/rollbacks',
+      icon: 'undo',
+    },
+    {
       labelEn: 'AI Orchestration',
       labelAr: 'تنسيق الوكلاء',
       path: '/orchestration-runs',
