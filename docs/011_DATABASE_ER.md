@@ -919,6 +919,47 @@ erDiagram
     string detail
   }
 
+  DEPLOYMENT_ENVIRONMENTS {
+    uuid id PK
+    string code
+    string name
+    string environment_type
+  }
+
+  DEPLOYMENT_OPERATIONS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    uuid release_operation_id FK
+    uuid environment_id FK
+    string semantic_version
+    string status
+    string health
+    string deployment_provider
+    string deployment_hash
+  }
+
+  DEPLOYMENT_EVENTS {
+    uuid id PK
+    uuid deployment_operation_id FK
+    string event_type
+    string detail
+  }
+
+  DEPLOYMENT_HEALTH {
+    uuid id PK
+    uuid deployment_operation_id FK
+    string health
+    string message
+  }
+
+  DEPLOYMENT_ARTIFACTS {
+    uuid id PK
+    uuid deployment_operation_id FK
+    string artifact_type
+    string artifact_uri
+  }
+
   PLANNER_TEMPLATES {
     uuid id PK
     uuid organization_id FK
@@ -1007,7 +1048,7 @@ Migrations: `V16__knowledge_base.sql`, `V17__knowledge_embeddings.sql`, `V18__kn
 `V22__model_gateway_permissions.sql`, `V23__provider_secret_vault.sql`,
 `V24__provider_connection_metadata.sql`, `V25__provider_secret_permissions.sql`,
 `V34__planner_templates.sql`, `V35__generated_artifacts.sql`, `V36__review_findings.sql`,
-`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`, `V40__pull_request_operations.sql`, `V41__ci_observation.sql`, `V42__repair_agent.sql`, `V43__approval_gate.sql`, `V44__merge_agent.sql`, `V45__release_manager.sql`.
+`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`, `V40__pull_request_operations.sql`, `V41__ci_observation.sql`, `V42__repair_agent.sql`, `V43__approval_gate.sql`, `V44__merge_agent.sql`, `V45__release_manager.sql`, `V46__deployment_observation.sql`.
 See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md),
 [`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md),
@@ -1021,4 +1062,4 @@ See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`031_CI_OBSERVATION_AGENT.md`](031_CI_OBSERVATION_AGENT.md),
 [`032_REPAIR_AGENT.md`](032_REPAIR_AGENT.md),
 [`033_APPROVAL_GATE.md`](033_APPROVAL_GATE.md),
-[`034_MERGE_AGENT.md`](034_MERGE_AGENT.md), [`035_RELEASE_MANAGER.md`](035_RELEASE_MANAGER.md).
+[`034_MERGE_AGENT.md`](034_MERGE_AGENT.md), [`035_RELEASE_MANAGER.md`](035_RELEASE_MANAGER.md), [`036_DEPLOYMENT_OBSERVATION.md`](036_DEPLOYMENT_OBSERVATION.md).

@@ -11,6 +11,14 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 4 Phase 2 scope
+
+- Deployment Observation under `/deployments`
+- Observe / verify deployment state linked to Releases across environments
+- Deployment list, environment, release version, status, health badges, duration, provider, timeline, history
+- DEPLOYMENT_* permission helper (Platform API only)
+- Safety statement: monitors deployments; does not deploy software
+
 ## Sprint 4 Phase 1 scope
 
 - Release Manager under `/releases`

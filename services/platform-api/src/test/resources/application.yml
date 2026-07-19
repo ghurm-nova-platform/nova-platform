@@ -211,6 +211,11 @@ nova:
     allow-edit-after-ready: false
     allow-delete: false
     default-version-strategy: SEMVER
+  deployment:
+    enabled: true
+    observe-only: true
+    allow-external-events: true
+    retain-history: true
   secrets:
     # Test-only 32-byte AES key (all zeros). Never use in production.
     master-key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
