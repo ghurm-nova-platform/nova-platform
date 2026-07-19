@@ -11,6 +11,14 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 3 Phase 6 scope
+
+- Approval Gate under `/approval-gate`
+- Evaluate trusted evidence against organization policies; record human approve/reject
+- Decision and eligible-for-merge badges, policy version, masked fingerprint, requirements, evidence summaries
+- APPROVAL_GATE_* permission helper (Platform API only)
+- Safety statement: evaluates eligibility only; never merges or deploys code
+
 ## Sprint 3 Phase 5 scope
 
 - Repair Agent under `/repair`

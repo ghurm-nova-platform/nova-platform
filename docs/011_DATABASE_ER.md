@@ -714,6 +714,114 @@ erDiagram
     double confidence
   }
 
+  APPROVAL_POLICIES {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    string name
+    int version
+    string status
+    boolean is_default
+    int required_human_approvals
+    boolean require_ci_success
+    boolean require_review_approved
+    int minimum_review_score
+    boolean require_testing_success
+    int minimum_estimated_coverage
+    int decision_validity_minutes
+  }
+
+  APPROVAL_POLICY_RULES {
+    uuid id PK
+    uuid approval_policy_id FK
+    string rule_code
+    string rule_type
+    string operator
+    string expected_value
+    string severity
+    boolean blocking
+    int display_order
+  }
+
+  APPROVAL_GATE_OPERATIONS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    uuid task_id FK
+    uuid policy_id FK
+    int policy_version
+    string status
+    string decision
+    string error_code
+  }
+
+  APPROVAL_DECISIONS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    uuid task_id FK
+    uuid approval_gate_operation_id FK
+    uuid policy_id FK
+    string decision
+    boolean eligible_for_merge
+    int required_human_approvals
+    int received_human_approvals
+    int rejection_count
+    string evidence_fingerprint
+    string decision_fingerprint
+    uuid patch_result_id FK
+    string patch_hash
+    uuid git_operation_id FK
+    string commit_hash
+    uuid pull_request_operation_id FK
+    bigint pull_request_number
+    string pull_request_url
+    uuid ci_observation_operation_id FK
+    string ci_overall_status
+    uuid repair_operation_id FK
+    string reason_summary
+    timestamp valid_until
+  }
+
+  APPROVAL_EVIDENCE {
+    uuid id PK
+    uuid approval_decision_id FK
+    string evidence_type
+    uuid source_operation_id
+    uuid source_result_id
+    string source_hash
+    string observed_status
+    string observed_value
+  }
+
+  APPROVAL_REQUIREMENTS {
+    uuid id PK
+    uuid approval_decision_id FK
+    string rule_code
+    string result
+    boolean blocking
+    string severity
+    string failure_reason
+  }
+
+  APPROVAL_HUMAN_ACTIONS {
+    uuid id PK
+    uuid approval_decision_id FK
+    uuid actor_user_id FK
+    string action
+    string comment_text
+    string evidence_fingerprint
+    string idempotency_key
+  }
+
+  APPROVAL_DECISION_EVENTS {
+    uuid id PK
+    uuid approval_decision_id FK
+    string event_type
+    string detail
+    uuid actor_user_id FK
+  }
+
   PLANNER_TEMPLATES {
     uuid id PK
     uuid organization_id FK
@@ -802,7 +910,7 @@ Migrations: `V16__knowledge_base.sql`, `V17__knowledge_embeddings.sql`, `V18__kn
 `V22__model_gateway_permissions.sql`, `V23__provider_secret_vault.sql`,
 `V24__provider_connection_metadata.sql`, `V25__provider_secret_permissions.sql`,
 `V34__planner_templates.sql`, `V35__generated_artifacts.sql`, `V36__review_findings.sql`,
-`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`, `V40__pull_request_operations.sql`, `V41__ci_observation.sql`, `V42__repair_agent.sql`.
+`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`, `V40__pull_request_operations.sql`, `V41__ci_observation.sql`, `V42__repair_agent.sql`, `V43__approval_gate.sql`.
 See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md),
 [`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md),
@@ -814,4 +922,5 @@ See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`029_GIT_INTEGRATION_AGENT.md`](029_GIT_INTEGRATION_AGENT.md),
 [`030_PULL_REQUEST_AGENT.md`](030_PULL_REQUEST_AGENT.md),
 [`031_CI_OBSERVATION_AGENT.md`](031_CI_OBSERVATION_AGENT.md),
-[`032_REPAIR_AGENT.md`](032_REPAIR_AGENT.md).
+[`032_REPAIR_AGENT.md`](032_REPAIR_AGENT.md),
+[`033_APPROVAL_GATE.md`](033_APPROVAL_GATE.md).

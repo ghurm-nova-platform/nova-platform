@@ -1,0 +1,323 @@
+<section class="approval-gate-page">
+  <header class="page-header">
+    <div>
+      <h1>Approval Gate</h1>
+      <p class="subtitle safety">
+        Approval Gate evaluates and records approval eligibility. It never merges or deploys code.
+      </p>
+      <p class="subtitle">
+        Collects trusted evidence from Review, Testing, Patch, Git, Pull Request, CI, and Repair
+        operations; evaluates organization policies; records automated and human governance
+        decisions. Does not merge, GitHub-approve, push, modify patches, or trigger CI.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">
+      You need APPROVAL_GATE_RUN, APPROVAL_GATE_READ, APPROVAL_GATE_APPROVE, or APPROVAL_GATE_REJECT
+      to use this page.
+    </p>
+  } @else {
+    <form class="run-form" [formGroup]="form" (ngSubmit)="evaluate()">
+      <mat-form-field appearance="outline" class="task-field">
+        <mat-label>Orchestration task ID</mat-label>
+        <input matInput formControlName="taskId" placeholder="UUID" />
+      </mat-form-field>
+      <div class="actions">
+        @if (permissions.canRun()) {
+          <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
+            Evaluate
+          </button>
+        }
+        @if (permissions.canRead()) {
+          <button mat-stroked-button type="button" (click)="loadLatest()" [disabled]="loading()">
+            Load latest
+          </button>
+          <button mat-stroked-button type="button" (click)="loadHistory()" [disabled]="loading()">
+            Load history
+          </button>
+        }
+      </div>
+    </form>
+
+    @if (loading()) {
+      <div class="loading">
+        <mat-spinner diameter="36"></mat-spinner>
+      </div>
+    }
+
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    @if (result(); as decision) {
+      @if (decision.stale || decision.decision === 'SUPERSEDED' || decision.decision === 'INVALIDATED' || decision.decision === 'EXPIRED') {
+        <p class="banner warn">
+          This decision is stale or no longer valid. Re-evaluate before recording human actions.
+        </p>
+      }
+
+      <section class="summary-panel">
+        <div class="badge-stack">
+          <div class="decision-badge" [attr.data-decision]="decision.decision">
+            {{ decision.decision }}
+          </div>
+          <div
+            class="merge-badge"
+            [class.eligible]="decision.eligibleForMerge"
+            [class.ineligible]="!decision.eligibleForMerge"
+          >
+            {{ decision.eligibleForMerge ? 'Eligible for merge' : 'Not eligible for merge' }}
+          </div>
+        </div>
+        <div class="summary-meta">
+          <div class="field-row">
+            <span class="label">Policy</span>
+            <code>{{ decision.policyName }} v{{ decision.policyVersion }}</code>
+          </div>
+          <div class="field-row">
+            <span class="label">Evidence fingerprint</span>
+            <code>{{ maskedFingerprint(decision.evidenceFingerprint) }}</code>
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="copy(decision.evidenceFingerprint, 'fingerprint')"
+            >
+              <mat-icon>content_copy</mat-icon>
+              Copy
+            </button>
+          </div>
+          <div class="field-row">
+            <span class="label">Valid until</span>
+            <span>{{ formatValidity(decision.validUntil) }}</span>
+          </div>
+          @if (decision.reasonSummary) {
+            <div class="insight summary">
+              <h3>Summary</h3>
+              <p>{{ decision.reasonSummary }}</p>
+            </div>
+          }
+          @if (decision.decision === 'APPROVED') {
+            <p class="notice approved-notice">Merge has not been performed.</p>
+          }
+          @if (decision.errorCode) {
+            <div class="field-row error-code">
+              <span class="label">Error code</span>
+              <code>{{ decision.errorCode }}</code>
+            </div>
+          }
+          @if (decision.errorMessage) {
+            <p class="meta error-text">{{ decision.errorMessage }}</p>
+          }
+          @if (copied(); as label) {
+            <p class="copied">Copied {{ label }}</p>
+          }
+        </div>
+      </section>
+
+      <section class="requirements">
+        <h2>Requirements</h2>
+        @if (passedRequirements().length > 0) {
+          <h3 class="req-heading passed">Passed ({{ passedRequirements().length }})</h3>
+          <ul class="panel-list">
+            @for (req of passedRequirements(); track requirementTrack($index, req)) {
+              <li>
+                <strong>{{ req.ruleCode }}</strong>
+                @if (req.description) {
+                  <span>{{ req.description }}</span>
+                }
+              </li>
+            }
+          </ul>
+        }
+        @if (failedRequirements().length > 0) {
+          <h3 class="req-heading failed">Failed ({{ failedRequirements().length }})</h3>
+          <ul class="panel-list">
+            @for (req of failedRequirements(); track requirementTrack($index, req)) {
+              <li>
+                <strong>{{ req.ruleCode }}</strong>
+                @if (req.failureReason) {
+                  <p>{{ req.failureReason }}</p>
+                }
+              </li>
+            }
+          </ul>
+        }
+        @if (pendingRequirements().length > 0) {
+          <h3 class="req-heading pending">Pending ({{ pendingRequirements().length }})</h3>
+          <ul class="panel-list">
+            @for (req of pendingRequirements(); track requirementTrack($index, req)) {
+              <li>
+                <strong>{{ req.ruleCode }}</strong>
+                <span class="meta">{{ req.result }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="evidence">
+        <h2>Evidence summaries</h2>
+        <div class="evidence-grid">
+          @if (decision.reviewSummary; as review) {
+            <div class="evidence-card">
+              <h3>Review</h3>
+              <p>Approved: {{ review.approved ? 'Yes' : 'No' }}</p>
+              <p>Score: {{ review.score ?? '—' }}</p>
+              <p>Critical findings: {{ review.criticalFindings }}</p>
+              <p>High findings: {{ review.highFindings }}</p>
+            </div>
+          }
+          @if (decision.testingSummary; as testing) {
+            <div class="evidence-card">
+              <h3>Testing</h3>
+              <p>Validated: {{ testing.validated ? 'Yes' : 'No' }}</p>
+              <p>Coverage estimate: {{ testing.coverageEstimate ?? '—' }}%</p>
+              @if (testing.summary) {
+                <p>{{ testing.summary }}</p>
+              }
+            </div>
+          }
+          <div class="evidence-card">
+            <h3>Patch</h3>
+            <code>{{ decision.patchHash }}</code>
+          </div>
+          <div class="evidence-card">
+            <h3>Git commit</h3>
+            <code>{{ decision.commitHash }}</code>
+          </div>
+          <div class="evidence-card">
+            <h3>Pull request</h3>
+            <code>#{{ decision.pullRequestNumber }}</code>
+            @if (safeExternalUrl(decision.pullRequestUrl); as prUrl) {
+              <a class="external-link" [href]="prUrl" target="_blank" rel="noopener noreferrer">
+                Open PR
+              </a>
+            }
+          </div>
+          <div class="evidence-card">
+            <h3>CI</h3>
+            <p>Status: {{ decision.ciOverallStatus ?? '—' }}</p>
+            @if (decision.ciCommitHash) {
+              <code>{{ decision.ciCommitHash }}</code>
+            }
+          </div>
+          @if (decision.repairSummary; as repair) {
+            <div class="evidence-card">
+              <h3>Repair</h3>
+              <p>Status: {{ repair.status ?? '—' }}</p>
+              @if (repair.attemptNumber !== null) {
+                <p>Attempt #{{ repair.attemptNumber }}</p>
+              }
+            </div>
+          }
+        </div>
+      </section>
+
+      <section class="human-approvals">
+        <h2>Human approvals</h2>
+        <p class="meta">
+          Required: {{ decision.requiredHumanApprovals }} · Received:
+          {{ decision.receivedHumanApprovals }} · Rejections: {{ decision.rejectionCount }}
+        </p>
+        @if (approvers().length > 0) {
+          <h3>Approvers</h3>
+          <ul class="panel-list">
+            @for (action of approvers(); track action.id) {
+              <li>
+                <strong>{{ actorLabel(action) }}</strong>
+                <span class="meta">{{ action.createdAt }}</span>
+                @if (action.commentText) {
+                  <p>{{ action.commentText }}</p>
+                }
+              </li>
+            }
+          </ul>
+        }
+        @if (rejections().length > 0) {
+          <h3>Rejections</h3>
+          <ul class="panel-list">
+            @for (action of rejections(); track action.id) {
+              <li>
+                <strong>{{ actorLabel(action) }}</strong>
+                <span class="meta">{{ action.createdAt }}</span>
+                @if (action.commentText) {
+                  <p>{{ action.commentText }}</p>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      @if (permissions.canApprove() || permissions.canReject()) {
+        <section class="human-actions" [formGroup]="actionForm">
+          <h2>Record human action</h2>
+          <mat-form-field appearance="outline" class="comment-field">
+            <mat-label>Comment (required for rejection)</mat-label>
+            <textarea matInput rows="3" formControlName="comment"></textarea>
+          </mat-form-field>
+          <div class="actions">
+            @if (permissions.canApprove()) {
+              <button
+                mat-flat-button
+                color="primary"
+                type="button"
+                (click)="approve()"
+                [disabled]="actionLoading() || !canPerformHumanAction()"
+              >
+                Approve
+              </button>
+            }
+            @if (permissions.canReject()) {
+              <button
+                mat-stroked-button
+                color="warn"
+                type="button"
+                (click)="reject()"
+                [disabled]="actionLoading() || !canPerformHumanAction()"
+              >
+                Reject
+              </button>
+            }
+          </div>
+        </section>
+      }
+
+      @if (decision.timeline.length > 0) {
+        <section class="timeline">
+          <h2>Timeline</h2>
+          <ol class="panel-list">
+            @for (event of decision.timeline; track event.createdAt + event.eventType) {
+              <li>
+                <span class="phase">{{ event.eventType }}</span>
+                <span class="meta">{{ event.createdAt }}</span>
+                @if (event.detail) {
+                  <p>{{ event.detail }}</p>
+                }
+              </li>
+            }
+          </ol>
+        </section>
+      }
+    }
+
+    @if (history().length > 1) {
+      <section class="history">
+        <h2>Decision history</h2>
+        <ul class="panel-list">
+          @for (item of history(); track item.id) {
+            <li>
+              <span class="decision-badge inline" [attr.data-decision]="item.decision">
+                {{ item.decision }}
+              </span>
+              <span class="meta">{{ item.createdAt }}</span>
+              <code>{{ maskedFingerprint(item.evidenceFingerprint) }}</code>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+</section>

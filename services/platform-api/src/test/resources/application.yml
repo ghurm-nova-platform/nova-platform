@@ -182,6 +182,19 @@ nova:
     require-review-before-repair: false
     default-provider: LOCAL
     default-model: repair-local
+  approval-gate:
+    enabled: true
+    default-required-human-approvals: 1
+    default-decision-validity-minutes: 1440
+    require-distinct-approvers: true
+    prohibit-author-approval: true
+    invalidate-on-new-patch: true
+    invalidate-on-new-commit: true
+    invalidate-on-new-ci-observation: true
+    invalidate-on-pr-head-change: true
+    fail-closed: true
+    maximum-comment-length: 2000
+    max-repair-attempts: 5
   secrets:
     # Test-only 32-byte AES key (all zeros). Never use in production.
     master-key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
