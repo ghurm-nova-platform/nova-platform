@@ -202,6 +202,17 @@ nova:
     fail-closed: true
     maximum-comment-length: 2000
     max-repair-attempts: 5
+  merge:
+    enabled: false
+    default-method: SQUASH
+    verify-before-merge: true
+    require-protected-branch: true
+    allow-auto-delete-branch: false
+    allowed-methods: MERGE,SQUASH,REBASE
+    provider: GITHUB
+    github-api-base-url: ${NOVA_GITHUB_API_BASE_URL:https://api.github.com}
+    github-token: ${NOVA_GITHUB_TOKEN:}
+    request-timeout-seconds: 30
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 

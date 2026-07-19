@@ -11,6 +11,14 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 3 Phase 7 scope
+
+- Merge Agent under `/merge`
+- Validate Approval Gate decision and fingerprints; merge PR via provider; verify post-merge state
+- Status and eligibility badges, validation summary, approval decision id, fingerprints, merge method, merged commit, timeline, history
+- MERGE_* permission helper (Platform API only)
+- Safety statement: performs repository merge only after successful Approval Gate validation
+
 ## Sprint 3 Phase 6 scope
 
 - Approval Gate under `/approval-gate`
