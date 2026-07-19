@@ -43,6 +43,7 @@ describe('Shell', () => {
     expect(text).toContain('Repair Agent');
     expect(text).toContain('Approval Gate');
     expect(text).toContain('Merge Agent');
+    expect(text).toContain('Releases');
     expect(text).toContain('AI Orchestration');
     expect(text).toContain('Agents');
     expect(text).toContain('Feedback');

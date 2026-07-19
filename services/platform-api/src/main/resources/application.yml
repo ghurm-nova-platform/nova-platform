@@ -213,6 +213,11 @@ nova:
     github-api-base-url: ${NOVA_GITHUB_API_BASE_URL:https://api.github.com}
     github-token: ${NOVA_GITHUB_TOKEN:}
     request-timeout-seconds: 30
+  release:
+    enabled: true
+    allow-edit-after-ready: false
+    allow-delete: false
+    default-version-strategy: SEMVER
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 

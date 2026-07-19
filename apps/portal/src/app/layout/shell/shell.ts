@@ -135,6 +135,12 @@ export class Shell {
       icon: 'call_merge',
     },
     {
+      labelEn: 'Releases',
+      labelAr: 'الإصدارات',
+      path: '/releases',
+      icon: 'new_releases',
+    },
+    {
       labelEn: 'AI Orchestration',
       labelAr: 'تنسيق الوكلاء',
       path: '/orchestration-runs',
