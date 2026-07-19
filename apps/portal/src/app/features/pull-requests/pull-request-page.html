@@ -1,0 +1,155 @@
+<section class="pull-request-page">
+  <header class="page-header">
+    <div>
+      <h1>Pull Request Agent</h1>
+      <p class="subtitle safety">
+        This agent creates Pull Requests but never approves or merges them.
+      </p>
+      <p class="subtitle">
+        Publishes successful Git Integration branches to the configured remote and opens a
+        reviewable pull request. Does not force-push, merge, approve, or delete protected branches.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">You need PR_RUN or PR_READ to use this page.</p>
+  } @else {
+    <form class="run-form" [formGroup]="form" (ngSubmit)="runPullRequest()">
+      <mat-form-field appearance="outline" class="task-field">
+        <mat-label>Orchestration task ID</mat-label>
+        <input matInput formControlName="taskId" placeholder="UUID" />
+      </mat-form-field>
+      <div class="actions">
+        @if (permissions.canRun()) {
+          <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
+            Create pull request
+          </button>
+        }
+        @if (permissions.canRead()) {
+          <button mat-stroked-button type="button" (click)="loadLatest()" [disabled]="loading()">
+            Load latest
+          </button>
+          <button mat-stroked-button type="button" (click)="loadHistory()" [disabled]="loading()">
+            Load history
+          </button>
+        }
+      </div>
+    </form>
+
+    @if (loading()) {
+      <div class="loading">
+        <mat-spinner diameter="36"></mat-spinner>
+      </div>
+    }
+
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    @if (result(); as op) {
+      <section class="summary-panel">
+        <div class="status-badge" [attr.data-status]="op.status">{{ op.status }}</div>
+        <div class="summary-meta">
+          <div class="field-row">
+            <span class="label">Provider</span>
+            <code>{{ op.provider }}</code>
+          </div>
+          <div class="field-row">
+            <span class="label">Repository</span>
+            <code>{{ repositoryLabel(op) }}</code>
+          </div>
+          <div class="field-row">
+            <span class="label">Branches</span>
+            <code>{{ op.sourceBranch }} → {{ op.targetBranch }}</code>
+            <button mat-stroked-button type="button" (click)="copy(op.sourceBranch, 'branch')">
+              <mat-icon>content_copy</mat-icon>
+              Copy branch
+            </button>
+          </div>
+          <div class="field-row">
+            <span class="label">Local commit</span>
+            <code>{{ op.localCommitHash }}</code>
+            <button mat-stroked-button type="button" (click)="copy(op.localCommitHash, 'local-commit')">
+              <mat-icon>content_copy</mat-icon>
+              Copy local
+            </button>
+          </div>
+          <div class="field-row">
+            <span class="label">Remote commit</span>
+            <code>{{ op.remoteCommitHash ?? '—' }}</code>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!op.remoteCommitHash"
+              (click)="copy(op.remoteCommitHash, 'remote-commit')"
+            >
+              <mat-icon>content_copy</mat-icon>
+              Copy remote
+            </button>
+          </div>
+          <div class="field-row">
+            <span class="label">Patch hash</span>
+            <code>{{ op.patchHash }}</code>
+          </div>
+          @if (op.pullRequestNumber !== null) {
+            <div class="field-row">
+              <span class="label">Pull request</span>
+              <code>#{{ op.pullRequestNumber }} · {{ op.pullRequestTitle ?? 'Untitled' }}</code>
+              @if (op.pullRequestUrl) {
+                <a
+                  class="pr-link"
+                  [href]="op.pullRequestUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Open PR
+                </a>
+              }
+            </div>
+          }
+          @if (op.errorCode) {
+            <div class="field-row error-code">
+              <span class="label">Error code</span>
+              <code>{{ op.errorCode }}</code>
+            </div>
+          }
+          <p class="meta">{{ op.validation.message }}</p>
+          @if (copied(); as label) {
+            <p class="copied">Copied {{ label }}</p>
+          }
+        </div>
+      </section>
+
+      <section class="timeline">
+        <h2>Execution timeline</h2>
+        <ol>
+          @for (event of op.timeline; track event.phase + event.at) {
+            <li>
+              <strong>{{ event.phase }}</strong>
+              <span class="meta">{{ event.at }}</span>
+              <p>{{ event.detail }}</p>
+            </li>
+          }
+        </ol>
+      </section>
+    }
+
+    @if (history().length > 1) {
+      <section class="history">
+        <h2>Operation history</h2>
+        <ul>
+          @for (item of history(); track item.id) {
+            <li>
+              <span class="status-badge inline" [attr.data-status]="item.status">{{ item.status }}</span>
+              <span class="meta">{{ item.createdAt }}</span>
+              @if (item.errorCode) {
+                <code>{{ item.errorCode }}</code>
+              }
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+</section>

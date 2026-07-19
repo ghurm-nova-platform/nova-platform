@@ -80,7 +80,7 @@ Identity Projects     Agent Runtime   Feedback    Audit/Usage
 - Knowledge Bases and RAG (allowlisted embeddings + vector store owned by Platform API)
 - AI Model Gateway (allowlisted providers, routing, usage owned by Platform API)
 - Model Catalog (capabilities, aliases, provider sync owned by Platform API)
-- Multi-agent orchestration foundation, Planner Agent (plan → draft run import), Coding Agent (task → generated artifacts), Review Agent (artifacts → findings), Testing Agent (artifacts → test plans; no execution), Patch Agent (approved artifacts → Unified Diff; no git apply), and Git Integration Agent (validated patch → isolated branch + commit; no merge/push)
+- Multi-agent orchestration foundation, Planner Agent (plan → draft run import), Coding Agent (task → generated artifacts), Review Agent (artifacts → findings), Testing Agent (artifacts → test plans; no execution), Patch Agent (approved artifacts → Unified Diff; no git apply), Git Integration Agent (validated patch → isolated branch + commit; no merge/push), and Pull Request Agent (successful git branch → remote push + PR; no merge/approve)
 - Multi-agent orchestration foundation (durable runs, graphs, claim/execute)
 - Provider Secret Vault (AES-256-GCM credentials; OpenAI / Azure OpenAI adapters)
 - Agent Runtime

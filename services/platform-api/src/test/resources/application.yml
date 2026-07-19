@@ -155,6 +155,19 @@ nova:
     author-email: git-agent@nova.local
     allow-init-repository: false
     cleanup-failed-workspaces: false
+  pull-request:
+    enabled: true
+    provider: LOCAL
+    remote-name: origin
+    target-base-ref: main
+    allowed-base-refs: main,develop
+    allowed-repository-hosts: github.com,localhost
+    allow-force-push: false
+    draft-by-default: true
+    delete-branch-on-close: false
+    request-timeout-seconds: 30
+    github-api-base-url: https://api.github.com
+    github-token: test-token-not-real
   secrets:
     # Test-only 32-byte AES key (all zeros). Never use in production.
     master-key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
