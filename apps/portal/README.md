@@ -11,6 +11,15 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 3 Phase 4 scope
+
+- CI Observation Agent under `/ci`
+- Observe GitHub Actions workflow runs for successful PR operations; read-only — no rerun/merge/deploy
+- Overall CI badge, workflow/job/step hierarchy, durations, failed jobs/steps, failure summary, retry recommendation
+- GitHub Actions links open in new tab (`noopener noreferrer`)
+- CI_* permission helper (Platform API only)
+- Safety statement: observes CI only; never reruns, approves, merges, or deploys
+
 ## Sprint 3 Phase 3 scope
 
 - Pull Request Agent under `/pull-requests`
