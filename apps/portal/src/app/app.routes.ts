@@ -123,6 +123,11 @@ export const routes: Routes = [
           import('./features/releases/release-page').then((m) => m.ReleasePage),
       },
       {
+        path: 'deployments',
+        loadComponent: () =>
+          import('./features/deployments/deployment-page').then((m) => m.DeploymentPage),
+      },
+      {
         path: 'orchestration-runs',
         loadComponent: () =>
           import('./features/orchestration/orchestration-runs-list-page').then(

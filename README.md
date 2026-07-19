@@ -69,6 +69,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Approval Gate](docs/033_APPROVAL_GATE.md)
 - [Merge Agent](docs/034_MERGE_AGENT.md)
 - [Release Manager](docs/035_RELEASE_MANAGER.md)
+- [Deployment Observation](docs/036_DEPLOYMENT_OBSERVATION.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles

@@ -141,6 +141,12 @@ export class Shell {
       icon: 'new_releases',
     },
     {
+      labelEn: 'Deployments',
+      labelAr: 'عمليات النشر',
+      path: '/deployments',
+      icon: 'cloud_done',
+    },
+    {
       labelEn: 'AI Orchestration',
       labelAr: 'تنسيق الوكلاء',
       path: '/orchestration-runs',

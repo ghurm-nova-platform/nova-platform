@@ -1,0 +1,158 @@
+<section class="deployment-page">
+  <header class="page-header">
+    <div>
+      <h1>Deployment Observation</h1>
+      <p class="subtitle safety">
+        Deployment Observation monitors deployments across environments. It does not deploy software.
+      </p>
+      <p class="subtitle">
+        Associate observations with Releases, track status and health, and verify observed outcomes.
+        Execution and rollback remain out of scope.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">You need DEPLOYMENT_RUN or DEPLOYMENT_READ to use this page.</p>
+  } @else {
+    <form class="run-form" [formGroup]="form" (ngSubmit)="observe()">
+      <mat-form-field appearance="outline">
+        <mat-label>Project ID (optional filter)</mat-label>
+        <input matInput formControlName="projectId" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Release ID</mat-label>
+        <input matInput formControlName="releaseId" placeholder="UUID" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Environment</mat-label>
+        <mat-select formControlName="environment">
+          @for (env of environments(); track env.id) {
+            <mat-option [value]="env.code">{{ env.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Provider</mat-label>
+        <input matInput formControlName="deploymentProvider" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>External key</mat-label>
+        <input matInput formControlName="externalDeploymentKey" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Status</mat-label>
+        <mat-select formControlName="status">
+          <mat-option value="PENDING">PENDING</mat-option>
+          <mat-option value="STARTING">STARTING</mat-option>
+          <mat-option value="RUNNING">RUNNING</mat-option>
+          <mat-option value="SUCCEEDED">SUCCEEDED</mat-option>
+          <mat-option value="FAILED">FAILED</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Health</mat-label>
+        <mat-select formControlName="health">
+          <mat-option value="HEALTHY">HEALTHY</mat-option>
+          <mat-option value="WARNING">WARNING</mat-option>
+          <mat-option value="DEGRADED">DEGRADED</mat-option>
+          <mat-option value="FAILED">FAILED</mat-option>
+          <mat-option value="UNKNOWN">UNKNOWN</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <div class="actions">
+        @if (permissions.canRun()) {
+          <button mat-flat-button color="primary" type="submit" [disabled]="loading()">Observe</button>
+          <button mat-stroked-button type="button" (click)="verifySelected()" [disabled]="loading() || !selected()">
+            Verify
+          </button>
+        }
+        @if (permissions.canRead()) {
+          <button mat-stroked-button type="button" (click)="loadList()" [disabled]="loading()">Load list</button>
+          <button mat-stroked-button type="button" (click)="loadHistory()" [disabled]="loading() || !selected()">
+            Load history
+          </button>
+        }
+      </div>
+    </form>
+
+    @if (loading()) {
+      <div class="loading"><mat-spinner diameter="36"></mat-spinner></div>
+    }
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    <section class="env-panel">
+      <h2>Environments</h2>
+      <ul class="env-list">
+        @for (env of environments(); track env.id) {
+          <li>{{ env.name }} <code>{{ env.code }}</code></li>
+        }
+      </ul>
+    </section>
+
+    <div class="layout">
+      <section class="list-panel">
+        <h2>Deployments</h2>
+        @if (deployments().length === 0) {
+          <p class="muted">No deployments loaded.</p>
+        }
+        <ul class="deploy-list">
+          @for (item of deployments(); track item.id) {
+            <li>
+              <button
+                type="button"
+                class="deploy-item"
+                [class.active]="selected()?.id === item.id"
+                (click)="selectDeployment(item)"
+              >
+                <span class="status-badge" [attr.data-status]="item.status">{{ item.status }}</span>
+                <span class="health-badge" [attr.data-health]="item.health">{{ item.health }}</span>
+                <strong>{{ item.semanticVersion }}</strong>
+                <span>{{ item.environmentCode }} · {{ item.deploymentProvider }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+
+      @if (selected(); as deployment) {
+        <section class="detail-panel">
+          <div class="badge-stack">
+            <div class="status-badge" [attr.data-status]="deployment.status">{{ deployment.status }}</div>
+            <div class="health-badge" [attr.data-health]="deployment.health">{{ deployment.health }}</div>
+          </div>
+          <div class="summary-meta">
+            <div class="field-row"><span class="label">Release version</span><code>{{ deployment.semanticVersion }}</code></div>
+            <div class="field-row"><span class="label">Environment</span><code>{{ deployment.environmentName }}</code></div>
+            <div class="field-row"><span class="label">Provider</span><code>{{ deployment.deploymentProvider }}</code></div>
+            <div class="field-row"><span class="label">Duration</span><code>{{ formatDuration(deployment.durationMs) }}</code></div>
+            <div class="field-row"><span class="label">Manifest hash</span><code>{{ deployment.releaseManifestHash || '—' }}</code></div>
+          </div>
+
+          <section>
+            <h3>Timeline</h3>
+            <ol class="timeline">
+              @for (event of deployment.timeline; track event.eventType + event.at) {
+                <li>
+                  <strong>{{ event.eventType }}</strong>
+                  <span class="muted">{{ event.at }}</span>
+                  <div>{{ event.detail }}</div>
+                </li>
+              }
+            </ol>
+          </section>
+
+          <section>
+            <h3>History</h3>
+            <p class="muted">
+              Started {{ deployment.startedAt || '—' }} · finished {{ deployment.finishedAt || '—' }} · health snapshots
+              {{ deployment.healthHistory.length }}
+            </p>
+          </section>
+        </section>
+      }
+    </div>
+  }
+</section>

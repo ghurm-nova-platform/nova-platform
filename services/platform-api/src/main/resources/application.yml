@@ -218,6 +218,11 @@ nova:
     allow-edit-after-ready: false
     allow-delete: false
     default-version-strategy: SEMVER
+  deployment:
+    enabled: true
+    observe-only: true
+    allow-external-events: true
+    retain-history: true
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 
