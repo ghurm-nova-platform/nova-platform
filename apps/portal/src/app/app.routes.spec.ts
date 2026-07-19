@@ -164,6 +164,7 @@ describe('App routing', () => {
       '/git',
       '/pull-requests',
       '/ci',
+      '/repair',
       '/orchestration-runs',
       '/feedback',
       '/settings',

@@ -105,6 +105,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/ci/ci-page').then((m) => m.CiPage),
       },
       {
+        path: 'repair',
+        loadComponent: () => import('./features/repair/repair-page').then((m) => m.RepairPage),
+      },
+      {
         path: 'orchestration-runs',
         loadComponent: () =>
           import('./features/orchestration/orchestration-runs-list-page').then(

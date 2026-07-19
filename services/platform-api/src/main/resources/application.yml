@@ -180,6 +180,15 @@ nova:
     github-api-base-url: https://api.github.com
     github-token: ${NOVA_GITHUB_TOKEN:}
     max-runs-per-observation: 20
+  repair:
+    enabled: false
+    max-attempts: 5
+    max-files: 20
+    max-generated-lines: 1000
+    allow-partial-repair: true
+    require-review-before-repair: false
+    default-provider: LOCAL
+    default-model: repair-local
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 

@@ -11,6 +11,14 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 3 Phase 5 scope
+
+- Repair Agent under `/repair`
+- Collect review, testing, and CI failure inputs; propose new PatchResult without overwriting prior patches
+- Status badge, reason, inputs, affected files, patchResultId, confidence, timeline, history
+- REPAIR_* permission helper (Platform API only)
+- Safety statement: proposes fixes only; never merges code
+
 ## Sprint 3 Phase 4 scope
 
 - CI Observation Agent under `/ci`

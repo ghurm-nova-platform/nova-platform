@@ -672,6 +672,48 @@ erDiagram
     string failure_reason
   }
 
+  REPAIR_OPERATIONS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    uuid task_id FK
+    string status
+    int attempt_number
+    uuid prior_patch_result_id FK
+    uuid new_patch_result_id FK
+    string reason
+    string summary
+    double confidence
+    string input_fingerprint
+    string error_code
+  }
+
+  REPAIR_INPUTS {
+    uuid id PK
+    uuid repair_operation_id FK
+    string source_type
+    string source_ref
+    int priority
+    string detail
+  }
+
+  REPAIR_ACTIONS {
+    uuid id PK
+    uuid repair_operation_id FK
+    string action_type
+    string target_path
+    string description
+  }
+
+  REPAIR_RESULTS {
+    uuid id PK
+    uuid repair_operation_id FK
+    uuid patch_result_id FK
+    string repaired_files_json
+    string summary
+    double confidence
+  }
+
   PLANNER_TEMPLATES {
     uuid id PK
     uuid organization_id FK
@@ -760,7 +802,7 @@ Migrations: `V16__knowledge_base.sql`, `V17__knowledge_embeddings.sql`, `V18__kn
 `V22__model_gateway_permissions.sql`, `V23__provider_secret_vault.sql`,
 `V24__provider_connection_metadata.sql`, `V25__provider_secret_permissions.sql`,
 `V34__planner_templates.sql`, `V35__generated_artifacts.sql`, `V36__review_findings.sql`,
-`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`, `V40__pull_request_operations.sql`, `V41__ci_observation.sql`.
+`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`, `V40__pull_request_operations.sql`, `V41__ci_observation.sql`, `V42__repair_agent.sql`.
 See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md),
 [`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md),
@@ -771,4 +813,5 @@ See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`028_PATCH_AGENT.md`](028_PATCH_AGENT.md), and
 [`029_GIT_INTEGRATION_AGENT.md`](029_GIT_INTEGRATION_AGENT.md),
 [`030_PULL_REQUEST_AGENT.md`](030_PULL_REQUEST_AGENT.md),
-[`031_CI_OBSERVATION_AGENT.md`](031_CI_OBSERVATION_AGENT.md).
+[`031_CI_OBSERVATION_AGENT.md`](031_CI_OBSERVATION_AGENT.md),
+[`032_REPAIR_AGENT.md`](032_REPAIR_AGENT.md).
