@@ -37,3 +37,4 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0021](ADR-0021-repair-agent.md) | Repair Agent creates new PatchResults only | Accepted |
 | [ADR-0022](ADR-0022-approval-gate.md) | Approval Gate evaluates eligibility only | Accepted |
 | [ADR-0023](ADR-0023-merge-agent.md) | Merge Agent merges only after Approval Gate | Accepted |
+| [ADR-0024](ADR-0024-release-manager.md) | Release Manager owns immutable release lifecycle | Accepted |

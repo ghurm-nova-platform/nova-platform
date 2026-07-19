@@ -1,0 +1,185 @@
+<section class="release-page">
+  <header class="page-header">
+    <div>
+      <h1>Release Manager</h1>
+      <p class="subtitle safety">
+        Release Manager creates immutable release records after Merge Agent completes. It does not
+        deploy software.
+      </p>
+      <p class="subtitle">
+        Version releases, freeze metadata into a SHA-256 manifest, and track included merges, PRs,
+        and commits. Deployment is handled separately.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">You need RELEASE_RUN or RELEASE_READ to use this page.</p>
+  } @else {
+    <form class="run-form" [formGroup]="form" (ngSubmit)="createRelease()">
+      <mat-form-field appearance="outline">
+        <mat-label>Project ID</mat-label>
+        <input matInput formControlName="projectId" placeholder="UUID" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Release name</mat-label>
+        <input matInput formControlName="releaseName" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Description</mat-label>
+        <input matInput formControlName="description" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Version bump</mat-label>
+        <mat-select formControlName="bumpType">
+          <mat-option value="MAJOR">MAJOR</mat-option>
+          <mat-option value="MINOR">MINOR</mat-option>
+          <mat-option value="PATCH">PATCH</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Semantic version (optional)</mat-label>
+        <input matInput formControlName="semanticVersion" placeholder="1.2.3" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="wide">
+        <mat-label>Merge operation IDs</mat-label>
+        <input matInput formControlName="mergeOperationIds" placeholder="comma-separated UUIDs" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="wide">
+        <mat-label>Commit SHAs</mat-label>
+        <input matInput formControlName="commitShas" placeholder="comma-separated SHAs" />
+      </mat-form-field>
+      <div class="actions">
+        @if (permissions.canRun()) {
+          <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
+            Create release
+          </button>
+          <button mat-stroked-button type="button" (click)="prepareSelected()" [disabled]="loading() || !selected()">
+            Prepare
+          </button>
+          <button mat-stroked-button type="button" (click)="publishSelected()" [disabled]="loading() || !selected()">
+            Publish
+          </button>
+        }
+        @if (permissions.canRead()) {
+          <button mat-stroked-button type="button" (click)="loadList()" [disabled]="loading()">
+            Load list
+          </button>
+          <button mat-stroked-button type="button" (click)="loadHistory()" [disabled]="loading() || !selected()">
+            Load history
+          </button>
+        }
+      </div>
+    </form>
+
+    @if (loading()) {
+      <div class="loading">
+        <mat-spinner diameter="36"></mat-spinner>
+      </div>
+    }
+
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    @if (copied(); as label) {
+      <p class="banner ok">Copied {{ label }}</p>
+    }
+
+    <div class="layout">
+      <section class="list-panel">
+        <h2>Releases</h2>
+        @if (releases().length === 0) {
+          <p class="muted">No releases loaded.</p>
+        }
+        <ul class="release-list">
+          @for (item of releases(); track item.id) {
+            <li>
+              <button type="button" class="release-item" [class.active]="selected()?.id === item.id" (click)="selectRelease(item)">
+                <span class="status-badge" [attr.data-status]="item.status">{{ item.status }}</span>
+                <strong>{{ item.semanticVersion }}</strong>
+                <span>{{ item.releaseName }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+
+      @if (selected(); as release) {
+        <section class="detail-panel">
+          <div class="badge-stack">
+            <div class="status-badge" [attr.data-status]="release.status">{{ release.status }}</div>
+            <div class="version-badge">{{ release.semanticVersion }}</div>
+          </div>
+
+          <div class="summary-meta">
+            <div class="field-row">
+              <span class="label">Release number</span>
+              <code>{{ release.releaseNumber }}</code>
+            </div>
+            <div class="field-row">
+              <span class="label">Manifest hash</span>
+              <code>{{ release.manifestHash || '—' }}</code>
+              @if (release.manifestHash) {
+                <button mat-stroked-button type="button" (click)="copy(release.manifestHash, 'manifest hash')">
+                  Copy
+                </button>
+              }
+            </div>
+            <div class="field-row">
+              <span class="label">Content fingerprint</span>
+              <code>{{ release.contentFingerprint }}</code>
+            </div>
+          </div>
+
+          <section>
+            <h3>Included PRs</h3>
+            @if (includedPrs().length === 0) {
+              <p class="muted">None</p>
+            } @else {
+              <ul>
+                @for (pr of includedPrs(); track pr.id) {
+                  <li><code>{{ pr.referenceId }}</code></li>
+                }
+              </ul>
+            }
+          </section>
+
+          <section>
+            <h3>Included commits</h3>
+            @if (includedCommits().length === 0) {
+              <p class="muted">None</p>
+            } @else {
+              <ul>
+                @for (commit of includedCommits(); track commit.id) {
+                  <li><code>{{ commit.commitSha }}</code></li>
+                }
+              </ul>
+            }
+          </section>
+
+          <section>
+            <h3>Timeline</h3>
+            <ol class="timeline">
+              @for (event of release.timeline; track event.eventType + event.at) {
+                <li>
+                  <strong>{{ event.eventType }}</strong>
+                  <span class="muted">{{ event.at }}</span>
+                  <div>{{ event.detail }}</div>
+                </li>
+              }
+            </ol>
+          </section>
+
+          <section>
+            <h3>History</h3>
+            <p class="muted">
+              Status {{ release.status }} · prepared {{ release.preparedAt || '—' }} · published
+              {{ release.publishedAt || '—' }}
+            </p>
+          </section>
+        </section>
+      }
+    </div>
+  }
+</section>

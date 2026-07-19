@@ -118,6 +118,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/merge/merge-page').then((m) => m.MergePage),
       },
       {
+        path: 'releases',
+        loadComponent: () =>
+          import('./features/releases/release-page').then((m) => m.ReleasePage),
+      },
+      {
         path: 'orchestration-runs',
         loadComponent: () =>
           import('./features/orchestration/orchestration-runs-list-page').then(

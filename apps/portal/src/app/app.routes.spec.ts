@@ -167,6 +167,7 @@ describe('App routing', () => {
       '/repair',
       '/approval-gate',
       '/merge',
+      '/releases',
       '/orchestration-runs',
       '/feedback',
       '/settings',

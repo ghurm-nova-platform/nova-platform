@@ -11,6 +11,14 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 4 Phase 1 scope
+
+- Release Manager under `/releases`
+- Create / prepare / publish immutable releases with SEMVER versioning
+- Release list, status, semantic version, included PRs/commits, manifest hash, timeline, history
+- RELEASE_* permission helper (Platform API only)
+- Safety statement: creates immutable release records after Merge Agent; does not deploy
+
 ## Sprint 3 Phase 7 scope
 
 - Merge Agent under `/merge`
