@@ -13,6 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 import ai.nova.platform.deployment.entity.DeploymentEnvironmentEntity;
 import ai.nova.platform.deployment.entity.EnvironmentType;
 import ai.nova.platform.deployment.repository.DeploymentEnvironmentRepository;
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.environment.config.EnvironmentProperties;
 import ai.nova.platform.environment.dto.EnvironmentDtos.CreateEnvironmentRequest;
 import ai.nova.platform.environment.dto.EnvironmentDtos.Environment;
@@ -31,18 +36,21 @@ public class EnvironmentService {
     private final EnvironmentStorageService storageService;
     private final EnvironmentValidationService validationService;
     private final DeploymentEnvironmentRepository environmentRepository;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public EnvironmentService(
             EnvironmentProperties properties,
             EnvironmentAuthorizationService authorizationService,
             EnvironmentStorageService storageService,
             EnvironmentValidationService validationService,
-            DeploymentEnvironmentRepository environmentRepository) {
+            DeploymentEnvironmentRepository environmentRepository,
+            AuditRecordingSupport auditRecordingSupport) {
         this.properties = properties;
         this.authorizationService = authorizationService;
         this.storageService = storageService;
         this.validationService = validationService;
         this.environmentRepository = environmentRepository;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     @Transactional
@@ -91,6 +99,7 @@ public class EnvironmentService {
                     request.variables());
             DeploymentEnvironmentEntity created = storageService.createEnvironment(
                     user.getOrganizationId(), normalized, environmentType, user.getUserId(), Instant.now());
+            publishAudit(user, created.getProjectId(), created.getId(), created.getName(), AuditAction.CREATE);
             return storageService.toDto(created, true, false);
         } catch (DataIntegrityViolationException ex) {
             if (environmentType == EnvironmentType.PRODUCTION) {
@@ -147,6 +156,7 @@ public class EnvironmentService {
                 request.variables());
         DeploymentEnvironmentEntity updated =
                 storageService.updateEnvironment(entity, normalized, user.getUserId(), Instant.now());
+        publishAudit(user, updated.getProjectId(), updated.getId(), updated.getName(), AuditAction.UPDATE);
         return storageService.toDto(updated, true, false);
     }
 
@@ -205,7 +215,28 @@ public class EnvironmentService {
         validationService.validateStatusTransition(entity.getStatus(), target);
         DeploymentEnvironmentEntity updated =
                 storageService.applyStatus(entity, target, eventType, user.getUserId(), Instant.now());
+        AuditAction action = switch (target) {
+            case ACTIVE -> AuditAction.ENABLE;
+            case DISABLED -> AuditAction.DISABLE;
+            case ARCHIVED -> AuditAction.ARCHIVE;
+            default -> AuditAction.UPDATE;
+        };
+        publishAudit(user, updated.getProjectId(), updated.getId(), updated.getName(), action);
         return storageService.toDto(updated, true, false);
+    }
+
+    private void publishAudit(
+            AuthenticatedUser user, UUID projectId, UUID entityId, String name, AuditAction action) {
+        auditRecordingSupport.recordDomainEvent(
+                user,
+                projectId,
+                AuditEntityType.ENVIRONMENT,
+                entityId,
+                name,
+                action,
+                AuditResult.SUCCESS,
+                AuditSource.ENVIRONMENT_MANAGEMENT,
+                java.util.Map.of("environmentId", entityId.toString()));
     }
 
     private void requireEnabled() {

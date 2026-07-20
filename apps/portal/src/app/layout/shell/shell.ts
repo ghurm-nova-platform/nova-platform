@@ -165,6 +165,12 @@ export class Shell {
       icon: 'dns',
     },
     {
+      labelEn: 'Audit',
+      labelAr: 'التدقيق',
+      path: '/audit',
+      icon: 'fact_check',
+    },
+    {
       labelEn: 'AI Orchestration',
       labelAr: 'تنسيق الوكلاء',
       path: '/orchestration-runs',

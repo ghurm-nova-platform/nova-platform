@@ -237,6 +237,12 @@ nova:
     allow-delete: false
     retain-history: true
     allow-multiple-production: false
+  audit:
+    enabled: true
+    immutable: true
+    retain-history: true
+    capture-rest-api: true
+    capture-security-events: true
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 

@@ -73,6 +73,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Rollback Manager](docs/037_ROLLBACK_MANAGER.md)
 - [Release Policies](docs/038_RELEASE_POLICIES.md)
 - [Environment Management](docs/039_ENVIRONMENT_MANAGEMENT.md)
+- [Enterprise Audit Center](docs/040_AUDIT_CENTER.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
@@ -88,4 +89,4 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 
 ## Current status
 
-Sprint 4 Phase 5 — Environment Management registers project-scoped deployment targets and metadata (extends global catalog; no deploy/secrets/release mutation).
+Sprint 4 Phase 6 — Enterprise Audit Center provides an append-only authoritative audit trail with read-only APIs and portal search. Domain `*_audit_log` / `*_events` tables remain unchanged.

@@ -42,3 +42,4 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0026](ADR-0026-rollback-manager.md) | Rollback Manager is planning-only | Accepted |
 | [ADR-0027](ADR-0027-release-policies.md) | Release Policies evaluate without mutating upstream records | Accepted |
 | [ADR-0028](ADR-0028-environment-management.md) | Environment Management extends global catalog without deployment | Accepted |
+| [ADR-0029](ADR-0029-audit-center.md) | Enterprise Audit Center append-only trail | Accepted |

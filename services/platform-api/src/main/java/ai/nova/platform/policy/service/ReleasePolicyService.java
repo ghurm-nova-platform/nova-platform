@@ -10,6 +10,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.policy.config.PolicyProperties;
 import ai.nova.platform.policy.dto.PolicyDtos.CreatePolicyRequest;
 import ai.nova.platform.policy.dto.PolicyDtos.EvaluatePolicyRequest;
@@ -44,6 +49,7 @@ public class ReleasePolicyService {
     private final ReleasePolicyRepository policyRepository;
     private final PolicyEvaluationRepository evaluationRepository;
     private final ReleaseOperationRepository releaseOperationRepository;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public ReleasePolicyService(
             PolicyProperties properties,
@@ -53,7 +59,8 @@ public class ReleasePolicyService {
             PolicyEngineService engineService,
             ReleasePolicyRepository policyRepository,
             PolicyEvaluationRepository evaluationRepository,
-            ReleaseOperationRepository releaseOperationRepository) {
+            ReleaseOperationRepository releaseOperationRepository,
+            AuditRecordingSupport auditRecordingSupport) {
         this.properties = properties;
         this.authorizationService = authorizationService;
         this.storageService = storageService;
@@ -62,6 +69,7 @@ public class ReleasePolicyService {
         this.policyRepository = policyRepository;
         this.evaluationRepository = evaluationRepository;
         this.releaseOperationRepository = releaseOperationRepository;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     @Transactional
@@ -112,6 +120,16 @@ public class ReleasePolicyService {
                     configJson,
                     fingerprint,
                     user.getUserId());
+            auditRecordingSupport.recordDomainEvent(
+                    user,
+                    request.projectId(),
+                    AuditEntityType.POLICY,
+                    created.getId(),
+                    created.getPolicyName(),
+                    AuditAction.CREATE,
+                    AuditResult.SUCCESS,
+                    AuditSource.RELEASE_POLICIES,
+                    Map.of("policyType", created.getPolicyType().name()));
             return storageService.toDto(created);
         } catch (DataIntegrityViolationException ex) {
             throw new ApiException(

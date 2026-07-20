@@ -11,6 +11,13 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 4 Phase 6 scope
+
+- Enterprise Audit Center under `/audit`
+- Read-only search/list/detail of append-only audit events
+- AUDIT_READ permission helper (Platform API only)
+- Safety statement: append-only audit trail; never modifies business data
+
 ## Sprint 4 Phase 5 scope
 
 - Environment Management under `/environments`
