@@ -1,0 +1,184 @@
+<section class="policy-page">
+  <header class="page-header">
+    <div>
+      <h1>Release Policies</h1>
+      <p class="subtitle safety">
+        Release Policies evaluate whether a Release may advance. They do not modify releases or deploy software.
+      </p>
+      <p class="subtitle">
+        Create deterministic policies, evaluate them against Releases by reference, and retain immutable evaluation
+        evidence and timeline history.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">You need POLICY_RUN or POLICY_READ to use this page.</p>
+  } @else {
+    <form class="run-form" [formGroup]="form" (ngSubmit)="create()">
+      <mat-form-field appearance="outline">
+        <mat-label>Project ID (optional filter)</mat-label>
+        <input matInput formControlName="projectId" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Policy name</mat-label>
+        <input matInput formControlName="policyName" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Policy type</mat-label>
+        <mat-select formControlName="policyType">
+          <mat-option value="MINIMUM_APPROVALS">MINIMUM_APPROVALS</mat-option>
+          <mat-option value="CI_REQUIRED">CI_REQUIRED</mat-option>
+          <mat-option value="NO_FAILED_CHECKS">NO_FAILED_CHECKS</mat-option>
+          <mat-option value="SIGNED_COMMITS_REQUIRED">SIGNED_COMMITS_REQUIRED</mat-option>
+          <mat-option value="SEMANTIC_VERSION_REQUIRED">SEMANTIC_VERSION_REQUIRED</mat-option>
+          <mat-option value="MANIFEST_INTEGRITY">MANIFEST_INTEGRITY</mat-option>
+          <mat-option value="RELEASE_NOTES_REQUIRED">RELEASE_NOTES_REQUIRED</mat-option>
+          <mat-option value="DEPLOYMENT_OBSERVATION_EXISTS">DEPLOYMENT_OBSERVATION_EXISTS</mat-option>
+          <mat-option value="ROLLBACK_PLAN_EXISTS">ROLLBACK_PLAN_EXISTS</mat-option>
+          <mat-option value="CUSTOM_EXPRESSION">CUSTOM_EXPRESSION</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Evaluation mode</mat-label>
+        <mat-select formControlName="evaluationMode">
+          <mat-option value="ALL_REQUIRED">ALL_REQUIRED</mat-option>
+          <mat-option value="FIRST_FAILURE">FIRST_FAILURE</mat-option>
+          <mat-option value="BEST_EFFORT">BEST_EFFORT</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Priority</mat-label>
+        <input matInput type="number" formControlName="priority" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="description-field">
+        <mat-label>Description</mat-label>
+        <input matInput formControlName="description" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="release-field">
+        <mat-label>Release ID (for evaluate)</mat-label>
+        <input matInput formControlName="releaseId" placeholder="UUID" />
+      </mat-form-field>
+      <div class="actions">
+        @if (permissions.canRun()) {
+          <button mat-flat-button color="primary" type="submit" [disabled]="loading()">Create policy</button>
+          <button mat-stroked-button type="button" (click)="evaluateSelected()" [disabled]="loading() || !selected()">
+            Evaluate
+          </button>
+          <button mat-stroked-button type="button" (click)="enableSelected()" [disabled]="loading() || !selected()">
+            Enable
+          </button>
+          <button mat-stroked-button type="button" (click)="disableSelected()" [disabled]="loading() || !selected()">
+            Disable
+          </button>
+        }
+        @if (permissions.canRead()) {
+          <button mat-stroked-button type="button" (click)="loadList()" [disabled]="loading()">Load list</button>
+          <button mat-stroked-button type="button" (click)="loadHistory()" [disabled]="loading() || !selected()">
+            Load history
+          </button>
+        }
+      </div>
+    </form>
+
+    @if (loading()) {
+      <div class="loading"><mat-spinner diameter="36"></mat-spinner></div>
+    }
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    <div class="layout">
+      <section class="list-panel">
+        <h2>Policies</h2>
+        @if (policies().length === 0) {
+          <p class="muted">No policies loaded.</p>
+        }
+        <ul class="policy-list">
+          @for (item of policies(); track item.id) {
+            <li>
+              <button
+                type="button"
+                class="policy-item"
+                [class.active]="selected()?.id === item.id"
+                (click)="selectPolicy(item)"
+              >
+                <span class="status-badge" [attr.data-status]="item.status">{{ item.status }}</span>
+                @if (item.latestEvaluation) {
+                  <span class="decision-badge" [attr.data-decision]="item.latestEvaluation.decision">
+                    {{ item.latestEvaluation.decision }}
+                  </span>
+                }
+                <strong>{{ item.policyName }}</strong>
+                <span>{{ item.policyType }} · priority {{ item.priority }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+
+      @if (selected(); as policy) {
+        <section class="detail-panel">
+          <div class="badge-stack">
+            <div class="status-badge" [attr.data-status]="policy.status">{{ policy.status }}</div>
+            <div class="type-badge">{{ policy.policyType }}</div>
+            <div class="mode-badge">{{ policy.evaluationMode }}</div>
+          </div>
+          <div class="summary-meta">
+            <div class="field-row"><span class="label">Policy name</span><code>{{ policy.policyName }}</code></div>
+            <div class="field-row"><span class="label">Fingerprint</span><code>{{ policy.policyFingerprint }}</code></div>
+            <div class="field-row"><span class="label">Priority</span><code>{{ policy.priority }}</code></div>
+            @if (policy.latestEvaluation; as evaluation) {
+              <div class="field-row">
+                <span class="label">Latest decision</span>
+                <code>{{ evaluation.decision }}</code>
+              </div>
+              <div class="field-row">
+                <span class="label">Release</span>
+                <code>{{ evaluation.releaseId }}</code>
+              </div>
+            }
+          </div>
+
+          @if (policy.latestEvaluation?.evidence?.length) {
+            <section>
+              <h3>Evidence</h3>
+              <ul class="evidence-list">
+                @for (evidence of policy.latestEvaluation!.evidence; track evidence.id) {
+                  <li>
+                    <span class="decision-badge" [attr.data-decision]="evidence.passed ? 'PASSED' : 'FAILED'">
+                      {{ evidence.passed ? 'PASSED' : 'FAILED' }}
+                    </span>
+                    <code>{{ evidence.evidenceKey }}</code>
+                    <span>{{ evidence.detail }}</span>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
+          <section>
+            <h3>Timeline</h3>
+            <ol class="timeline">
+              @for (event of policy.timeline; track event.eventType + event.at) {
+                <li>
+                  <strong>{{ event.eventType }}</strong>
+                  <span class="muted">{{ event.at }}</span>
+                  <div>{{ event.detail }}</div>
+                </li>
+              }
+            </ol>
+          </section>
+
+          <section>
+            <h3>History</h3>
+            <p class="muted">
+              Created {{ policy.createdAt }} · versions {{ policy.versions.length }} · updated {{ policy.updatedAt }} ·
+              evidence {{ policy.latestEvaluation?.evidence?.length ?? 0 }}
+            </p>
+          </section>
+        </section>
+      }
+    </div>
+  }
+</section>

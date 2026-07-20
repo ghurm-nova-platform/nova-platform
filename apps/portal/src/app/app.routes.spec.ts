@@ -170,6 +170,7 @@ describe('App routing', () => {
       '/releases',
       '/deployments',
       '/rollbacks',
+      '/policies',
       '/orchestration-runs',
       '/feedback',
       '/settings',

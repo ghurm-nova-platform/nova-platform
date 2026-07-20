@@ -133,6 +133,11 @@ export const routes: Routes = [
           import('./features/rollbacks/rollback-page').then((m) => m.RollbackPage),
       },
       {
+        path: 'policies',
+        loadComponent: () =>
+          import('./features/policies/policy-page').then((m) => m.PolicyPage),
+      },
+      {
         path: 'orchestration-runs',
         loadComponent: () =>
           import('./features/orchestration/orchestration-runs-list-page').then(
