@@ -124,16 +124,25 @@ public class AuditStorageService {
     @Transactional
     public AuditSessionEntity startSession(
             UUID sessionId, UUID userId, UUID organizationId, String ipAddress, String userAgent, Instant now) {
-        AuditSessionEntity session = new AuditSessionEntity(
-                UUID.randomUUID(),
-                sessionId,
-                userId,
-                organizationId,
-                now,
-                null,
-                truncate(ipAddress, 64),
-                truncate(userAgent, 500));
-        return sessionRepository.save(session);
+        Optional<AuditSessionEntity> existing = sessionRepository.findBySessionId(sessionId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        try {
+            return sessionRepository.save(new AuditSessionEntity(
+                    UUID.randomUUID(),
+                    sessionId,
+                    userId,
+                    organizationId,
+                    now,
+                    null,
+                    truncate(ipAddress, 64),
+                    truncate(userAgent, 500)));
+        } catch (DataIntegrityViolationException ex) {
+            return sessionRepository
+                    .findBySessionId(sessionId)
+                    .orElseThrow(() -> ex);
+        }
     }
 
     @Transactional
@@ -182,16 +191,22 @@ public class AuditStorageService {
         if (request.sessionId() == null) {
             return;
         }
-        sessionRepository.findBySessionId(request.sessionId()).orElseGet(() -> sessionRepository.save(
-                new AuditSessionEntity(
-                        UUID.randomUUID(),
-                        request.sessionId(),
-                        request.userId(),
-                        request.organizationId(),
-                        now,
-                        null,
-                        truncate(request.ipAddress(), 64),
-                        truncate(request.userAgent(), 500))));
+        if (sessionRepository.findBySessionId(request.sessionId()).isPresent()) {
+            return;
+        }
+        try {
+            sessionRepository.save(new AuditSessionEntity(
+                    UUID.randomUUID(),
+                    request.sessionId(),
+                    request.userId(),
+                    request.organizationId(),
+                    now,
+                    null,
+                    truncate(request.ipAddress(), 64),
+                    truncate(request.userAgent(), 500)));
+        } catch (DataIntegrityViolationException ex) {
+            sessionRepository.findBySessionId(request.sessionId()).orElseThrow(() -> ex);
+        }
     }
 
     private void upsertEntityReference(RecordAuditEventRequest request, Instant now) {

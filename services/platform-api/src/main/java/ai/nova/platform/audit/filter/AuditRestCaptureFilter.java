@@ -71,24 +71,28 @@ public class AuditRestCaptureFilter extends OncePerRequestFilter {
         AuditResult result = status >= 400 ? AuditResult.FAILURE : AuditResult.SUCCESS;
         AuditSeverity severity = status >= 500 ? AuditSeverity.HIGH : AuditSeverity.LOW;
 
-        auditPublisher.record(new RecordAuditEventRequest(
-                user.getOrganizationId(),
-                null,
-                user.getUserId(),
-                user.getDisplayName(),
-                null,
-                AuditEntityType.CONFIGURATION,
-                null,
-                path,
-                AuditAction.ACCESS,
-                result,
-                severity,
-                AuditSource.REST_API,
-                request.getHeader("X-Correlation-Id"),
-                request.getHeader("X-Request-Id"),
-                request.getRemoteAddr(),
-                truncate(request.getHeader("User-Agent"), 500),
-                Map.of("method", method, "path", path, "status", status)));
+        try {
+            auditPublisher.record(new RecordAuditEventRequest(
+                    user.getOrganizationId(),
+                    null,
+                    user.getUserId(),
+                    user.getDisplayName(),
+                    null,
+                    AuditEntityType.CONFIGURATION,
+                    null,
+                    path,
+                    AuditAction.ACCESS,
+                    result,
+                    severity,
+                    AuditSource.REST_API,
+                    request.getHeader("X-Correlation-Id"),
+                    request.getHeader("X-Request-Id"),
+                    request.getRemoteAddr(),
+                    truncate(request.getHeader("User-Agent"), 500),
+                    Map.of("method", method, "path", path, "status", status)));
+        } catch (RuntimeException ignored) {
+            // Audit must never fail the HTTP response.
+        }
     }
 
     private String truncate(String value, int max) {

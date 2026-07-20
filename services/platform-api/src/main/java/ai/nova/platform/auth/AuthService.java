@@ -5,7 +5,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
@@ -21,7 +20,6 @@ import ai.nova.platform.audit.config.AuditProperties;
 import ai.nova.platform.audit.entity.AuditAction;
 import ai.nova.platform.audit.entity.AuditResult;
 import ai.nova.platform.audit.service.AuditRecordingSupport;
-import ai.nova.platform.audit.service.AuditStorageService;
 import ai.nova.platform.permission.Permission;
 import ai.nova.platform.role.Role;
 import ai.nova.platform.security.AuthenticatedUser;
@@ -38,7 +36,6 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuditProperties auditProperties;
     private final AuditRecordingSupport auditRecordingSupport;
-    private final AuditStorageService auditStorageService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public AuthService(
@@ -47,15 +44,13 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             AuditProperties auditProperties,
-            AuditRecordingSupport auditRecordingSupport,
-            AuditStorageService auditStorageService) {
+            AuditRecordingSupport auditRecordingSupport) {
         this.userAccountRepository = userAccountRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.auditProperties = auditProperties;
         this.auditRecordingSupport = auditRecordingSupport;
-        this.auditStorageService = auditStorageService;
     }
 
     @Transactional
@@ -72,15 +67,7 @@ public class AuthService {
         }
 
         UUID sessionId = UUID.randomUUID();
-        Instant now = Instant.now();
         if (auditProperties.isEnabled() && auditProperties.isCaptureSecurityEvents()) {
-            auditStorageService.startSession(
-                    sessionId,
-                    user.getId(),
-                    user.getOrganization().getId(),
-                    ipAddress,
-                    userAgent,
-                    now);
             auditRecordingSupport.recordSecurityEvent(
                     user.getOrganization().getId(),
                     user.getId(),
