@@ -72,7 +72,6 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Deployment Observation](docs/036_DEPLOYMENT_OBSERVATION.md)
 - [Rollback Manager](docs/037_ROLLBACK_MANAGER.md)
 - [Release Policies](docs/038_RELEASE_POLICIES.md)
-- [Release Policies](docs/038_RELEASE_POLICIES.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
