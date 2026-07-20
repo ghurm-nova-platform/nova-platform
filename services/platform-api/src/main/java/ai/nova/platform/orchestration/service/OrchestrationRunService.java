@@ -3,6 +3,7 @@ package ai.nova.platform.orchestration.service;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -15,6 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.orchestration.config.OrchestrationProperties;
 import ai.nova.platform.orchestration.dto.OrchestrationDtos.CancelRunRequest;
 import ai.nova.platform.orchestration.dto.OrchestrationDtos.CreateRunRequest;
@@ -54,6 +60,7 @@ public class OrchestrationRunService {
     private final OrchestrationProperties properties;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public OrchestrationRunService(
             AgentOrchestrationRunRepository runRepository,
@@ -69,7 +76,8 @@ public class OrchestrationRunService {
             OrchestrationMapper mapper,
             OrchestrationProperties properties,
             ObjectMapper objectMapper,
-            Clock clock) {
+            Clock clock,
+            AuditRecordingSupport auditRecordingSupport) {
         this.runRepository = runRepository;
         this.taskRepository = taskRepository;
         this.dependencyRepository = dependencyRepository;
@@ -84,6 +92,7 @@ public class OrchestrationRunService {
         this.properties = properties;
         this.objectMapper = objectMapper;
         this.clock = clock;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     @Transactional
@@ -121,6 +130,7 @@ public class OrchestrationRunService {
         runRepository.saveAndFlush(run);
         eventService.ensureCounter(run.getId());
         eventService.appendEvent(run, null, OrchestrationEventType.RUN_CREATED, null, user.getUserId());
+        publishAudit(user, run, AuditAction.CREATE, AuditResult.SUCCESS, Map.of("status", run.getStatus().name()));
         return toResponse(run);
     }
 
@@ -168,6 +178,7 @@ public class OrchestrationRunService {
         run.setMetadataJson(request.metadataJson());
         run.setUpdatedBy(user.getUserId());
         run.setUpdatedAt(now);
+        publishAudit(user, run, AuditAction.UPDATE, AuditResult.SUCCESS, Map.of("status", run.getStatus().name()));
         return toResponse(save(run));
     }
 
@@ -189,6 +200,7 @@ public class OrchestrationRunService {
         run.setUpdatedBy(user.getUserId());
         run.setUpdatedAt(now);
         eventService.appendEvent(run, null, OrchestrationEventType.RUN_READY, null, user.getUserId());
+        publishAudit(user, run, AuditAction.READY, AuditResult.SUCCESS, Map.of("status", run.getStatus().name()));
         return toResponse(save(run));
     }
 
@@ -212,6 +224,7 @@ public class OrchestrationRunService {
         run.setUpdatedAt(now);
         eventService.appendEvent(run, null, OrchestrationEventType.RUN_STARTED, null, user.getUserId());
         schedulingService.initializeRootTasks(run);
+        publishAudit(user, run, AuditAction.START, AuditResult.SUCCESS, Map.of("status", run.getStatus().name()));
         return toResponse(save(run));
     }
 
@@ -231,6 +244,7 @@ public class OrchestrationRunService {
         run.setUpdatedBy(user.getUserId());
         run.setUpdatedAt(now);
         eventService.appendEvent(run, null, OrchestrationEventType.RUN_ARCHIVED, null, user.getUserId());
+        publishAudit(user, run, AuditAction.ARCHIVE, AuditResult.SUCCESS, Map.of("status", run.getStatus().name()));
         return toResponse(save(run));
     }
 
@@ -285,5 +299,27 @@ public class OrchestrationRunService {
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private void publishAudit(
+            AuthenticatedUser user,
+            AgentOrchestrationRun run,
+            AuditAction action,
+            AuditResult result,
+            Map<String, Object> details) {
+        try {
+            auditRecordingSupport.recordDomainEvent(
+                    user,
+                    run.getProjectId(),
+                    AuditEntityType.CONFIGURATION,
+                    run.getId(),
+                    run.getName(),
+                    action,
+                    result,
+                    AuditSource.ORCHESTRATION,
+                    details);
+        } catch (RuntimeException ignored) {
+            // AuditPublisher swallows failures; guard against unexpected propagation.
+        }
     }
 }

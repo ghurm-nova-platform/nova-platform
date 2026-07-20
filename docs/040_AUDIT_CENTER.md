@@ -44,6 +44,12 @@ No POST/PUT/DELETE on `/api/audit`.
 
 Duplicate `(organization_id, event_fingerprint)` returns the existing event (silent idempotent return).
 
+Fingerprint inputs are canonicalized: details maps are sorted recursively (`TreeMap` + `ORDER_MAP_ENTRIES_BY_KEYS`) before SHA-256. Idempotency applies when organization, actor, entity, action, result, severity, source, correlation/request IDs, and canonical details match. Different request IDs or materially different details produce distinct fingerprints.
+
+## Failure behavior
+
+`AuditPublisher` uses `REQUIRES_NEW` and **swallows** publish failures (logs a warning, never throws). Domain services wrap `AuditRecordingSupport.recordDomainEvent` in try/catch as defense in depth. Audit outages must not change business outcomes.
+
 ## Configuration (`nova.audit`)
 
 | Property | Default |
@@ -54,19 +60,23 @@ Duplicate `(organization_id, event_fingerprint)` returns the existing event (sil
 | `capture-rest-api` | `true` |
 | `capture-security-events` | `true` |
 
-## Database (V50)
+## Database (V50 + V51)
 
 - `audit_events` — primary immutable events
-- `audit_entities` — entity reference registry
-- `audit_sessions` — session tracking
+- `audit_entities` — entity reference registry (display labels may update)
+- `audit_sessions` — session tracking (`ended_at` may update on logout)
 - `audit_correlation` — correlation/request/session links
 - `audit_indexes` — denormalized search keys
+
+**V51** extends CHECK constraints for lifecycle actions (`START`, `COMPLETE`, `FAIL`, `PREPARE`, `READY`, `PUBLISH`) and subsystem sources. Database-level immutability triggers block `UPDATE`/`DELETE` on `audit_events`, `audit_correlation`, and `audit_indexes` (PostgreSQL function + H2 Java trigger). `INSERT` remains allowed. `audit_sessions.ended_at` and `audit_entities.display_label` remain intentionally mutable.
 
 ## Error codes
 
 `AUDIT_DISABLED`, `AUDIT_NOT_FOUND`, `AUDIT_IMMUTABLE`, `AUDIT_DUPLICATE_EVENT`, `AUDIT_INVALID_QUERY`, `AUDIT_SEARCH_FAILED`
 
-## Publishers wired in Phase 6
+## Publishers wired in Phase 6+
+
+**Core platform**
 
 - Auth login/logout (`capture-security-events`)
 - REST API access filter (`capture-rest-api`)
@@ -74,5 +84,23 @@ Duplicate `(organization_id, event_fingerprint)` returns the existing event (sil
 - Release policy create
 - Deployment observation create
 - Rollback plan create
+
+**Orchestration & agents (Sprint 4 audit coverage)**
+
+- Orchestration runs: create, update, ready, start, cancel, archive (`ORCHESTRATION`)
+- Planner plan/import (`PLANNER`)
+- Coding generate (`CODING`)
+- Review run (`REVIEW`)
+- Testing run (`TESTING`)
+- Patch run (`PATCH`)
+- Git integration run (`GIT_INTEGRATION`)
+- Pull request run (`PULL_REQUEST`)
+- CI observation run (`CI_OBSERVATION`)
+- Repair run (`REPAIR`)
+- Approval gate validate/approve/reject (`APPROVAL_GATE`)
+- Merge agent validate/merge (`MERGE_AGENT`)
+- Release manager create/prepare/publish/fail (`RELEASE_MANAGER`)
+
+Scheduler/worker paths without an authenticated user skip domain audit (no-op on null user).
 
 See [ADR-0029](adr/ADR-0029-audit-center.md).

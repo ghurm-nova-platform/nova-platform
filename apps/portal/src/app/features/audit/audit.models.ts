@@ -23,6 +23,12 @@ export type AuditAction =
   | 'MERGE'
   | 'VALIDATE'
   | 'OBSERVE'
+  | 'START'
+  | 'COMPLETE'
+  | 'FAIL'
+  | 'PREPARE'
+  | 'READY'
+  | 'PUBLISH'
   | 'LOGIN'
   | 'LOGOUT'
   | 'ACCESS';
@@ -40,7 +46,18 @@ export type AuditSource =
   | 'DEPLOYMENT_OBSERVATION'
   | 'ROLLBACK_MANAGER'
   | 'RELEASE_POLICIES'
-  | 'ENVIRONMENT_MANAGEMENT';
+  | 'ENVIRONMENT_MANAGEMENT'
+  | 'ORCHESTRATION'
+  | 'PLANNER'
+  | 'CODING'
+  | 'REVIEW'
+  | 'TESTING'
+  | 'PATCH'
+  | 'GIT_INTEGRATION'
+  | 'PULL_REQUEST'
+  | 'CI_OBSERVATION'
+  | 'REPAIR'
+  | 'APPROVAL_GATE';
 
 export interface AuditEvent {
   id: string;

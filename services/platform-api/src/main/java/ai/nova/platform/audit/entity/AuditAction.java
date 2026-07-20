@@ -12,6 +12,12 @@ public enum AuditAction {
     MERGE,
     VALIDATE,
     OBSERVE,
+    START,
+    COMPLETE,
+    FAIL,
+    PREPARE,
+    READY,
+    PUBLISH,
     LOGIN,
     LOGOUT,
     ACCESS

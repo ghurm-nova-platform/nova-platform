@@ -18,12 +18,13 @@ Nova Platform already has domain-specific `*_audit_log` and `*_events` tables fo
 Introduce package `ai.nova.platform.audit` with:
 
 1. Flyway migration `V50__audit_center.sql` creating `audit_events`, `audit_entities`, `audit_sessions`, `audit_correlation`, and `audit_indexes`
-2. Internal append-only publisher (`AuditPublisher` with `REQUIRES_NEW`) and fingerprint idempotency
-3. Read-only controller `/api/audit` guarded by `AUDIT_READ`
-4. Optional REST capture filter and auth security event wiring behind `nova.audit` flags
-5. Thin publish hooks from Environment, Policy, Deployment Observation, Rollback, and Auth services
+2. Flyway Java migration `V51__AuditDatabaseImmutability` extending CHECK constraints and enforcing append-only triggers on events/correlation/indexes (PostgreSQL + H2)
+3. Internal append-only publisher (`AuditPublisher` with `REQUIRES_NEW`) and fingerprint idempotency with canonical JSON details
+4. Read-only controller `/api/audit` guarded by `AUDIT_READ`
+5. Optional REST capture filter and auth security event wiring behind `nova.audit` flags
+6. Publish hooks from Environment, Policy, Deployment Observation, Rollback, Auth, Orchestration, Planner, all pipeline agents, Approval Gate, Merge Agent, and Release Manager
 
-Domain audit tables remain unchanged.
+Domain audit tables remain unchanged. Mutable exceptions: `audit_sessions.ended_at`, `audit_entities.display_label`.
 
 ## Consequences
 
@@ -31,6 +32,8 @@ Domain audit tables remain unchanged.
 - Positive: idempotent publisher avoids duplicate rows under retries
 - Negative: additional storage and indexing overhead; publishers must avoid secrets in `details_json`
 - Operational: disable via `nova.audit.enabled=false`; REST capture via `capture-rest-api=false`
+- Operational: audit publish failures are swallowed; monitor publisher warnings
+- Operational: V51 immutability triggers reject direct SQL mutation of event rows (`AUDIT_IMMUTABLE`)
 
 ## Alternatives considered
 

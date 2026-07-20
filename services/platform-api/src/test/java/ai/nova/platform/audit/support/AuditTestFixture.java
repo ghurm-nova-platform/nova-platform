@@ -35,7 +35,9 @@ public final class AuditTestFixture {
                         "ENVIRONMENT_RUN",
                         "ENVIRONMENT_READ",
                         "POLICY_RUN",
-                        "POLICY_READ"),
+                        "POLICY_READ",
+                        "RELEASE_RUN",
+                        "ORCHESTRATION_RUN_CREATE"),
                 true);
     }
 

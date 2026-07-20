@@ -4,13 +4,16 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 import ai.nova.platform.audit.dto.AuditDtos.RecordAuditEventRequest;
 import ai.nova.platform.audit.entity.AuditAction;
@@ -22,10 +25,10 @@ import ai.nova.platform.audit.entity.AuditSource;
 @Service
 public class AuditFingerprintService {
 
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper fingerprintMapper;
 
     public AuditFingerprintService(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+        this.fingerprintMapper = objectMapper.copy().configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
     }
 
     public String fingerprint(RecordAuditEventRequest request) {
@@ -86,10 +89,29 @@ public class AuditFingerprintService {
             return "";
         }
         try {
-            return objectMapper.writeValueAsString(details);
+            return fingerprintMapper.writeValueAsString(canonicalizeMap(details));
         } catch (JsonProcessingException ex) {
             return details.toString();
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object canonicalize(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            TreeMap<String, Object> sorted = new TreeMap<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                sorted.put(String.valueOf(entry.getKey()), canonicalize(entry.getValue()));
+            }
+            return sorted;
+        }
+        if (value instanceof List<?> list) {
+            return list.stream().map(this::canonicalize).toList();
+        }
+        return value;
+    }
+
+    private Map<String, Object> canonicalizeMap(Map<String, Object> details) {
+        return (Map<String, Object>) canonicalize(details);
     }
 
     private String safe(Object value) {

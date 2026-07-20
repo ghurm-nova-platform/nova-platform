@@ -89,7 +89,7 @@ Identity Projects     Agent Runtime   Feedback    Audit/Usage
 - Models and Usage
 - Knowledge and Memory
 - Feedback Intelligence
-- Audit and Compliance
+- Audit and Compliance — Enterprise Audit Center publishes lifecycle events from orchestration, all pipeline agents, approval/merge/release managers, environments, policies, deployments, rollbacks, and security/REST capture; V51 database triggers enforce immutability on event rows
 - Marketplace, deferred until after beta
 
 ## 5. Agent execution lifecycle

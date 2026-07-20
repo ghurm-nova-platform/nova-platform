@@ -3,6 +3,7 @@ package ai.nova.platform.repair.service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -10,6 +11,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.coding.dto.CodingDtos.GeneratedArtifactResponse;
 import ai.nova.platform.coding.service.ArtifactStorageService;
 import ai.nova.platform.orchestration.entity.AgentOrchestrationTask;
@@ -52,6 +58,7 @@ public class RepairAgentService {
     private final RepairJsonParser jsonParser;
     private final RepairValidator validator;
     private final RepairStorageService storageService;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public RepairAgentService(
             RepairAuthorizationService authorizationService,
@@ -65,7 +72,8 @@ public class RepairAgentService {
             StandardRepairStrategy repairStrategy,
             RepairJsonParser jsonParser,
             RepairValidator validator,
-            RepairStorageService storageService) {
+            RepairStorageService storageService,
+            AuditRecordingSupport auditRecordingSupport) {
         this.authorizationService = authorizationService;
         this.properties = properties;
         this.taskRepository = taskRepository;
@@ -78,6 +86,7 @@ public class RepairAgentService {
         this.jsonParser = jsonParser;
         this.validator = validator;
         this.storageService = storageService;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     public RepairOperation run(RepairRunRequest request, AuthenticatedUser user) {
@@ -94,6 +103,8 @@ public class RepairAgentService {
         timeline.add(new TimelineEvent("STARTED", startedAt, "Repair agent started"));
 
         AgentOrchestrationTask task = requireTask(request.taskId(), user.getOrganizationId());
+        publishTaskAudit(user, task, AuditAction.CREATE, AuditResult.SUCCESS, Map.of());
+        publishTaskAudit(user, task, AuditAction.START, AuditResult.SUCCESS, Map.of());
         projectRepository
                 .findByIdAndOrganizationId(task.getProjectId(), user.getOrganizationId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PROJECT_NOT_FOUND", "Project not found"));
@@ -209,6 +220,8 @@ public class RepairAgentService {
                     Instant.now(),
                     timeline);
             timeline.add(new TimelineEvent("COMPLETED", Instant.now(), "SUCCEEDED"));
+            publishTaskAudit(
+                    user, task, AuditAction.COMPLETE, AuditResult.SUCCESS, Map.of("operationId", operationId.toString()));
             return result;
         } catch (DataIntegrityViolationException ex) {
             RepairOperation duplicate = storageService.findByFingerprint(
@@ -227,6 +240,7 @@ public class RepairAgentService {
                     // Operation may not have been persisted yet.
                 }
             }
+            publishTaskAudit(user, task, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", ex.getCode()));
             throw ex;
         } catch (RuntimeException ex) {
             if (operationId != null) {
@@ -236,6 +250,7 @@ public class RepairAgentService {
                     // Operation may not have been persisted yet.
                 }
             }
+            publishTaskAudit(user, task, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", "REPAIR_FAILED"));
             throw ex;
         }
     }
@@ -279,5 +294,27 @@ public class RepairAgentService {
         CollectedInput primary = inputs.get(0);
         String reason = primary.sourceType().name() + ": " + primary.detail();
         return reason.length() <= 2000 ? reason : reason.substring(0, 2000);
+    }
+
+    private void publishTaskAudit(
+            AuthenticatedUser user,
+            AgentOrchestrationTask task,
+            AuditAction action,
+            AuditResult result,
+            Map<String, Object> details) {
+        try {
+            auditRecordingSupport.recordDomainEvent(
+                    user,
+                    task.getProjectId(),
+                    AuditEntityType.TASK,
+                    task.getId(),
+                    task.getDisplayName(),
+                    action,
+                    result,
+                    AuditSource.REPAIR,
+                    details);
+        } catch (RuntimeException ignored) {
+            // AuditPublisher swallows failures; guard against unexpected propagation.
+        }
     }
 }

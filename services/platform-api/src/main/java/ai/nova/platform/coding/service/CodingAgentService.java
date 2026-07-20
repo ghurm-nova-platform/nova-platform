@@ -17,6 +17,11 @@ import ai.nova.platform.agent.runtime.ExecutionRequest;
 import ai.nova.platform.agent.runtime.RuntimeFinalResponse;
 import ai.nova.platform.agent.runtime.RuntimeMessage;
 import ai.nova.platform.agent.runtime.RuntimeTurnResult;
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.coding.config.CodingProperties;
 import ai.nova.platform.coding.dto.CodingDtos.CodeGenerationRequest;
 import ai.nova.platform.coding.dto.CodingDtos.CodingPromptContext;
@@ -56,6 +61,7 @@ public class CodingAgentService {
     private final CodingJsonParser jsonParser;
     private final CodingArtifactValidator artifactValidator;
     private final ArtifactStorageService artifactStorageService;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public CodingAgentService(
             CodingAuthorizationService authorizationService,
@@ -69,7 +75,8 @@ public class CodingAgentService {
             CodingPromptBuilder promptBuilder,
             CodingJsonParser jsonParser,
             CodingArtifactValidator artifactValidator,
-            ArtifactStorageService artifactStorageService) {
+            ArtifactStorageService artifactStorageService,
+            AuditRecordingSupport auditRecordingSupport) {
         this.authorizationService = authorizationService;
         this.properties = properties;
         this.taskRepository = taskRepository;
@@ -82,6 +89,7 @@ public class CodingAgentService {
         this.jsonParser = jsonParser;
         this.artifactValidator = artifactValidator;
         this.artifactStorageService = artifactStorageService;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     public CodingResult generate(CodeGenerationRequest request, AuthenticatedUser user) {
@@ -91,6 +99,8 @@ public class CodingAgentService {
         }
 
         AgentOrchestrationTask task = requireTask(request.taskId(), user.getOrganizationId());
+        publishTaskAudit(user, task, AuditAction.CREATE, AuditResult.SUCCESS, Map.of());
+        publishTaskAudit(user, task, AuditAction.START, AuditResult.SUCCESS, Map.of());
         AgentOrchestrationRun run = runRepository
                 .findByIdAndOrganizationId(task.getRunId(), user.getOrganizationId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "ORCHESTRATION_RUN_NOT_FOUND", "Run not found"));
@@ -132,34 +142,49 @@ public class CodingAgentService {
                 null);
 
         long started = System.currentTimeMillis();
-        // External AI call — must stay outside DB write transactions.
-        RuntimeTurnResult turn = agentRuntimeClient.execute(executionRequest);
-        long generationTimeMs = System.currentTimeMillis() - started;
-        if (!turn.isFinal() || turn.finalResponse() == null) {
-            throw new ApiException(
-                    HttpStatus.BAD_REQUEST,
-                    "CODING_INVALID_OUTPUT",
-                    "Coding agent must return a final JSON response without tool calls");
+        try {
+            RuntimeTurnResult turn = agentRuntimeClient.execute(executionRequest);
+            long generationTimeMs = System.currentTimeMillis() - started;
+            if (!turn.isFinal() || turn.finalResponse() == null) {
+                publishTaskAudit(
+                        user, task, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", "CODING_INVALID_OUTPUT"));
+                throw new ApiException(
+                        HttpStatus.BAD_REQUEST,
+                        "CODING_INVALID_OUTPUT",
+                        "Coding agent must return a final JSON response without tool calls");
+            }
+            RuntimeFinalResponse finalResponse = turn.finalResponse();
+            ParsedCodingOutput parsed = jsonParser.parse(finalResponse.responseText());
+            artifactValidator.validate(parsed);
+
+            Long tokensUsed = (long) finalResponse.totalTokens();
+            List<GeneratedArtifactResponse> stored = artifactStorageService.replaceArtifacts(
+                    task, parsed.artifacts(), tokensUsed, model, provider, generationTimeMs);
+
+            publishTaskAudit(
+                    user,
+                    task,
+                    AuditAction.COMPLETE,
+                    AuditResult.SUCCESS,
+                    Map.of("artifactCount", stored.size()));
+            return new CodingResult(
+                    task.getId(),
+                    task.getRunId(),
+                    task.getProjectId(),
+                    parsed.summary(),
+                    stored,
+                    tokensUsed,
+                    model,
+                    provider,
+                    generationTimeMs,
+                    true);
+        } catch (ApiException ex) {
+            publishTaskAudit(user, task, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", ex.getCode()));
+            throw ex;
+        } catch (RuntimeException ex) {
+            publishTaskAudit(user, task, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", "CODING_FAILED"));
+            throw ex;
         }
-        RuntimeFinalResponse finalResponse = turn.finalResponse();
-        ParsedCodingOutput parsed = jsonParser.parse(finalResponse.responseText());
-        artifactValidator.validate(parsed);
-
-        Long tokensUsed = (long) finalResponse.totalTokens();
-        List<GeneratedArtifactResponse> stored = artifactStorageService.replaceArtifacts(
-                task, parsed.artifacts(), tokensUsed, model, provider, generationTimeMs);
-
-        return new CodingResult(
-                task.getId(),
-                task.getRunId(),
-                task.getProjectId(),
-                parsed.summary(),
-                stored,
-                tokensUsed,
-                model,
-                provider,
-                generationTimeMs,
-                true);
     }
 
     @Transactional(readOnly = true)
@@ -249,5 +274,27 @@ public class CodingAgentService {
             return null;
         }
         return value.length() <= max ? value : value.substring(0, max);
+    }
+
+    private void publishTaskAudit(
+            AuthenticatedUser user,
+            AgentOrchestrationTask task,
+            AuditAction action,
+            AuditResult result,
+            Map<String, Object> details) {
+        try {
+            auditRecordingSupport.recordDomainEvent(
+                    user,
+                    task.getProjectId(),
+                    AuditEntityType.TASK,
+                    task.getId(),
+                    task.getDisplayName(),
+                    action,
+                    result,
+                    AuditSource.CODING,
+                    details);
+        } catch (RuntimeException ignored) {
+            // AuditPublisher swallows failures; guard against unexpected propagation.
+        }
     }
 }

@@ -4,12 +4,18 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.git.config.GitProperties;
 import ai.nova.platform.git.dto.GitDtos.GitOperation;
 import ai.nova.platform.git.dto.GitDtos.GitRunRequest;
@@ -40,6 +46,7 @@ public class GitIntegrationAgentService {
     private final GitBranchStrategy branchStrategy;
     private final ControlledGitService gitService;
     private final GitStorageService storageService;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public GitIntegrationAgentService(
             GitAuthorizationService authorizationService,
@@ -50,7 +57,8 @@ public class GitIntegrationAgentService {
             GitValidator validator,
             GitBranchStrategy branchStrategy,
             ControlledGitService gitService,
-            GitStorageService storageService) {
+            GitStorageService storageService,
+            AuditRecordingSupport auditRecordingSupport) {
         this.authorizationService = authorizationService;
         this.properties = properties;
         this.taskRepository = taskRepository;
@@ -60,6 +68,7 @@ public class GitIntegrationAgentService {
         this.branchStrategy = branchStrategy;
         this.gitService = gitService;
         this.storageService = storageService;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     public GitOperation run(GitRunRequest request, AuthenticatedUser user) {
@@ -73,6 +82,7 @@ public class GitIntegrationAgentService {
         timeline.add(new TimelineEvent("STARTED", startedAt, "Git integration started"));
 
         AgentOrchestrationTask task = requireTask(request.taskId(), user.getOrganizationId());
+        publishTaskAudit(user, task, AuditAction.CREATE, AuditResult.SUCCESS, Map.of());
         Project project = projectRepository
                 .findByIdAndOrganizationId(task.getProjectId(), user.getOrganizationId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PROJECT_NOT_FOUND", "Project not found"));
@@ -147,13 +157,18 @@ public class GitIntegrationAgentService {
                     completedAt,
                     timeline);
             timeline.add(new TimelineEvent("COMPLETED", Instant.now(), "SUCCEEDED"));
+            publishTaskAudit(
+                    user, task, AuditAction.COMPLETE, AuditResult.SUCCESS, Map.of("operationId", pending.id().toString()));
             return result;
         } catch (ApiException ex) {
             storageService.markFailed(pending.id(), ex.getCode(), ex.getMessage(), Instant.now());
+            publishTaskAudit(user, task, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", ex.getCode()));
             throw ex;
         } catch (RuntimeException ex) {
             storageService.markFailed(
                     pending.id(), "GIT_REPO_INCONSISTENT", ex.getMessage(), Instant.now());
+            publishTaskAudit(
+                    user, task, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", "GIT_REPO_INCONSISTENT"));
             throw ex;
         }
         // Failed operation workspaces are preserved by default for diagnosis
@@ -176,5 +191,27 @@ public class GitIntegrationAgentService {
                 .findByIdAndOrganizationId(taskId, organizationId)
                 .orElseThrow(() -> new ApiException(
                         HttpStatus.NOT_FOUND, "GIT_TASK_NOT_FOUND", "Orchestration task not found"));
+    }
+
+    private void publishTaskAudit(
+            AuthenticatedUser user,
+            AgentOrchestrationTask task,
+            AuditAction action,
+            AuditResult result,
+            Map<String, Object> details) {
+        try {
+            auditRecordingSupport.recordDomainEvent(
+                    user,
+                    task.getProjectId(),
+                    AuditEntityType.TASK,
+                    task.getId(),
+                    task.getDisplayName(),
+                    action,
+                    result,
+                    AuditSource.GIT_INTEGRATION,
+                    details);
+        } catch (RuntimeException ignored) {
+            // AuditPublisher swallows failures; guard against unexpected propagation.
+        }
     }
 }
