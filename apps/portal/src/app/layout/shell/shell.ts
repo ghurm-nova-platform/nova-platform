@@ -159,6 +159,12 @@ export class Shell {
       icon: 'policy',
     },
     {
+      labelEn: 'Environments',
+      labelAr: 'البيئات',
+      path: '/environments',
+      icon: 'dns',
+    },
+    {
       labelEn: 'AI Orchestration',
       labelAr: 'تنسيق الوكلاء',
       path: '/orchestration-runs',

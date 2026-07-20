@@ -72,6 +72,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Deployment Observation](docs/036_DEPLOYMENT_OBSERVATION.md)
 - [Rollback Manager](docs/037_ROLLBACK_MANAGER.md)
 - [Release Policies](docs/038_RELEASE_POLICIES.md)
+- [Environment Management](docs/039_ENVIRONMENT_MANAGEMENT.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
@@ -87,4 +88,4 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 
 ## Current status
 
-Sprint 4 Phase 4 — Release Policies evaluate whether a Release may advance (read-only upstream consumption; no release/deployment/rollback mutation).
+Sprint 4 Phase 5 — Environment Management registers project-scoped deployment targets and metadata (extends global catalog; no deploy/secrets/release mutation).

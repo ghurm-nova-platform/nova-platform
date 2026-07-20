@@ -1,0 +1,175 @@
+<section class="environment-page">
+  <header class="page-header">
+    <div>
+      <h1>Environments</h1>
+      <p class="subtitle safety">
+        Environment Management registers project-scoped deployment targets and metadata. It does not deploy software,
+        store secrets, or modify releases.
+      </p>
+      <p class="subtitle">
+        Create and manage environment definitions, labels, variable metadata, status lifecycle, and immutable history.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">You need ENVIRONMENT_RUN or ENVIRONMENT_READ to use this page.</p>
+  } @else {
+    <form class="run-form" [formGroup]="form" (ngSubmit)="create()">
+      <mat-form-field appearance="outline">
+        <mat-label>Project ID</mat-label>
+        <input matInput formControlName="projectId" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Environment name</mat-label>
+        <input matInput formControlName="name" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Environment type</mat-label>
+        <mat-select formControlName="environmentType">
+          <mat-option value="DEVELOPMENT">DEVELOPMENT</mat-option>
+          <mat-option value="TEST">TEST (alias for TESTING)</mat-option>
+          <mat-option value="TESTING">TESTING</mat-option>
+          <mat-option value="QA">QA</mat-option>
+          <mat-option value="STAGING">STAGING</mat-option>
+          <mat-option value="PRODUCTION">PRODUCTION</mat-option>
+          <mat-option value="DR">DR</mat-option>
+          <mat-option value="CUSTOM">CUSTOM</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Region</mat-label>
+        <input matInput formControlName="region" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Provider</mat-label>
+        <input matInput formControlName="provider" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Cluster</mat-label>
+        <input matInput formControlName="clusterName" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Namespace</mat-label>
+        <input matInput formControlName="namespaceName" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Owner</mat-label>
+        <input matInput formControlName="ownerName" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="description-field">
+        <mat-label>Description</mat-label>
+        <input matInput formControlName="description" />
+      </mat-form-field>
+      <div class="actions">
+        @if (permissions.canRun()) {
+          <button mat-flat-button color="primary" type="submit" [disabled]="loading()">Create environment</button>
+          <button mat-stroked-button type="button" (click)="updateSelected()" [disabled]="loading() || !selected()">
+            Update metadata
+          </button>
+          <button mat-stroked-button type="button" (click)="enableSelected()" [disabled]="loading() || !selected()">
+            Enable
+          </button>
+          <button mat-stroked-button type="button" (click)="disableSelected()" [disabled]="loading() || !selected()">
+            Disable
+          </button>
+          <button mat-stroked-button type="button" (click)="archiveSelected()" [disabled]="loading() || !selected()">
+            Archive
+          </button>
+        }
+        @if (permissions.canRead()) {
+          <button mat-stroked-button type="button" (click)="loadList()" [disabled]="loading()">Load list</button>
+          <button mat-stroked-button type="button" (click)="loadHistory()" [disabled]="loading() || !selected()">
+            Load history
+          </button>
+        }
+      </div>
+    </form>
+
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    @if (loading()) {
+      <mat-spinner diameter="36"></mat-spinner>
+    }
+
+    <div class="layout">
+      <aside>
+        <h2>Project environments</h2>
+        @if (environments().length === 0) {
+          <p class="muted">No environments loaded.</p>
+        } @else {
+          <ul class="environment-list">
+            @for (item of environments(); track item.id) {
+              <li>
+                <button
+                  type="button"
+                  class="environment-item"
+                  [class.active]="selected()?.id === item.id"
+                  (click)="selectEnvironment(item)"
+                >
+                  <span class="status-badge" [attr.data-status]="item.status">{{ item.status }}</span>
+                  <span class="type-badge">{{ item.environmentType }}</span>
+                  <strong>{{ item.name }}</strong>
+                  <div class="muted">{{ item.code }}</div>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </aside>
+
+      <section class="detail">
+        @if (selected(); as env) {
+          <h2>{{ env.name }}</h2>
+          <div class="field-row"><span class="label">Status</span><span>{{ env.status }} (active={{ env.active }})</span></div>
+          <div class="field-row"><span class="label">Type</span><span>{{ env.environmentType }}</span></div>
+          <div class="field-row"><span class="label">Region</span><span>{{ env.region || '—' }}</span></div>
+          <div class="field-row"><span class="label">Provider</span><span>{{ env.provider || '—' }}</span></div>
+          <div class="field-row"><span class="label">Cluster</span><span>{{ env.clusterName || '—' }}</span></div>
+          <div class="field-row"><span class="label">Namespace</span><span>{{ env.namespaceName || '—' }}</span></div>
+          <div class="field-row"><span class="label">Description</span><span>{{ env.description || '—' }}</span></div>
+
+          @if (env.labels.length > 0) {
+            <h3>Labels</h3>
+            <ul>
+              @for (label of env.labels; track label.key) {
+                <li>{{ label.key }} = {{ label.value }}</li>
+              }
+            </ul>
+          }
+
+          @if (env.variables.length > 0) {
+            <h3>Variable metadata</h3>
+            <ul>
+              @for (variable of env.variables; track variable.id) {
+                <li>{{ variable.name }} ({{ variable.scope }}){{ variable.required ? ' *' : '' }}</li>
+              }
+            </ul>
+          }
+
+          @if (env.timeline.length > 0) {
+            <h3>Timeline</h3>
+            <ul class="timeline">
+              @for (event of env.timeline; track event.at + event.eventType) {
+                <li>{{ event.at }} — {{ event.eventType }}: {{ event.detail || '' }}</li>
+              }
+            </ul>
+          }
+
+          @if (env.history.length > 0) {
+            <h3>History</h3>
+            <ul class="history-list">
+              @for (entry of env.history; track entry.id) {
+                <li>{{ entry.createdAt }} — {{ entry.changeType }}</li>
+              }
+            </ul>
+          }
+        } @else {
+          <p class="muted">Select an environment to view details.</p>
+        }
+      </section>
+    </div>
+  }
+</section>
