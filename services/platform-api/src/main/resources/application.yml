@@ -232,6 +232,11 @@ nova:
     enabled: true
     allow-custom-policies: true
     retain-history: true
+  environment:
+    enabled: true
+    allow-delete: false
+    retain-history: true
+    allow-multiple-production: false
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 

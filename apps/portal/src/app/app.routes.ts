@@ -138,6 +138,11 @@ export const routes: Routes = [
           import('./features/policies/policy-page').then((m) => m.PolicyPage),
       },
       {
+        path: 'environments',
+        loadComponent: () =>
+          import('./features/environments/environment-page').then((m) => m.EnvironmentPage),
+      },
+      {
         path: 'orchestration-runs',
         loadComponent: () =>
           import('./features/orchestration/orchestration-runs-list-page').then(

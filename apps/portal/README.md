@@ -11,6 +11,14 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 4 Phase 5 scope
+
+- Environment Management under `/environments`
+- Create / update / enable / disable / archive project-scoped environments
+- Environment list, type, status, metadata, labels, variable metadata (never secret values), timeline, history
+- ENVIRONMENT_* permission helper (Platform API only)
+- Safety statement: registers deployment targets and metadata; never deploys, stores secrets, or modifies releases
+
 ## Sprint 4 Phase 4 scope
 
 - Release Policies under `/policies`
