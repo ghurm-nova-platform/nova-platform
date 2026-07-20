@@ -46,6 +46,7 @@ describe('Shell', () => {
     expect(text).toContain('Releases');
     expect(text).toContain('Deployments');
     expect(text).toContain('Rollbacks');
+    expect(text).toContain('Release Policies');
     expect(text).toContain('AI Orchestration');
     expect(text).toContain('Agents');
     expect(text).toContain('Feedback');

@@ -228,6 +228,10 @@ nova:
     execution-enabled: false
     allow-plan-edit: false
     retain-history: true
+  policy:
+    enabled: true
+    allow-custom-policies: true
+    retain-history: true
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 

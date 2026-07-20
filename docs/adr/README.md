@@ -40,3 +40,5 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0024](ADR-0024-release-manager.md) | Release Manager owns immutable release lifecycle | Accepted |
 | [ADR-0025](ADR-0025-deployment-observation.md) | Deployment Observation is observe-only | Accepted |
 | [ADR-0026](ADR-0026-rollback-manager.md) | Rollback Manager is planning-only | Accepted |
+| [ADR-0027](ADR-0027-release-policies.md) | Release Policies evaluate without mutating upstream records | Accepted |
+| [ADR-0027](ADR-0027-release-policies.md) | Release Policies are evaluation-only | Accepted |

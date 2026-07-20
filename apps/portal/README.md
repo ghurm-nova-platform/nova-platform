@@ -11,6 +11,22 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 - Typed OrchestrationRunService and ORCHESTRATION_* permission helper (Platform API only)
 - No heavy graph visualization libraries
 
+## Sprint 4 Phase 4 scope
+
+- Release Policies under `/policies`
+- Create / enable / disable / evaluate policies against Releases by reference
+- Policy list, type, status, evaluation mode, priority, latest decision, evidence, timeline, history
+- POLICY_* permission helper (Platform API only)
+- Safety statement: evaluates releases only; never modifies releases, deployments, rollbacks, merges, or approvals
+
+## Sprint 4 Phase 4 scope
+
+- Release Policies under `/policies`
+- Create / enable / disable / evaluate policies against Releases
+- Policy list, status, priority, evaluation mode, latest decision, evidence count, timeline, history
+- POLICY_* permission helper (Platform API only)
+- Safety statement: evaluates advancement rules; does not modify releases or deploy
+
 ## Sprint 4 Phase 3 scope
 
 - Rollback Manager under `/rollbacks`

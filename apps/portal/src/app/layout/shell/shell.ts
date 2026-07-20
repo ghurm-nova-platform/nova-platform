@@ -153,6 +153,12 @@ export class Shell {
       icon: 'undo',
     },
     {
+      labelEn: 'Release Policies',
+      labelAr: 'سياسات الإصدار',
+      path: '/policies',
+      icon: 'policy',
+    },
+    {
       labelEn: 'AI Orchestration',
       labelAr: 'تنسيق الوكلاء',
       path: '/orchestration-runs',

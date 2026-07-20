@@ -1005,6 +1005,49 @@ erDiagram
     boolean passed
   }
 
+  RELEASE_POLICIES {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    string policy_name
+    string policy_type
+    string status
+    int priority
+    string evaluation_mode
+    string policy_fingerprint
+  }
+
+  POLICY_VERSIONS {
+    uuid id PK
+    uuid policy_id FK
+    int version_number
+    string policy_type
+    string config_json
+  }
+
+  POLICY_EVALUATIONS {
+    uuid id PK
+    uuid policy_id FK
+    uuid policy_version_id FK
+    uuid release_operation_id FK
+    string decision
+    string evaluation_hash
+  }
+
+  POLICY_EVIDENCE {
+    uuid id PK
+    uuid policy_evaluation_id FK
+    string evidence_key
+    boolean passed
+  }
+
+  POLICY_EVENTS {
+    uuid id PK
+    uuid policy_id FK
+    string event_type
+    string detail
+  }
+
   PLANNER_TEMPLATES {
     uuid id PK
     uuid organization_id FK
@@ -1093,7 +1136,7 @@ Migrations: `V16__knowledge_base.sql`, `V17__knowledge_embeddings.sql`, `V18__kn
 `V22__model_gateway_permissions.sql`, `V23__provider_secret_vault.sql`,
 `V24__provider_connection_metadata.sql`, `V25__provider_secret_permissions.sql`,
 `V34__planner_templates.sql`, `V35__generated_artifacts.sql`, `V36__review_findings.sql`,
-`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`, `V40__pull_request_operations.sql`, `V41__ci_observation.sql`, `V42__repair_agent.sql`, `V43__approval_gate.sql`, `V44__merge_agent.sql`, `V45__release_manager.sql`, `V46__deployment_observation.sql`, `V47__rollback_manager.sql`.
+`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`, `V40__pull_request_operations.sql`, `V41__ci_observation.sql`, `V42__repair_agent.sql`, `V43__approval_gate.sql`, `V44__merge_agent.sql`, `V45__release_manager.sql`, `V46__deployment_observation.sql`, `V47__rollback_manager.sql`, `V48__release_policies.sql`.
 See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md),
 [`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md),
@@ -1107,4 +1150,4 @@ See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`031_CI_OBSERVATION_AGENT.md`](031_CI_OBSERVATION_AGENT.md),
 [`032_REPAIR_AGENT.md`](032_REPAIR_AGENT.md),
 [`033_APPROVAL_GATE.md`](033_APPROVAL_GATE.md),
-[`034_MERGE_AGENT.md`](034_MERGE_AGENT.md), [`035_RELEASE_MANAGER.md`](035_RELEASE_MANAGER.md), [`036_DEPLOYMENT_OBSERVATION.md`](036_DEPLOYMENT_OBSERVATION.md), [`037_ROLLBACK_MANAGER.md`](037_ROLLBACK_MANAGER.md).
+[`034_MERGE_AGENT.md`](034_MERGE_AGENT.md), [`035_RELEASE_MANAGER.md`](035_RELEASE_MANAGER.md), [`036_DEPLOYMENT_OBSERVATION.md`](036_DEPLOYMENT_OBSERVATION.md), [`037_ROLLBACK_MANAGER.md`](037_ROLLBACK_MANAGER.md), [`038_RELEASE_POLICIES.md`](038_RELEASE_POLICIES.md).
