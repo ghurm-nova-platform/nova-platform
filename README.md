@@ -70,6 +70,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Merge Agent](docs/034_MERGE_AGENT.md)
 - [Release Manager](docs/035_RELEASE_MANAGER.md)
 - [Deployment Observation](docs/036_DEPLOYMENT_OBSERVATION.md)
+- [Rollback Manager](docs/037_ROLLBACK_MANAGER.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles

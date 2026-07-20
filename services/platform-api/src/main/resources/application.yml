@@ -223,6 +223,11 @@ nova:
     observe-only: true
     allow-external-events: true
     retain-history: true
+  rollback:
+    enabled: true
+    execution-enabled: false
+    allow-plan-edit: false
+    retain-history: true
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 
