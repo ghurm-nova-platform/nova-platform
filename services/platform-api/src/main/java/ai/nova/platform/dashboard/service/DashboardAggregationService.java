@@ -418,6 +418,14 @@ public class DashboardAggregationService {
     }
 
     @Transactional(readOnly = true)
+    public boolean projectAccessible(AuthenticatedUser user, UUID projectId) {
+        if (projectId == null) {
+            return true;
+        }
+        return projectRepository.findByIdAndOrganizationId(projectId, user.getOrganizationId()).isPresent();
+    }
+
+    @Transactional(readOnly = true)
     public CostSection aggregateCost(AuthenticatedUser user, UUID projectId) {
         List<DeploymentExecutionEntity> executions = filterExecutions(user.getOrganizationId(), projectId);
         Map<String, Long> providerCounts = executions.stream()
@@ -781,3 +789,4 @@ public class DashboardAggregationService {
         }
     }
 }
+

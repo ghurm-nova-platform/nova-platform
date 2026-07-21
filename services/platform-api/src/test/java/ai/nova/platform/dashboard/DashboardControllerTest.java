@@ -74,12 +74,35 @@ class DashboardControllerTest {
     }
 
     @Test
-    void exportCsv() throws Exception {
+    void projectFilterCannotAccessAnotherOrganizationProject() throws Exception {
+        mockMvc.perform(get("/api/dashboard")
+                        .param("projectId", DashboardTestFixture.OTHER_PROJECT_ID.toString())
+                        .header("Authorization", "Bearer " + readToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PROJECT_NOT_FOUND"));
+    }
+
+    @Test
+    void exportFormatsReturnExpectedContentTypes() throws Exception {
         mockMvc.perform(get("/api/dashboard/export")
                         .param("format", "csv")
                         .param("section", "overview")
                         .header("Authorization", "Bearer " + readToken))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("dashboard-overview.csv")));
+
+        mockMvc.perform(get("/api/dashboard/export")
+                        .param("format", "xlsx")
+                        .param("section", "overview")
+                        .header("Authorization", "Bearer " + readToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+
+        mockMvc.perform(get("/api/dashboard/export")
+                        .param("format", "pdf")
+                        .param("section", "overview")
+                        .header("Authorization", "Bearer " + readToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"));
     }
 }

@@ -1,11 +1,11 @@
 # Enterprise Dashboard
 
-Sprint 5 Phase 2 — read-only enterprise dashboard aggregating operational signals from existing Platform API domains. The dashboard never mutates business data and does not introduce operational tables beyond optional `dashboard_user_preferences`.
+Sprint 5 Phase 2 â€” read-only enterprise dashboard aggregating operational signals from existing Platform API domains. The dashboard never mutates business data and does not introduce operational tables beyond optional `dashboard_user_preferences`.
 
 ## Capabilities
 
 1. Executive overview counts and KPIs (success rates, average durations)
-2. Live pipeline across 14 stages (Planner → Rollback)
+2. Live pipeline across 14 stages (Planner â†’ Rollback)
 3. Running deployment executions with provider, stage, progress, and verify status
 4. Release lifecycle buckets (published, ready, blocked, policy failures, rollback ready)
 5. Environment health buckets (production, staging, qa, dev)
@@ -52,8 +52,8 @@ Portal polls using `refresh-rate-seconds` (default 30s). Backend cache TTL defau
 
 ## Permissions (Flyway V54)
 
-- `DASHBOARD_READ` — `33333333-3333-3333-3333-333333331088`
-- `DASHBOARD_ADMIN` — `33333333-3333-3333-3333-333333331089`
+- `DASHBOARD_READ` â€” `33333333-3333-3333-3333-333333331088`
+- `DASHBOARD_ADMIN` â€” `33333333-3333-3333-3333-333333331089`
 
 Granted to all four platform roles (ORG_ADMIN, ORG_MEMBER, PROJECT_ADMIN, USER).
 
@@ -65,7 +65,13 @@ Route `/dashboard` renders the Enterprise Dashboard with Material cards, pipelin
 
 - Read-only aggregation from existing repositories/services only
 - In-memory org-scoped cache with TTL; no Kafka/Redis/WebSockets
-- Export: CSV, Excel-compatible (CSV payload with xlsx mime when POI absent), simple PDF
+- Export: CSV, real XLSX via Apache POI, and valid PDF via PDFBox
 - No duplicated agent business logic
 
 See [ADR-0031](adr/ADR-0031-enterprise-dashboard.md).
+
+
+## Export limitations
+
+- XLSX exports neutralize formula-like user input by prefixing values that begin with =, +, -, or @.
+- PDF exports are structurally valid and multi-page, but they currently rely on built-in Helvetica without embedded custom fonts. English text is preserved; complex Arabic shaping is not guaranteed until a distributable Unicode font strategy is added.

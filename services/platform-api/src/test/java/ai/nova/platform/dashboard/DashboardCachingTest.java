@@ -35,34 +35,30 @@ class DashboardCachingTest {
     void setUp() {
         doAnswer(invocation -> null).when(agentRuntimeClient).cancel(any());
         cacheService.invalidateOrganization(DashboardTestFixture.ORG_ID);
+        cacheService.invalidateOrganization(DashboardTestFixture.OTHER_ORG_ID);
     }
 
     @Test
     void cachesUntilTtlExpires() {
-        DashboardSnapshot snapshot = minimalSnapshot();
+        DashboardSnapshot snapshot = minimalSnapshot(DashboardTestFixture.ORG_ID);
         var cached = cacheService.put(DashboardTestFixture.ORG_ID, null, snapshot);
         assertThat(cached.fromCache()).isFalse();
         assertThat(cacheService.get(DashboardTestFixture.ORG_ID, null)).isPresent();
     }
 
     @Test
-    void invalidatesOrganizationEntries() {
-        cacheService.put(DashboardTestFixture.ORG_ID, null, minimalSnapshot());
-        cacheService.put(DashboardTestFixture.ORG_ID, DashboardTestFixture.PROJECT_ID, minimalSnapshot());
+    void invalidatesOrganizationEntriesWithoutLeakingOtherTenants() {
+        cacheService.put(DashboardTestFixture.ORG_ID, null, minimalSnapshot(DashboardTestFixture.ORG_ID));
+        cacheService.put(DashboardTestFixture.OTHER_ORG_ID, null, minimalSnapshot(DashboardTestFixture.OTHER_ORG_ID));
         cacheService.invalidateOrganization(DashboardTestFixture.ORG_ID);
         assertThat(cacheService.get(DashboardTestFixture.ORG_ID, null)).isEmpty();
+        assertThat(cacheService.get(DashboardTestFixture.OTHER_ORG_ID, null)).isPresent();
         assertThat(properties.getCache().getTtlSeconds()).isEqualTo(30);
     }
 
-    private DashboardSnapshot minimalSnapshot() {
+    private DashboardSnapshot minimalSnapshot(java.util.UUID organizationId) {
         return new DashboardSnapshot(
-                new DashboardMeta(
-                        DashboardTestFixture.ORG_ID,
-                        null,
-                        Instant.now(),
-                        Instant.now().plusSeconds(30),
-                        30,
-                        false),
+                new DashboardMeta(organizationId, null, Instant.now(), Instant.now().plusSeconds(30), 30, false),
                 null,
                 null,
                 null,

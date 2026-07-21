@@ -55,77 +55,88 @@ public class DashboardService {
     public DashboardSnapshot getSnapshot(AuthenticatedUser user, UUID projectId) {
         authorizationService.requireRead(user);
         requireEnabled();
-        return resolveSnapshot(user, projectId).snapshot();
+        UUID scopedProjectId = validateProjectScope(user, projectId);
+        return resolveSnapshot(user, scopedProjectId).snapshot();
     }
 
     @Transactional(readOnly = true)
     public OverviewSection getOverview(AuthenticatedUser user, UUID projectId) {
         authorizationService.requireRead(user);
         requireEnabled();
-        return resolveSnapshot(user, projectId).snapshot().overview();
+        UUID scopedProjectId = validateProjectScope(user, projectId);
+        return resolveSnapshot(user, scopedProjectId).snapshot().overview();
     }
 
     @Transactional(readOnly = true)
     public PipelineSection getPipeline(AuthenticatedUser user, UUID projectId) {
         authorizationService.requireRead(user);
         requireEnabled();
-        return resolveSnapshot(user, projectId).snapshot().pipeline();
+        UUID scopedProjectId = validateProjectScope(user, projectId);
+        return resolveSnapshot(user, scopedProjectId).snapshot().pipeline();
     }
 
     @Transactional(readOnly = true)
     public DeploymentsSection getDeployments(AuthenticatedUser user, UUID projectId) {
         authorizationService.requireRead(user);
         requireEnabled();
-        return resolveSnapshot(user, projectId).snapshot().deployments();
+        UUID scopedProjectId = validateProjectScope(user, projectId);
+        return resolveSnapshot(user, scopedProjectId).snapshot().deployments();
     }
 
     @Transactional(readOnly = true)
     public ReleasesSection getReleases(AuthenticatedUser user, UUID projectId) {
         authorizationService.requireRead(user);
         requireEnabled();
-        return resolveSnapshot(user, projectId).snapshot().releases();
+        UUID scopedProjectId = validateProjectScope(user, projectId);
+        return resolveSnapshot(user, scopedProjectId).snapshot().releases();
     }
 
     @Transactional(readOnly = true)
     public EnvironmentsSection getEnvironments(AuthenticatedUser user, UUID projectId) {
         authorizationService.requireRead(user);
         requireEnabled();
-        return resolveSnapshot(user, projectId).snapshot().environments();
+        UUID scopedProjectId = validateProjectScope(user, projectId);
+        return resolveSnapshot(user, scopedProjectId).snapshot().environments();
     }
 
     @Transactional(readOnly = true)
     public AuditSection getAudit(AuthenticatedUser user, UUID projectId, AuditSearchRequest filters) {
         authorizationService.requireRead(user);
         requireEnabled();
-        return aggregationService.aggregateAudit(user, projectId, filters);
+        UUID scopedProjectId = validateProjectScope(user, projectId);
+        return aggregationService.aggregateAudit(user, scopedProjectId, filters);
     }
 
     @Transactional(readOnly = true)
     public ApprovalsSection getApprovals(AuthenticatedUser user, UUID projectId) {
         authorizationService.requireRead(user);
         requireEnabled();
-        return resolveSnapshot(user, projectId).snapshot().approvals();
+        UUID scopedProjectId = validateProjectScope(user, projectId);
+        return resolveSnapshot(user, scopedProjectId).snapshot().approvals();
     }
 
     @Transactional(readOnly = true)
     public CiSection getCi(AuthenticatedUser user, UUID projectId) {
         authorizationService.requireRead(user);
         requireEnabled();
-        return resolveSnapshot(user, projectId).snapshot().ci();
+        UUID scopedProjectId = validateProjectScope(user, projectId);
+        return resolveSnapshot(user, scopedProjectId).snapshot().ci();
     }
 
     @Transactional(readOnly = true)
     public RollbacksSection getRollbacks(AuthenticatedUser user, UUID projectId) {
         authorizationService.requireRead(user);
         requireEnabled();
-        return resolveSnapshot(user, projectId).snapshot().rollbacks();
+        UUID scopedProjectId = validateProjectScope(user, projectId);
+        return resolveSnapshot(user, scopedProjectId).snapshot().rollbacks();
     }
 
     @Transactional(readOnly = true)
     public CostSection getCost(AuthenticatedUser user, UUID projectId) {
         authorizationService.requireRead(user);
         requireEnabled();
-        return resolveSnapshot(user, projectId).snapshot().cost();
+        UUID scopedProjectId = validateProjectScope(user, projectId);
+        return resolveSnapshot(user, scopedProjectId).snapshot().cost();
     }
 
     @Transactional(readOnly = true)
@@ -140,9 +151,10 @@ public class DashboardService {
     public DashboardRefreshResponse refresh(AuthenticatedUser user, UUID projectId) {
         authorizationService.requireAdmin(user);
         requireEnabled();
-        cacheService.invalidate(user.getOrganizationId(), projectId);
+        UUID scopedProjectId = validateProjectScope(user, projectId);
+        cacheService.invalidate(user.getOrganizationId(), scopedProjectId);
         cacheService.invalidateOrganization(user.getOrganizationId());
-        CachedSnapshot cached = buildAndCache(user, projectId);
+        CachedSnapshot cached = buildAndCache(user, scopedProjectId);
         return new DashboardRefreshResponse(Instant.now(), cached.expiresAt());
     }
 
@@ -150,14 +162,13 @@ public class DashboardService {
     public ExportPayload export(AuthenticatedUser user, UUID projectId, String format, String section) {
         authorizationService.requireRead(user);
         requireEnabled();
-        DashboardSnapshot snapshot = resolveSnapshot(user, projectId).snapshot();
+        UUID scopedProjectId = validateProjectScope(user, projectId);
+        DashboardSnapshot snapshot = resolveSnapshot(user, scopedProjectId).snapshot();
         return exportService.export(snapshot, format, section);
     }
 
     private CachedSnapshot resolveSnapshot(AuthenticatedUser user, UUID projectId) {
-        return cacheService
-                .get(user.getOrganizationId(), projectId)
-                .orElseGet(() -> buildAndCache(user, projectId));
+        return cacheService.get(user.getOrganizationId(), projectId).orElseGet(() -> buildAndCache(user, projectId));
     }
 
     private CachedSnapshot buildAndCache(AuthenticatedUser user, UUID projectId) {
@@ -208,6 +219,16 @@ public class DashboardService {
 
     private AuditSearchRequest defaultAuditFilters(UUID projectId) {
         return new AuditSearchRequest(null, null, projectId, null, null, null, null, null, null, null, null, 0, 25);
+    }
+
+    private UUID validateProjectScope(AuthenticatedUser user, UUID projectId) {
+        if (projectId == null) {
+            return null;
+        }
+        if (!aggregationService.projectAccessible(user, projectId)) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "PROJECT_NOT_FOUND", "Project not found");
+        }
+        return projectId;
     }
 
     private void requireEnabled() {

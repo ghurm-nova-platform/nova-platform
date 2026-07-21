@@ -32,12 +32,12 @@ class DashboardServiceTest {
     void setUp() {
         doAnswer(invocation -> null).when(agentRuntimeClient).cancel(any());
         cacheService.invalidateOrganization(DashboardTestFixture.ORG_ID);
+        cacheService.invalidateOrganization(DashboardTestFixture.OTHER_ORG_ID);
     }
 
     @Test
     void returnsFullSnapshot() {
-        DashboardSnapshot snapshot =
-                dashboardService.getSnapshot(DashboardTestFixture.dashboardReadOnlyUser(), null);
+        DashboardSnapshot snapshot = dashboardService.getSnapshot(DashboardTestFixture.dashboardReadOnlyUser(), null);
         assertThat(snapshot.meta().organizationId()).isEqualTo(DashboardTestFixture.ORG_ID);
         assertThat(snapshot.overview()).isNotNull();
         assertThat(snapshot.pipeline().stages()).hasSize(14);
@@ -45,11 +45,28 @@ class DashboardServiceTest {
     }
 
     @Test
-    void refreshInvalidatesCache() {
+    void cachesAreIsolatedPerOrganization() {
+        DashboardSnapshot first = dashboardService.getSnapshot(DashboardTestFixture.dashboardReadOnlyUser(), null);
+        DashboardSnapshot second = dashboardService.getSnapshot(DashboardTestFixture.dashboardOtherOrgReadOnlyUser(), null);
+
+        assertThat(first.meta().organizationId()).isEqualTo(DashboardTestFixture.ORG_ID);
+        assertThat(second.meta().organizationId()).isEqualTo(DashboardTestFixture.OTHER_ORG_ID);
+        assertThat(cacheService.size()).isGreaterThanOrEqualTo(2);
+        assertThat(cacheService.get(DashboardTestFixture.ORG_ID, null)).isPresent();
+        assertThat(cacheService.get(DashboardTestFixture.OTHER_ORG_ID, null)).isPresent();
+    }
+
+    @Test
+    void refreshInvalidatesOnlyOwnOrganizationCache() {
         dashboardService.getSnapshot(DashboardTestFixture.dashboardReadOnlyUser(), null);
-        assertThat(cacheService.size()).isGreaterThan(0);
+        dashboardService.getSnapshot(DashboardTestFixture.dashboardOtherOrgReadOnlyUser(), null);
+
+        assertThat(cacheService.get(DashboardTestFixture.ORG_ID, null)).isPresent();
+        assertThat(cacheService.get(DashboardTestFixture.OTHER_ORG_ID, null)).isPresent();
+
         dashboardService.refresh(DashboardTestFixture.dashboardAdminUser(), null);
-        dashboardService.getSnapshot(DashboardTestFixture.dashboardReadOnlyUser(), null);
-        assertThat(cacheService.size()).isGreaterThan(0);
+
+        assertThat(cacheService.get(DashboardTestFixture.ORG_ID, null)).isPresent();
+        assertThat(cacheService.get(DashboardTestFixture.OTHER_ORG_ID, null)).isPresent();
     }
 }
