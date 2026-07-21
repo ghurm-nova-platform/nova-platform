@@ -96,4 +96,16 @@ public class IdentityServiceAccountEntity {
     public Instant getUpdatedAt() {
         return updatedAt;
     }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public void touch(Instant now) {
+        this.updatedAt = now;
+    }
 }

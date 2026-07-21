@@ -1,0 +1,123 @@
+<div class="identity__section-header">
+  <div>
+    <h2>Roles</h2>
+    <p class="identity__muted">Define roles and assign permissions.</p>
+  </div>
+  <div class="identity__section-actions">
+    <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+    @if (permissions.canManageRoles()) {
+      <button mat-flat-button color="primary" type="button" (click)="startCreate()">
+        <mat-icon>add</mat-icon>
+        Create Role
+      </button>
+    }
+  </div>
+</div>
+
+@if (error()) {
+  <p class="identity__error">{{ error() }}</p>
+}
+@if (message()) {
+  <p class="identity__success">{{ message() }}</p>
+}
+
+@if (showCreate()) {
+  <mat-card class="identity__form">
+    <h3>New role</h3>
+    <mat-form-field appearance="outline">
+      <mat-label>Code</mat-label>
+      <input matInput [(ngModel)]="newCode" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Name</mat-label>
+      <input matInput [(ngModel)]="newName" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Description</mat-label>
+      <input matInput [(ngModel)]="newDescription" />
+    </mat-form-field>
+    <div class="identity__form-row">
+      <button mat-flat-button color="primary" type="button" (click)="createRole()">Save</button>
+      <button mat-stroked-button type="button" (click)="showCreate.set(false)">Cancel</button>
+    </div>
+  </mat-card>
+}
+
+@if (cloneSourceId) {
+  <mat-card class="identity__form">
+    <h3>Clone role</h3>
+    <mat-form-field appearance="outline">
+      <mat-label>Code</mat-label>
+      <input matInput [(ngModel)]="cloneCode" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Name</mat-label>
+      <input matInput [(ngModel)]="cloneName" />
+    </mat-form-field>
+    <div class="identity__form-row">
+      <button mat-flat-button color="primary" type="button" (click)="cloneRole()">Clone</button>
+      <button mat-stroked-button type="button" (click)="cloneSourceId = null">Cancel</button>
+    </div>
+  </mat-card>
+}
+
+@if (loading() && roles().length === 0) {
+  <div class="identity__loading"><mat-spinner diameter="36"></mat-spinner></div>
+} @else {
+  <mat-card class="identity__tab-body">
+    @for (role of roles(); track role.id) {
+      <article class="identity__row">
+        <div class="identity__row-main">
+          <mat-icon>admin_panel_settings</mat-icon>
+          <div>
+            <h4>
+              {{ role.name }}
+              @if (role.systemRole) {
+                <span class="identity__badge">System</span>
+              }
+            </h4>
+            <p>{{ role.code }} · {{ role.userCount }} user(s)</p>
+            @if (role.description) {
+              <p class="identity__muted">{{ role.description }}</p>
+            }
+            @if (role.permissions.length > 0) {
+              <p>
+                @for (perm of role.permissions; track perm) {
+                  <mat-chip>{{ perm }}</mat-chip>
+                }
+              </p>
+            }
+          </div>
+        </div>
+        <div class="identity__section-actions">
+          @if (permissions.canManageRoles()) {
+            <button mat-stroked-button type="button" (click)="assignRoleId = role.id">Assign permissions</button>
+            <button mat-stroked-button type="button" (click)="startClone(role)">Clone</button>
+            @if (!role.systemRole) {
+              <button mat-stroked-button color="warn" type="button" (click)="deleteRole(role.id)">
+                Delete
+              </button>
+            }
+          }
+          <span class="identity__timestamp">{{ role.updatedAt | date: 'medium' }}</span>
+        </div>
+      </article>
+    } @empty {
+      <p class="identity__empty">No roles found.</p>
+    }
+  </mat-card>
+
+  @if (assignRoleId && permissions.canManageRoles()) {
+    <mat-card class="identity__form">
+      <h3>Assign permissions</h3>
+      <mat-form-field appearance="outline">
+        <mat-label>Permission codes (comma-separated)</mat-label>
+        <input matInput [(ngModel)]="permissionInput" />
+      </mat-form-field>
+      <button mat-stroked-button type="button" (click)="assignPermissions()">Assign</button>
+    </mat-card>
+  }
+}

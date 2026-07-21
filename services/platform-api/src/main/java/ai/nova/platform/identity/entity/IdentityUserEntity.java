@@ -13,6 +13,9 @@ import jakarta.persistence.Version;
 @Table(name = "identity_users")
 public class IdentityUserEntity {
 
+    private static final int MAX_FAILED_LOGINS = 5;
+    private static final java.time.Duration LOCK_DURATION = java.time.Duration.ofMinutes(15);
+
     @Id
     private UUID id;
 
@@ -46,6 +49,21 @@ public class IdentityUserEntity {
     @Column(name = "password_changed_at")
     private Instant passwordChangedAt;
 
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
+    @Column(name = "failed_login_count", nullable = false)
+    private int failedLoginCount;
+
+    @Column(name = "password_expires_at")
+    private Instant passwordExpiresAt;
+
+    @Column(name = "password_reset_token_hash", length = 128)
+    private String passwordResetTokenHash;
+
+    @Column(name = "password_reset_token_expires_at")
+    private Instant passwordResetTokenExpiresAt;
+
     @Version
     @Column(nullable = false)
     private int version;
@@ -78,6 +96,7 @@ public class IdentityUserEntity {
         this.enabled = true;
         this.mfaEnabled = false;
         this.forcePasswordChange = false;
+        this.failedLoginCount = 0;
         this.createdAt = now;
         this.updatedAt = now;
     }
@@ -126,6 +145,26 @@ public class IdentityUserEntity {
         return passwordChangedAt;
     }
 
+    public Instant getLockedUntil() {
+        return lockedUntil;
+    }
+
+    public int getFailedLoginCount() {
+        return failedLoginCount;
+    }
+
+    public Instant getPasswordExpiresAt() {
+        return passwordExpiresAt;
+    }
+
+    public String getPasswordResetTokenHash() {
+        return passwordResetTokenHash;
+    }
+
+    public Instant getPasswordResetTokenExpiresAt() {
+        return passwordResetTokenExpiresAt;
+    }
+
     public int getVersion() {
         return version;
     }
@@ -138,6 +177,26 @@ public class IdentityUserEntity {
         return updatedAt;
     }
 
+    public boolean isLocked(Instant now) {
+        return lockedUntil != null && lockedUntil.isAfter(now);
+    }
+
+    public boolean isPasswordExpired(Instant now) {
+        return passwordExpiresAt != null && !passwordExpiresAt.isAfter(now);
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
     public void setMfaEnabled(boolean mfaEnabled) {
         this.mfaEnabled = mfaEnabled;
     }
@@ -148,6 +207,40 @@ public class IdentityUserEntity {
 
     public void setPasswordChangedAt(Instant passwordChangedAt) {
         this.passwordChangedAt = passwordChangedAt;
+    }
+
+    public void setPasswordExpiresAt(Instant passwordExpiresAt) {
+        this.passwordExpiresAt = passwordExpiresAt;
+    }
+
+    public void setPasswordResetToken(String hash, Instant expiresAt) {
+        this.passwordResetTokenHash = hash;
+        this.passwordResetTokenExpiresAt = expiresAt;
+    }
+
+    public void clearPasswordResetToken() {
+        this.passwordResetTokenHash = null;
+        this.passwordResetTokenExpiresAt = null;
+    }
+
+    public void unlock(Instant now) {
+        this.lockedUntil = null;
+        this.failedLoginCount = 0;
+        this.updatedAt = now;
+    }
+
+    public void recordFailedLogin(Instant now) {
+        this.failedLoginCount++;
+        if (this.failedLoginCount >= MAX_FAILED_LOGINS) {
+            this.lockedUntil = now.plus(LOCK_DURATION);
+        }
+        this.updatedAt = now;
+    }
+
+    public void recordSuccessfulLogin(Instant now) {
+        this.failedLoginCount = 0;
+        this.lockedUntil = null;
+        this.updatedAt = now;
     }
 
     public void touch(Instant now) {

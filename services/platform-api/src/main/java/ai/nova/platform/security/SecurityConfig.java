@@ -54,6 +54,11 @@ public class SecurityConfig {
                                 "/api/auth/refresh",
                                 "/api/auth/logout",
                                 "/api/identity/login",
+                                "/api/identity/logout",
+                                "/api/identity/refresh-token",
+                                "/api/identity/forgot-password",
+                                "/api/identity/reset-password",
+                                "/api/identity/verify-mfa",
                                 "/api/identity/oidc/callback",
                                 "/api/identity/oauth2/callback",
                                 "/api/identity/saml/acs")

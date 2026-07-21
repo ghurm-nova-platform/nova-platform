@@ -15,7 +15,43 @@ export class IdentityPermissionHelper {
   }
 
   canManageProviders(): boolean {
-    return this.has('IDENTITY_PROVIDER_MANAGE') || this.has('IDENTITY_ADMIN');
+    return (
+      this.has('IDENTITY_PROVIDER_ADMIN') ||
+      this.has('IDENTITY_PROVIDER_MANAGE') ||
+      this.has('IDENTITY_ADMIN')
+    );
+  }
+
+  canManageUsers(): boolean {
+    return this.has('IDENTITY_USER_ADMIN') || this.has('IDENTITY_ADMIN');
+  }
+
+  canManageGroups(): boolean {
+    return this.has('IDENTITY_GROUP_ADMIN') || this.has('IDENTITY_ADMIN');
+  }
+
+  canManageRoles(): boolean {
+    return this.has('IDENTITY_ROLE_ADMIN') || this.has('IDENTITY_ADMIN');
+  }
+
+  canManagePermissions(): boolean {
+    return this.has('IDENTITY_PERMISSION_ADMIN') || this.has('IDENTITY_ADMIN');
+  }
+
+  canManageSessions(): boolean {
+    return this.has('IDENTITY_SESSION_ADMIN') || this.has('IDENTITY_ADMIN');
+  }
+
+  canManageApiTokens(): boolean {
+    return this.has('IDENTITY_ADMIN');
+  }
+
+  canManageServiceAccounts(): boolean {
+    return this.has('IDENTITY_ADMIN');
+  }
+
+  canReadAudit(): boolean {
+    return this.has('IDENTITY_AUDIT_READ') || this.has('AUDIT_READ') || this.has('IDENTITY_ADMIN');
   }
 
   canManageMfa(): boolean {

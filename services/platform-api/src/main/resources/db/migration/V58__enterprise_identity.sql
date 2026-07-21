@@ -55,6 +55,11 @@ CREATE TABLE identity_users (
     mfa_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     force_password_change BOOLEAN NOT NULL DEFAULT FALSE,
     password_changed_at TIMESTAMP WITH TIME ZONE,
+    locked_until TIMESTAMP WITH TIME ZONE,
+    failed_login_count INT NOT NULL DEFAULT 0,
+    password_expires_at TIMESTAMP WITH TIME ZONE,
+    password_reset_token_hash VARCHAR(128),
+    password_reset_token_expires_at TIMESTAMP WITH TIME ZONE,
     version INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -256,9 +261,15 @@ INSERT INTO permissions (id, code, name, description, created_at)
 VALUES
     ('33333333-3333-3333-3333-333333331098', 'IDENTITY_READ', 'Read identity', 'View identity configuration, sessions, and login history', CURRENT_TIMESTAMP),
     ('33333333-3333-3333-3333-333333331099', 'IDENTITY_ADMIN', 'Administer identity', 'Full identity administration', CURRENT_TIMESTAMP),
-    ('33333333-3333-3333-3333-333333331100', 'IDENTITY_PROVIDER_MANAGE', 'Manage identity providers', 'Create and configure identity providers', CURRENT_TIMESTAMP),
+    ('33333333-3333-3333-3333-333333331100', 'IDENTITY_PROVIDER_ADMIN', 'Administer identity providers', 'Create and configure identity providers', CURRENT_TIMESTAMP),
     ('33333333-3333-3333-3333-333333331101', 'IDENTITY_MFA_MANAGE', 'Manage MFA', 'Enroll and manage multi-factor authentication', CURRENT_TIMESTAMP),
-    ('33333333-3333-3333-3333-333333331102', 'SCIM_PROVISION', 'SCIM provisioning', 'Provision users and groups via SCIM', CURRENT_TIMESTAMP);
+    ('33333333-3333-3333-3333-333333331102', 'SCIM_PROVISION', 'SCIM provisioning', 'Provision users and groups via SCIM', CURRENT_TIMESTAMP),
+    ('33333333-3333-3333-3333-333333331103', 'IDENTITY_SESSION_ADMIN', 'Administer identity sessions', 'View and revoke identity sessions', CURRENT_TIMESTAMP),
+    ('33333333-3333-3333-3333-333333331104', 'IDENTITY_USER_ADMIN', 'Administer identity users', 'Manage identity users and credentials', CURRENT_TIMESTAMP),
+    ('33333333-3333-3333-3333-333333331105', 'IDENTITY_GROUP_ADMIN', 'Administer identity groups', 'Manage identity groups and membership', CURRENT_TIMESTAMP),
+    ('33333333-3333-3333-3333-333333331106', 'IDENTITY_ROLE_ADMIN', 'Administer identity roles', 'Manage identity roles and assignments', CURRENT_TIMESTAMP),
+    ('33333333-3333-3333-3333-333333331107', 'IDENTITY_PERMISSION_ADMIN', 'Administer identity permissions', 'Manage identity permission definitions', CURRENT_TIMESTAMP),
+    ('33333333-3333-3333-3333-333333331108', 'IDENTITY_AUDIT_READ', 'Read identity audit', 'View identity security events and login history', CURRENT_TIMESTAMP);
 
 INSERT INTO role_permissions (role_id, permission_id)
 VALUES
@@ -266,7 +277,13 @@ VALUES
     ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333331099'),
     ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333331100'),
     ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333331101'),
-    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333331102');
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333331102'),
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333331103'),
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333331104'),
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333331105'),
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333331106'),
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333331107'),
+    ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333331108');
 
 INSERT INTO identity_providers (id, organization_id, name, provider_type, status, config_json, is_default, version, created_at, updated_at)
 VALUES (

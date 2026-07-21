@@ -40,6 +40,8 @@ export const routes: Routes = [
         path: 'identity',
         loadComponent: () =>
           import('./features/identity/identity-page').then((m) => m.IdentityPage),
+        loadChildren: () =>
+          import('./features/identity/identity.routes').then((m) => m.identityRoutes),
       },
       {
         path: 'organizations',

@@ -1,0 +1,68 @@
+<div class="identity__section-header">
+  <div>
+    <h2>Sessions</h2>
+    <p class="identity__muted">View and revoke active user sessions.</p>
+  </div>
+  <div class="identity__section-actions">
+    <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+    @if (permissions.canManageSessions()) {
+      <button mat-stroked-button color="warn" type="button" (click)="revokeAll()" [disabled]="loading()">
+        Revoke all
+      </button>
+    }
+  </div>
+</div>
+
+@if (error()) {
+  <p class="identity__error">{{ error() }}</p>
+}
+@if (message()) {
+  <p class="identity__success">{{ message() }}</p>
+}
+
+@if (loading() && sessions().length === 0) {
+  <div class="identity__loading"><mat-spinner diameter="36"></mat-spinner></div>
+} @else {
+  <mat-card class="identity__tab-body">
+    <p class="identity__summary">{{ activeSessions().length }} active session(s)</p>
+    @for (session of sessions(); track session.id) {
+      <article class="identity__row">
+        <div class="identity__row-main">
+          <mat-icon>{{ session.current ? 'devices' : 'computer' }}</mat-icon>
+          <div>
+            <h4>
+              {{ session.userDisplayName || session.userEmail }}
+              @if (session.current) {
+                <span class="identity__badge identity__badge--current">Current</span>
+              }
+            </h4>
+            <p>{{ session.authMethod }} · {{ session.status }}</p>
+            <p class="identity__muted">
+              {{ session.ipAddress || 'Unknown IP' }} · {{ session.userAgent || 'Unknown agent' }}
+            </p>
+            <p class="identity__muted">
+              Last seen {{ session.lastSeenAt | date: 'medium' }} · expires
+              {{ session.expiresAt | date: 'medium' }}
+            </p>
+          </div>
+        </div>
+        @if (permissions.canManageSessions() && session.status === 'ACTIVE' && !session.current) {
+          <button
+            mat-stroked-button
+            type="button"
+            color="warn"
+            (click)="revokeSession(session.id)"
+            [disabled]="loading()"
+          >
+            Revoke
+          </button>
+        }
+      </article>
+    } @empty {
+      <p class="identity__empty">No sessions found.</p>
+    }
+  </mat-card>
+}

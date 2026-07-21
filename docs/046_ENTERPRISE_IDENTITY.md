@@ -7,10 +7,10 @@ Sprint 6 Phase 4 — org-scoped enterprise identity layer that becomes the sole 
 ```text
 Browser / SCIM clients
   → Platform API
-      → IdentityController (/api/identity/*)
-      → ScimUserController (/api/scim/v2/Users) [optional]
-      → IdentityService (config, providers, sessions, login history, MFA)
-      → Existing JWT issuance (wraps /api/auth/login refresh flow)
+      → Identity*Controller (/api/identity/*)
+      → ScimController (/api/scim/v2) [optional]
+      → AuthenticationService + domain services (users, groups, roles, providers, sessions, tokens)
+      → Existing JWT issuance (wraps /api/auth/* for portal compatibility)
       → Audit Center (AuditSource.IDENTITY)
       → PostgreSQL (V58 identity tables)
 ```
@@ -68,7 +68,7 @@ Full SCIM write (POST/PATCH/DELETE) and group provisioning are out of scope for 
 Sessions map to hashed refresh-token records with lifecycle metadata:
 
 - Status: `ACTIVE`, `REVOKED`, `EXPIRED`
-- Operators with `IDENTITY_ADMIN` may revoke non-current sessions via `POST /api/identity/sessions/{id}/revoke`
+- Operators with `IDENTITY_SESSION_ADMIN` may revoke sessions via `DELETE /api/identity/sessions/{id}` or `DELETE /api/identity/sessions/revoke-all`
 - `sessionMaxConcurrent` in config caps simultaneous active sessions per user
 
 ## JWT integration
@@ -101,43 +101,90 @@ Policies apply to `LOCAL` provider password changes and new local accounts.
 
 ## REST API
 
+All endpoints share base path `/api/identity` unless noted.
+
+### Authentication (public unless noted)
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| POST | `/login` | Public | Email/password (+ optional MFA code) |
+| POST | `/logout` | Public | Body: `{ "refreshToken" }` |
+| POST | `/logout-all` | Bearer | Revoke all sessions for current user |
+| POST | `/refresh-token` | Public | Body: `{ "refreshToken" }` |
+| POST | `/validate-token` | Bearer optional | Body: `{ "accessToken" }` |
+| POST | `/change-password` | Bearer | Current + new password |
+| POST | `/forgot-password` | Public | Generic success (token logged server-side) |
+| POST | `/reset-password` | Public | Body: `{ "token", "newPassword" }` |
+| POST | `/enroll-mfa`, `/mfa/enroll` | Bearer | TOTP enrollment |
+| POST | `/verify-mfa`, `/mfa/verify` | Bearer / public | Confirm MFA enrollment |
+| POST | `/disable-mfa` | Bearer | Disable MFA for current user |
+
+### Providers
+
 | Method | Path | Permission |
 |--------|------|------------|
-| GET | `/api/identity/config` | `IDENTITY_READ` |
-| GET | `/api/identity/providers` | `IDENTITY_READ` |
-| GET | `/api/identity/sessions` | `IDENTITY_READ` |
-| POST | `/api/identity/sessions/{id}/revoke` | `IDENTITY_ADMIN` |
-| GET | `/api/identity/login-history` | `IDENTITY_READ` |
-| GET | `/api/identity/mfa/status` | `IDENTITY_READ` |
-| POST | `/api/identity/mfa/enroll` | `IDENTITY_MFA_MANAGE` |
-| POST | `/api/identity/mfa/verify-enrollment` | `IDENTITY_MFA_MANAGE` |
+| GET/POST | `/providers` | `IDENTITY_READ` / `IDENTITY_PROVIDER_ADMIN` |
+| GET/PUT/DELETE | `/providers/{id}` | `IDENTITY_READ` / `IDENTITY_PROVIDER_ADMIN` |
+| POST | `/providers/{id}/test` | `IDENTITY_PROVIDER_ADMIN` |
+| POST | `/providers/{id}/sync` | `IDENTITY_PROVIDER_ADMIN` |
+
+### Users
+
+| Method | Path | Permission |
+|--------|------|------------|
+| GET/POST | `/users` | `IDENTITY_USER_ADMIN` |
+| GET/PUT/DELETE | `/users/{id}` | `IDENTITY_USER_ADMIN` |
+| POST | `/users/{id}/enable\|disable\|unlock\|reset-password` | `IDENTITY_USER_ADMIN` |
+
+### Groups, roles, permissions
+
+Full CRUD at `/groups`, `/roles`, `/permissions` with `IDENTITY_GROUP_ADMIN`, `IDENTITY_ROLE_ADMIN`, `IDENTITY_PERMISSION_ADMIN` respectively. Groups also support `POST /groups/{id}/sync`.
+
+### Sessions
+
+| Method | Path | Permission |
+|--------|------|------------|
+| GET | `/sessions`, `/sessions/{id}` | `IDENTITY_READ` |
+| DELETE | `/sessions/{id}`, `/sessions/revoke-all` | `IDENTITY_SESSION_ADMIN` |
+
+### API tokens & service accounts
+
+| Method | Path | Permission |
+|--------|------|------------|
+| GET/POST | `/api-tokens` | `IDENTITY_ADMIN` |
+| DELETE | `/api-tokens/{id}` | `IDENTITY_ADMIN` |
+| POST | `/api-tokens/{id}/revoke` | `IDENTITY_ADMIN` |
+| GET/POST | `/service-accounts` | `IDENTITY_ADMIN` |
+| PUT/DELETE | `/service-accounts/{id}` | `IDENTITY_ADMIN` |
+
+### Dashboard, audit, export
+
+| Method | Path | Permission |
+|--------|------|------------|
+| GET | `/config`, `/summary`, `/dashboard` | `IDENTITY_READ` |
+| GET | `/login-history`, `/security-events` | `IDENTITY_AUDIT_READ` |
+| GET/POST | `/export/{users\|groups\|roles\|permissions\|login-history}?format=csv\|json\|xlsx` | `IDENTITY_READ` |
+
+### SCIM
+
+| Method | Path | Permission |
+|--------|------|------------|
 | GET | `/api/scim/v2/Users` | `SCIM_PROVISION` |
-
-### MFA enroll request
-
-```json
-{
-  "method": "TOTP"
-}
-```
-
-### MFA verify enrollment request
-
-```json
-{
-  "enrollmentToken": "<opaque>",
-  "code": "123456"
-}
-```
 
 ## Permissions
 
 | Permission | Purpose |
 |------------|---------|
-| `IDENTITY_READ` | View config, providers, sessions, login history, MFA status |
-| `IDENTITY_ADMIN` | Revoke sessions; full identity administration |
-| `IDENTITY_PROVIDER_MANAGE` | Configure identity providers |
-| `IDENTITY_MFA_MANAGE` | Enroll and verify MFA for users |
+| `IDENTITY_READ` | View config, providers, sessions, dashboard, summary |
+| `IDENTITY_ADMIN` | Full identity administration; API tokens and service accounts |
+| `IDENTITY_PROVIDER_ADMIN` | Configure and sync identity providers |
+| `IDENTITY_SESSION_ADMIN` | Revoke sessions |
+| `IDENTITY_USER_ADMIN` | Manage identity users and admin password reset |
+| `IDENTITY_GROUP_ADMIN` | Manage groups and group sync |
+| `IDENTITY_ROLE_ADMIN` | Manage identity roles |
+| `IDENTITY_PERMISSION_ADMIN` | Manage identity permission definitions |
+| `IDENTITY_AUDIT_READ` | View login history and security events |
+| `IDENTITY_MFA_MANAGE` | Enroll, verify, and disable MFA |
 | `SCIM_PROVISION` | List SCIM-provisioned users |
 
 `ORG_ADMIN` bypasses permission checks.
@@ -146,28 +193,38 @@ Policies apply to `LOCAL` provider password changes and new local accounts.
 
 Flyway `V58__enterprise_identity.sql` creates:
 
+- `identity_users` — linked platform users with lockout, failed-login count, password expiry, reset tokens
 - `identity_providers` — org-scoped provider registry (type, name, status, metadata URLs, default flag)
 - `identity_sessions` — active session records linked to users and refresh tokens
-- `identity_login_events` — append-only login history (outcome, auth method, IP, user agent)
-- `identity_mfa_enrollments` — MFA method enrollment state per user
-- `identity_password_policies` — org password policy overrides
+- `identity_login_history` — append-only login history (outcome, IP, user agent)
+- `identity_mfa_factors`, `identity_recovery_codes`, `identity_password_history`
+- `identity_groups`, `identity_roles`, `identity_permissions` and assignment join tables
+- `identity_api_tokens`, `identity_service_accounts`, `identity_refresh_tokens`
 
 Audit constraints extended for `AuditSource.IDENTITY` and `AuditEntityType.IDENTITY`.
 
-Permissions seeded: `IDENTITY_READ`, `IDENTITY_ADMIN`, `IDENTITY_PROVIDER_MANAGE`, `IDENTITY_MFA_MANAGE`, `SCIM_PROVISION`.
+Permissions seeded: `IDENTITY_READ`, `IDENTITY_ADMIN`, `IDENTITY_PROVIDER_ADMIN`, `IDENTITY_SESSION_ADMIN`, `IDENTITY_USER_ADMIN`, `IDENTITY_GROUP_ADMIN`, `IDENTITY_ROLE_ADMIN`, `IDENTITY_PERMISSION_ADMIN`, `IDENTITY_AUDIT_READ`, `IDENTITY_MFA_MANAGE`, `SCIM_PROVISION`.
 
 ## Portal
 
-Angular route `/identity` — Material tabs:
+Angular feature `/identity` with child routes:
 
-| Tab | Content |
-|-----|---------|
-| Providers | Registered SAML/OIDC/LDAP/local providers |
-| Sessions | Active sessions with revoke (admin) |
-| Login History | Success/failure audit trail |
-| MFA | Enrollment status and TOTP/WebAuthn enrollment flow |
+| Route | Page |
+|-------|------|
+| `/identity/dashboard` | Active users, sessions, failed logins, locked accounts, MFA adoption, providers, recent logins, security alerts |
+| `/identity/providers` | LDAP / AD / OIDC / OAuth2 / SAML / SCIM provider CRUD, test, sync |
+| `/identity/users` | Create/edit, enable/disable, unlock, reset password, roles/groups |
+| `/identity/groups` | CRUD, assign users/roles, LDAP/AD sync |
+| `/identity/roles` | CRUD, assign permissions, clone |
+| `/identity/permissions` | CRUD, categories, search/filter |
+| `/identity/sessions` | List/revoke sessions |
+| `/identity/api-tokens` | Issue and revoke personal access tokens |
+| `/identity/service-accounts` | Service account lifecycle |
+| `/identity/audit` | Deep-link into Audit Center (`AuditSource.IDENTITY`) |
+| `/identity/security-events` | Login/MFA/session/token/permission security timeline |
+| `/identity/configuration` | Feature flags and policy summary |
 
-Requires `IDENTITY_READ` to view. Provider management, session revoke, MFA enrollment, and SCIM listing gated by respective permissions. Plain English strings (no TranslatePipe).
+Requires `IDENTITY_READ` to view. Admin actions gated by granular `IDENTITY_*` permissions. Plain English strings (no TranslatePipe).
 
 ## Configuration
 
@@ -175,21 +232,40 @@ Requires `IDENTITY_READ` to view. Provider management, session revoke, MFA enrol
 nova:
   identity:
     enabled: true
-    jwt-access-ttl-seconds: 900
-    jwt-refresh-ttl-seconds: 604800
-    session-max-concurrent: 5
-    mfa-required: false
-    scim-enabled: false
-    saml-enabled: true
-    oidc-enabled: true
-    ldap-enabled: false
+    session-idle-timeout: PT30M
+    session-absolute-timeout: P1D
+    max-concurrent-sessions: 5
+    jwt:
+      enabled: true
+      expiration: PT15M
+    refresh:
+      expiration: P7D
     password:
+      enabled: true
       min-length: 12
       require-uppercase: true
       require-lowercase: true
       require-digit: true
       require-special: true
       max-age-days: 90
+    mfa:
+      enabled: true
+    ldap:
+      enabled: false
+    ad:
+      enabled: false
+    oidc:
+      enabled: false
+    oauth:
+      enabled: false
+    saml:
+      enabled: false
+    scim:
+      enabled: false
+    sync:
+      enabled: false
+    session:
+      timeout: PT30M
 ```
 
 ## Audit

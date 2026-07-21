@@ -94,4 +94,9 @@ public class IdentityMfaFactorEntity {
         this.enabled = true;
         this.enrolledAt = at;
     }
+
+    public void disable(Instant at) {
+        this.enabled = false;
+        this.enrolledAt = at;
+    }
 }

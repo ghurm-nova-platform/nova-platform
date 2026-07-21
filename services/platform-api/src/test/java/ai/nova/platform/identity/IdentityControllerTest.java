@@ -1,5 +1,6 @@
 package ai.nova.platform.identity;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -32,7 +33,7 @@ class IdentityControllerTest {
     }
 
     @Test
-    void configSessionsAndSummary() throws Exception {
+    void configSessionsDashboardAndSummary() throws Exception {
         mockMvc.perform(get("/api/identity/config").header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.enabled").value(true))
@@ -45,5 +46,28 @@ class IdentityControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.users").isArray())
                 .andExpect(jsonPath("$.providers").isArray());
+
+        mockMvc.perform(get("/api/identity/dashboard").header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.activeUsers").isNumber())
+                .andExpect(jsonPath("$.providerCount").isNumber());
+    }
+
+    @Test
+    void usersAndProvidersEndpoints() throws Exception {
+        mockMvc.perform(get("/api/identity/users").header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].email").value("admin@nova.local"));
+
+        mockMvc.perform(get("/api/identity/providers").header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Local Authentication"));
+    }
+
+    @Test
+    void revokeSessionEndpoint() throws Exception {
+        mockMvc.perform(delete("/api/identity/sessions/00000000-0000-0000-0000-000000000099")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isNotFound());
     }
 }

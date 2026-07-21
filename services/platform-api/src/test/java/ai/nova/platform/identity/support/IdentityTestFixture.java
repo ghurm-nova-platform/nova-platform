@@ -26,7 +26,13 @@ public final class IdentityTestFixture {
                 List.of(
                         IdentityPermissionCodes.IDENTITY_READ,
                         IdentityPermissionCodes.IDENTITY_ADMIN,
-                        IdentityPermissionCodes.IDENTITY_PROVIDER_MANAGE,
+                        IdentityPermissionCodes.IDENTITY_PROVIDER_ADMIN,
+                        IdentityPermissionCodes.IDENTITY_SESSION_ADMIN,
+                        IdentityPermissionCodes.IDENTITY_USER_ADMIN,
+                        IdentityPermissionCodes.IDENTITY_GROUP_ADMIN,
+                        IdentityPermissionCodes.IDENTITY_ROLE_ADMIN,
+                        IdentityPermissionCodes.IDENTITY_PERMISSION_ADMIN,
+                        IdentityPermissionCodes.IDENTITY_AUDIT_READ,
                         IdentityPermissionCodes.IDENTITY_MFA_MANAGE,
                         IdentityPermissionCodes.SCIM_PROVISION),
                 true);

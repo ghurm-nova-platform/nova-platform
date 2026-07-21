@@ -4,11 +4,15 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.nova.platform.identity.dto.IdentityDtos.ApiTokenCreateResponse;
+import ai.nova.platform.identity.dto.IdentityDtos.ApiTokenView;
 import ai.nova.platform.identity.entity.IdentityApiTokenEntity;
+import ai.nova.platform.identity.error.IdentityErrorCodes;
+import ai.nova.platform.identity.mapper.IdentityEntityMapper;
 import ai.nova.platform.identity.repository.IdentityApiTokenRepository;
 import ai.nova.platform.identity.repository.IdentityUserRepository;
 import ai.nova.platform.permission.Permission;
@@ -16,7 +20,7 @@ import ai.nova.platform.role.Role;
 import ai.nova.platform.security.AuthenticatedUser;
 import ai.nova.platform.user.UserAccount;
 import ai.nova.platform.user.UserAccountRepository;
-import ai.nova.platform.web.error.ResourceNotFoundException;
+import ai.nova.platform.web.error.ApiException;
 
 @Service
 public class ApiTokenService {
@@ -39,6 +43,13 @@ public class ApiTokenService {
         this.refreshTokenService = refreshTokenService;
     }
 
+    @Transactional(readOnly = true)
+    public List<ApiTokenView> listTokens(UUID organizationId) {
+        return apiTokenRepository.findByOrganizationIdOrderByCreatedAtDesc(organizationId).stream()
+                .map(IdentityEntityMapper::toApiTokenView)
+                .toList();
+    }
+
     @Transactional
     public ApiTokenCreateResponse createToken(UUID organizationId, UUID identityUserId, String name) {
         String rawToken = TOKEN_PREFIX + refreshTokenService.generateRefreshToken();
@@ -55,6 +66,18 @@ public class ApiTokenService {
                 Instant.now());
         apiTokenRepository.save(entity);
         return new ApiTokenCreateResponse(entity.getId(), rawToken, entity.getTokenPrefix());
+    }
+
+    @Transactional
+    public void deleteToken(UUID organizationId, UUID tokenId) {
+        apiTokenRepository.delete(requireOrgToken(organizationId, tokenId));
+    }
+
+    @Transactional
+    public void revokeToken(UUID organizationId, UUID tokenId) {
+        IdentityApiTokenEntity token = requireOrgToken(organizationId, tokenId);
+        token.revoke(Instant.now());
+        apiTokenRepository.save(token);
     }
 
     @Transactional
@@ -76,6 +99,22 @@ public class ApiTokenService {
                 .orElse(null);
     }
 
+    @Transactional(readOnly = true)
+    public IdentityApiTokenEntity requireToken(UUID tokenId) {
+        return apiTokenRepository
+                .findById(tokenId)
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND, IdentityErrorCodes.API_TOKEN_NOT_FOUND, "API token not found"));
+    }
+
+    private IdentityApiTokenEntity requireOrgToken(UUID organizationId, UUID tokenId) {
+        return apiTokenRepository
+                .findById(tokenId)
+                .filter(t -> t.getOrganizationId().equals(organizationId))
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND, IdentityErrorCodes.API_TOKEN_NOT_FOUND, "API token not found"));
+    }
+
     private AuthenticatedUser toPrincipal(UserAccount user) {
         return new AuthenticatedUser(
                 user.getId(),
@@ -90,11 +129,5 @@ public class ApiTokenService {
                         .sorted()
                         .toList(),
                 user.isEnabled());
-    }
-
-    @Transactional(readOnly = true)
-    public IdentityApiTokenEntity requireToken(UUID tokenId) {
-        return apiTokenRepository.findById(tokenId)
-                .orElseThrow(() -> new ResourceNotFoundException("API token not found"));
     }
 }

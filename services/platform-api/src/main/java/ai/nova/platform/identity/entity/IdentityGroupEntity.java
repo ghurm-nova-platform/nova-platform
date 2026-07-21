@@ -81,4 +81,20 @@ public class IdentityGroupEntity {
     public Instant getUpdatedAt() {
         return updatedAt;
     }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setExternalId(String externalId) {
+        this.externalId = externalId;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void touch(Instant now) {
+        this.updatedAt = now;
+    }
 }

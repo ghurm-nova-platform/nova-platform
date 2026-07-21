@@ -13,10 +13,18 @@ public class IdentityProperties {
     private Duration sessionIdleTimeout = Duration.ofMinutes(30);
     private Duration sessionAbsoluteTimeout = Duration.ofDays(1);
     private int maxConcurrentSessions = 5;
+    private final Jwt jwt = new Jwt();
+    private final Refresh refresh = new Refresh();
     private final Password password = new Password();
     private final Mfa mfa = new Mfa();
     private final Ldap ldap = new Ldap();
+    private final Ad ad = new Ad();
     private final Oidc oidc = new Oidc();
+    private final OAuth oauth = new OAuth();
+    private final Saml saml = new Saml();
+    private final Scim scim = new Scim();
+    private final Sync sync = new Sync();
+    private final Session session = new Session();
 
     public boolean isEnabled() {
         return enabled;
@@ -50,6 +58,14 @@ public class IdentityProperties {
         this.maxConcurrentSessions = maxConcurrentSessions;
     }
 
+    public Jwt getJwt() {
+        return jwt;
+    }
+
+    public Refresh getRefresh() {
+        return refresh;
+    }
+
     public Password getPassword() {
         return password;
     }
@@ -62,11 +78,69 @@ public class IdentityProperties {
         return ldap;
     }
 
+    public Ad getAd() {
+        return ad;
+    }
+
     public Oidc getOidc() {
         return oidc;
     }
 
+    public OAuth getOauth() {
+        return oauth;
+    }
+
+    public Saml getSaml() {
+        return saml;
+    }
+
+    public Scim getScim() {
+        return scim;
+    }
+
+    public Sync getSync() {
+        return sync;
+    }
+
+    public Session getSession() {
+        return session;
+    }
+
+    public static class Jwt {
+        private boolean enabled = true;
+        private Duration expiration = Duration.ofMinutes(15);
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public Duration getExpiration() {
+            return expiration;
+        }
+
+        public void setExpiration(Duration expiration) {
+            this.expiration = expiration;
+        }
+    }
+
+    public static class Refresh {
+        private Duration expiration = Duration.ofDays(7);
+
+        public Duration getExpiration() {
+            return expiration;
+        }
+
+        public void setExpiration(Duration expiration) {
+            this.expiration = expiration;
+        }
+    }
+
     public static class Password {
+        private boolean enabled = true;
         private int minLength = 12;
         private boolean requireUppercase = true;
         private boolean requireLowercase = true;
@@ -75,6 +149,14 @@ public class IdentityProperties {
         private int historyCount = 5;
         private int maxAgeDays = 0;
         private boolean temporaryPasswordForcesChange = true;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
 
         public int getMinLength() {
             return minLength;
@@ -174,8 +256,29 @@ public class IdentityProperties {
         }
     }
 
+    public static class Ad {
+        private boolean enabled = false;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+    }
+
     public static class Oidc {
+        private boolean enabled = false;
         private boolean skipJwksVerify = false;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
 
         public boolean isSkipJwksVerify() {
             return skipJwksVerify;
@@ -183,6 +286,66 @@ public class IdentityProperties {
 
         public void setSkipJwksVerify(boolean skipJwksVerify) {
             this.skipJwksVerify = skipJwksVerify;
+        }
+    }
+
+    public static class OAuth {
+        private boolean enabled = false;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+    }
+
+    public static class Saml {
+        private boolean enabled = false;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+    }
+
+    public static class Scim {
+        private boolean enabled = false;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+    }
+
+    public static class Sync {
+        private boolean enabled = false;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+    }
+
+    public static class Session {
+        private Duration timeout = Duration.ofMinutes(30);
+
+        public Duration getTimeout() {
+            return timeout;
+        }
+
+        public void setTimeout(Duration timeout) {
+            this.timeout = timeout;
         }
     }
 }

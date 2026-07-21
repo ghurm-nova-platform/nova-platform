@@ -1,7 +1,6 @@
 package ai.nova.platform.identity.repository;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,4 +16,6 @@ public interface IdentitySessionRepository extends JpaRepository<IdentitySession
     List<IdentitySessionEntity> findByIdentityUserIdAndStatus(UUID identityUserId, SessionStatus status);
 
     long countByIdentityUserIdAndStatus(UUID identityUserId, SessionStatus status);
+
+    long countByOrganizationIdAndStatus(UUID organizationId, SessionStatus status);
 }

@@ -1,5 +1,6 @@
 package ai.nova.platform.identity.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -10,4 +11,6 @@ import ai.nova.platform.identity.entity.IdentityServiceAccountEntity;
 public interface IdentityServiceAccountRepository extends JpaRepository<IdentityServiceAccountEntity, UUID> {
 
     Optional<IdentityServiceAccountEntity> findByClientId(String clientId);
+
+    List<IdentityServiceAccountEntity> findByOrganizationIdOrderByNameAsc(UUID organizationId);
 }

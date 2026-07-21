@@ -129,4 +129,19 @@ public class MfaService {
         return properties.getMfa().isEnabled()
                 && identityUserRepository.findById(identityUserId).map(IdentityUserEntity::isMfaEnabled).orElse(false);
     }
+
+    @Transactional
+    public void disable(UUID identityUserId) {
+        IdentityUserEntity user = identityUserRepository
+                .findById(identityUserId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "IDENTITY_USER_NOT_FOUND", "User not found"));
+        Instant now = Instant.now();
+        user.setMfaEnabled(false);
+        user.touch(now);
+        identityUserRepository.save(user);
+        mfaFactorRepository.findByIdentityUserId(identityUserId).forEach(factor -> {
+            factor.disable(now);
+            mfaFactorRepository.save(factor);
+        });
+    }
 }

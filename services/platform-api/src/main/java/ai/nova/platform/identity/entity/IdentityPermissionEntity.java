@@ -81,4 +81,16 @@ public class IdentityPermissionEntity {
     public Instant getUpdatedAt() {
         return updatedAt;
     }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void touch(Instant now) {
+        this.updatedAt = now;
+    }
 }
