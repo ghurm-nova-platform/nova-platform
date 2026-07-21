@@ -3,6 +3,8 @@ package ai.nova.platform.deploymentexecution.support;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -10,14 +12,17 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import ai.nova.platform.deployment.dto.DeploymentDtos.ObserveDeploymentRequest;
-import ai.nova.platform.deployment.support.DeploymentTestFixture;
 import ai.nova.platform.deployment.entity.DeploymentHealthLevel;
 import ai.nova.platform.deployment.entity.DeploymentStatus;
 import ai.nova.platform.deployment.service.DeploymentObservationService;
+import ai.nova.platform.deployment.support.DeploymentTestFixture;
+import ai.nova.platform.deploymentexecution.entity.ExecutionStatus;
+import ai.nova.platform.deploymentexecution.repository.DeploymentExecutionRepository;
 import ai.nova.platform.release.entity.ReleaseContentType;
 import ai.nova.platform.release.entity.VersionBump;
 import ai.nova.platform.release.entity.VersionStrategy;
@@ -34,10 +39,18 @@ import ai.nova.platform.security.AuthenticatedUser;
 @Component
 public class ExecutionSeedSupport {
 
+    private static final EnumSet<ExecutionStatus> ACTIVE = EnumSet.of(
+            ExecutionStatus.READY,
+            ExecutionStatus.QUEUED,
+            ExecutionStatus.STARTING,
+            ExecutionStatus.DEPLOYING,
+            ExecutionStatus.VERIFYING);
+
     private final ReleaseStorageService releaseStorageService;
     private final ReleaseManifestService releaseManifestService;
     private final RollbackManagerService rollbackManagerService;
     private final DeploymentObservationService deploymentObservationService;
+    private final DeploymentExecutionRepository executionRepository;
     private final ObjectMapper objectMapper;
 
     public ExecutionSeedSupport(
@@ -45,16 +58,20 @@ public class ExecutionSeedSupport {
             ReleaseManifestService releaseManifestService,
             RollbackManagerService rollbackManagerService,
             DeploymentObservationService deploymentObservationService,
+            DeploymentExecutionRepository executionRepository,
             ObjectMapper objectMapper) {
         this.releaseStorageService = releaseStorageService;
         this.releaseManifestService = releaseManifestService;
         this.rollbackManagerService = rollbackManagerService;
         this.deploymentObservationService = deploymentObservationService;
+        this.executionRepository = executionRepository;
         this.objectMapper = objectMapper;
     }
 
     public UUID seedPublishedRelease(String version) {
         UUID mergeId = UUID.randomUUID();
+        String fingerprint = releaseManifestService.contentFingerprint(
+                List.of(mergeId), List.of(), List.of(), List.of(), List.of(), List.of());
         var draft = releaseStorageService.createDraft(
                 ExecutionTestFixture.ORG_ID,
                 ExecutionTestFixture.PROJECT_ID,
@@ -63,7 +80,7 @@ public class ExecutionSeedSupport {
                 VersionStrategy.SEMVER,
                 VersionBump.PATCH,
                 new ResolvedVersion(version, 1, 0, 0, VersionBump.PATCH),
-                "exec-fp-" + version + "-" + mergeId,
+                fingerprint,
                 ExecutionTestFixture.USER_ID,
                 List.of(new ContentSpec(ReleaseContentType.MERGE_OPERATION, mergeId, null)),
                 List.of());
@@ -132,7 +149,25 @@ public class ExecutionSeedSupport {
         rollbackManagerService.validate(rollback.id(), user);
     }
 
+    @Transactional
+    public void clearActiveStagingExecutions() {
+        Instant now = Instant.now();
+        executionRepository.findAll().stream()
+                .filter(e -> ExecutionTestFixture.STAGING_ENVIRONMENT_ID.equals(e.getEnvironmentId()))
+                .filter(e -> ACTIVE.contains(e.getStatus()))
+                .forEach(e -> {
+                    e.setStatus(ExecutionStatus.CANCELLED);
+                    e.setCancelRequested(true);
+                    e.setActiveEnvironmentSlot(null);
+                    e.setFinishedAt(now);
+                    e.setUpdatedAt(now);
+                    executionRepository.save(e);
+                });
+        executionRepository.flush();
+    }
+
     public ExecutionSeedContext seedExecutionReadyContext() throws Exception {
+        clearActiveStagingExecutions();
         long patch = Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 900_000L) + 100_000L;
         UUID targetId = seedPublishedRelease("82.1." + patch);
         UUID currentId = seedPublishedRelease("82.2." + patch);
@@ -142,6 +177,7 @@ public class ExecutionSeedSupport {
     }
 
     public ExecutionSeedContext seedExecutionReadyContext(MockMvc mockMvc, String accessToken) throws Exception {
+        clearActiveStagingExecutions();
         long patch = Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 900_000L) + 100_000L;
         UUID targetId = seedPublishedRelease("82.1." + patch);
         UUID currentId = seedPublishedRelease("82.2." + patch);

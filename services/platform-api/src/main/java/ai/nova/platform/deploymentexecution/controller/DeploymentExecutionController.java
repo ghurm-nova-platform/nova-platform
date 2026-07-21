@@ -3,6 +3,8 @@ package ai.nova.platform.deploymentexecution.controller;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,8 +41,10 @@ public class DeploymentExecutionController {
     }
 
     @PostMapping("/{id}/start")
-    public DeploymentExecution start(@PathVariable("id") UUID id, @AuthenticationPrincipal AuthenticatedUser user) {
-        return deploymentExecutionService.start(id, user);
+    public ResponseEntity<DeploymentExecution> start(
+            @PathVariable("id") UUID id, @AuthenticationPrincipal AuthenticatedUser user) {
+        DeploymentExecution started = deploymentExecutionService.start(id, user);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(started);
     }
 
     @PostMapping("/{id}/cancel")

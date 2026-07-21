@@ -11,11 +11,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import ai.nova.platform.agent.runtime.AgentRuntimeClient;
-import ai.nova.platform.audit.entity.AuditAction;
-import ai.nova.platform.audit.entity.AuditSource;
-import ai.nova.platform.audit.repository.AuditEventRepository;
 import ai.nova.platform.deploymentexecution.dto.ExecutionDtos.CreateExecutionRequest;
 import ai.nova.platform.deploymentexecution.entity.ExecutionProviderCode;
+import ai.nova.platform.deploymentexecution.entity.ExecutionStatus;
 import ai.nova.platform.deploymentexecution.service.DeploymentExecutionService;
 import ai.nova.platform.deploymentexecution.support.ExecutionSeedSupport;
 import ai.nova.platform.deploymentexecution.support.ExecutionTestFixture;
@@ -24,18 +22,14 @@ import ai.nova.platform.security.AuthenticatedUser;
 @SpringBootTest(
         properties = {
             "nova.execution.enabled=true",
-            "nova.audit.enabled=true",
             "nova.rollback.enabled=true",
             "nova.deployment.enabled=true",
             "nova.release.enabled=true"
         })
-class ExecutionAuditTest {
+class ExecutionAsyncExecutionTest {
 
     @Autowired
     private DeploymentExecutionService deploymentExecutionService;
-
-    @Autowired
-    private AuditEventRepository auditEventRepository;
 
     @Autowired
     private ExecutionSeedSupport seedSupport;
@@ -46,7 +40,7 @@ class ExecutionAuditTest {
     private AuthenticatedUser user;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         doAnswer(invocation -> null)
                 .when(agentRuntimeClient)
                 .createOrUpdateAgentDefinition(any(), any(), any(), any(), any());
@@ -56,24 +50,27 @@ class ExecutionAuditTest {
     }
 
     @Test
-    void startPublishesDeploymentExecutionAuditEvents() throws Exception {
+    void startReturnsStartingThenCompletesAsynchronously() throws Exception {
         var ctx = seedSupport.seedExecutionReadyContext();
         var created = deploymentExecutionService.create(
                 new CreateExecutionRequest(
                         ctx.releaseId(), ExecutionTestFixture.STAGING_ENVIRONMENT_ID, null, ExecutionProviderCode.LOCAL, null),
                 user);
-        deploymentExecutionService.start(created.id(), user);
+
+        var started = deploymentExecutionService.start(created.id(), user);
+        assertThat(started.status())
+                .isIn(
+                        ExecutionStatus.STARTING,
+                        ExecutionStatus.DEPLOYING,
+                        ExecutionStatus.VERIFYING,
+                        ExecutionStatus.COMPLETED);
 
         ExecutionTestFixture.awaitStatus(
                 () -> deploymentExecutionService.get(created.id(), user).status(),
-                ai.nova.platform.deploymentexecution.entity.ExecutionStatus.COMPLETED,
+                ExecutionStatus.COMPLETED,
                 10_000);
-
-        var events = auditEventRepository.findAll().stream()
-                .filter(e -> e.getSource() == AuditSource.DEPLOYMENT_EXECUTION)
-                .filter(e -> created.id().equals(e.getEntityId()))
-                .toList();
-        assertThat(events.stream().map(e -> e.getAction()).toList())
-                .contains(AuditAction.QUEUE, AuditAction.START, AuditAction.VERIFY, AuditAction.COMPLETE);
+        var completed = deploymentExecutionService.get(created.id(), user);
+        assertThat(completed.result()).isNotNull();
+        assertThat(completed.result().success()).isTrue();
     }
 }

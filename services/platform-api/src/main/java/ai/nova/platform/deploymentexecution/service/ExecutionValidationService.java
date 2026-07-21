@@ -37,8 +37,12 @@ import ai.nova.platform.rollback.repository.RollbackOperationRepository;
 @Service
 public class ExecutionValidationService {
 
-    private static final EnumSet<ExecutionStatus> ACTIVE_STATUSES =
-            EnumSet.of(ExecutionStatus.QUEUED, ExecutionStatus.STARTING, ExecutionStatus.DEPLOYING, ExecutionStatus.VERIFYING);
+    private static final EnumSet<ExecutionStatus> ACTIVE_STATUSES = EnumSet.of(
+            ExecutionStatus.READY,
+            ExecutionStatus.QUEUED,
+            ExecutionStatus.STARTING,
+            ExecutionStatus.DEPLOYING,
+            ExecutionStatus.VERIFYING);
 
     private final ReleaseOperationRepository releaseOperationRepository;
     private final ReleasePolicyRepository policyRepository;
@@ -139,7 +143,14 @@ public class ExecutionValidationService {
         outcomes.add(checkManifest(release));
         outcomes.add(checkContentFingerprint(release));
 
-        CheckOutcome firstFailure = outcomes.stream().filter(o -> !o.passed()).findFirst().orElse(null);
+        // Prefer concurrency as the reported failure when multiple checks fail after an active execution exists.
+        CheckOutcome concurrencyFailure = outcomes.stream()
+                .filter(o -> "NO_ACTIVE_EXECUTION".equals(o.checkCode()) && !o.passed())
+                .findFirst()
+                .orElse(null);
+        CheckOutcome firstFailure = concurrencyFailure != null
+                ? concurrencyFailure
+                : outcomes.stream().filter(o -> !o.passed()).findFirst().orElse(null);
         if (firstFailure != null) {
             return ValidationOutcome.failed(firstFailure.errorCode(), firstFailure.message(), outcomes, release, environment);
         }

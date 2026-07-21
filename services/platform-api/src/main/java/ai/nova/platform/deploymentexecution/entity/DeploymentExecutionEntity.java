@@ -79,6 +79,16 @@ public class DeploymentExecutionEntity {
     @Column(name = "error_message", length = 2000)
     private String errorMessage;
 
+    @Column(name = "cancel_requested", nullable = false)
+    private boolean cancelRequested;
+
+    /**
+     * Set to {@code environmentId} while status is active; cleared on terminal statuses.
+     * Enforces one-active-per-environment on H2; PostgreSQL also has a partial unique index.
+     */
+    @Column(name = "active_environment_slot")
+    private UUID activeEnvironmentSlot;
+
     protected DeploymentExecutionEntity() {
     }
 
@@ -110,6 +120,9 @@ public class DeploymentExecutionEntity {
         this.triggeredBy = triggeredBy;
         this.createdAt = createdAt;
         this.updatedAt = createdAt;
+        this.cancelRequested = false;
+        // Active slot is set by callers for QUEUED/READY; terminal statuses leave it null.
+        this.activeEnvironmentSlot = null;
     }
 
     public UUID getId() {
@@ -234,5 +247,21 @@ public class DeploymentExecutionEntity {
 
     public void setErrorMessage(String errorMessage) {
         this.errorMessage = errorMessage;
+    }
+
+    public boolean isCancelRequested() {
+        return cancelRequested;
+    }
+
+    public void setCancelRequested(boolean cancelRequested) {
+        this.cancelRequested = cancelRequested;
+    }
+
+    public UUID getActiveEnvironmentSlot() {
+        return activeEnvironmentSlot;
+    }
+
+    public void setActiveEnvironmentSlot(UUID activeEnvironmentSlot) {
+        this.activeEnvironmentSlot = activeEnvironmentSlot;
     }
 }

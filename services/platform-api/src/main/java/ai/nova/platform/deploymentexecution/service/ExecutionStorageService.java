@@ -11,6 +11,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.nova.platform.deploymentexecution.dto.ExecutionDtos.ArtifactView;
@@ -76,6 +77,31 @@ public class ExecutionStorageService implements ExecutionStorageCallbacks {
         return sha256(payload);
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public DeploymentExecutionEntity createQueuedIsolated(
+            UUID organizationId,
+            UUID projectId,
+            UUID releaseId,
+            UUID environmentId,
+            UUID deploymentObservationId,
+            ExecutionProviderCode provider,
+            String releaseManifestHash,
+            String releaseContentFingerprint,
+            String executionFingerprint,
+            UUID triggeredBy) {
+        return createQueued(
+                organizationId,
+                projectId,
+                releaseId,
+                environmentId,
+                deploymentObservationId,
+                provider,
+                releaseManifestHash,
+                releaseContentFingerprint,
+                executionFingerprint,
+                triggeredBy);
+    }
+
     @Transactional
     public DeploymentExecutionEntity createQueued(
             UUID organizationId,
@@ -104,7 +130,8 @@ public class ExecutionStorageService implements ExecutionStorageCallbacks {
                 executionFingerprint,
                 triggeredBy,
                 now);
-        executionRepository.save(entity);
+        entity.setActiveEnvironmentSlot(environmentId);
+        executionRepository.saveAndFlush(entity);
         appendEvent(id, ExecutionEventType.CREATED, "Deployment execution created", now);
         appendEvent(id, ExecutionEventType.QUEUED, "Queued for execution", now);
         seedSteps(id, now);

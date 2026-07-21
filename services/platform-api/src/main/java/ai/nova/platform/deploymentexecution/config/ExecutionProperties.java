@@ -11,6 +11,9 @@ public class ExecutionProperties {
     private String provider = "LOCAL";
     private int retryCount = 0;
     private int verificationTimeoutSeconds = 60;
+    private int executionTimeoutSeconds = 300;
+    private int workerCount = 4;
+    private int queueCapacity = 32;
     private boolean allowCancel = true;
     private String restBaseUrl = "";
 
@@ -44,6 +47,30 @@ public class ExecutionProperties {
 
     public void setVerificationTimeoutSeconds(int verificationTimeoutSeconds) {
         this.verificationTimeoutSeconds = verificationTimeoutSeconds;
+    }
+
+    public int getExecutionTimeoutSeconds() {
+        return executionTimeoutSeconds;
+    }
+
+    public void setExecutionTimeoutSeconds(int executionTimeoutSeconds) {
+        this.executionTimeoutSeconds = executionTimeoutSeconds;
+    }
+
+    public int getWorkerCount() {
+        return workerCount;
+    }
+
+    public void setWorkerCount(int workerCount) {
+        this.workerCount = workerCount;
+    }
+
+    public int getQueueCapacity() {
+        return queueCapacity;
+    }
+
+    public void setQueueCapacity(int queueCapacity) {
+        this.queueCapacity = queueCapacity;
     }
 
     public boolean isAllowCancel() {

@@ -84,8 +84,31 @@ class ExecutionControllerTest {
 
         mockMvc.perform(post("/api/deployment-executions/" + id + "/start")
                         .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value(org.hamcrest.Matchers.anyOf(
+                        org.hamcrest.Matchers.is(ExecutionStatus.STARTING.name()),
+                        org.hamcrest.Matchers.is(ExecutionStatus.DEPLOYING.name()),
+                        org.hamcrest.Matchers.is(ExecutionStatus.VERIFYING.name()),
+                        org.hamcrest.Matchers.is(ExecutionStatus.COMPLETED.name()))));
+
+        long deadline = System.currentTimeMillis() + 10_000;
+        String status = null;
+        while (System.currentTimeMillis() < deadline) {
+            MvcResult get = mockMvc.perform(get("/api/deployment-executions/" + id)
+                            .header("Authorization", "Bearer " + accessToken))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            status = objectMapper.readTree(get.getResponse().getContentAsString()).get("status").asText();
+            if (ExecutionStatus.COMPLETED.name().equals(status)) {
+                break;
+            }
+            Thread.sleep(50);
+        }
+        assertThat(status).isEqualTo(ExecutionStatus.COMPLETED.name());
+
+        mockMvc.perform(get("/api/deployment-executions/" + id)
+                        .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value(ExecutionStatus.COMPLETED.name()))
                 .andExpect(jsonPath("$.result.success").value(true));
 
         mockMvc.perform(get("/api/deployment-executions")

@@ -48,4 +48,39 @@ public final class ExecutionTestFixture {
     public static String uniqueVersion(String prefix) {
         return RollbackTestFixture.uniqueVersion("exec-" + prefix);
     }
+
+    public static void awaitStatus(
+            java.util.function.Supplier<ai.nova.platform.deploymentexecution.entity.ExecutionStatus> statusSupplier,
+            ai.nova.platform.deploymentexecution.entity.ExecutionStatus expected,
+            long timeoutMs)
+            throws InterruptedException {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        ai.nova.platform.deploymentexecution.entity.ExecutionStatus last = null;
+        while (System.currentTimeMillis() < deadline) {
+            last = statusSupplier.get();
+            if (last == expected) {
+                return;
+            }
+            Thread.sleep(25);
+        }
+        throw new AssertionError("Timed out waiting for status " + expected + "; last was " + last);
+    }
+
+    public static void awaitTerminal(
+            java.util.function.Supplier<ai.nova.platform.deploymentexecution.entity.ExecutionStatus> statusSupplier,
+            long timeoutMs)
+            throws InterruptedException {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        ai.nova.platform.deploymentexecution.entity.ExecutionStatus last = null;
+        while (System.currentTimeMillis() < deadline) {
+            last = statusSupplier.get();
+            if (last == ai.nova.platform.deploymentexecution.entity.ExecutionStatus.COMPLETED
+                    || last == ai.nova.platform.deploymentexecution.entity.ExecutionStatus.FAILED
+                    || last == ai.nova.platform.deploymentexecution.entity.ExecutionStatus.CANCELLED) {
+                return;
+            }
+            Thread.sleep(25);
+        }
+        throw new AssertionError("Timed out waiting for terminal status; last was " + last);
+    }
 }

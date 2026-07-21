@@ -4,7 +4,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,9 +24,9 @@ import ai.nova.platform.deploymentexecution.dto.ExecutionDtos.DeploymentExecutio
 import ai.nova.platform.deploymentexecution.dto.ExecutionDtos.LogEntry;
 import ai.nova.platform.deploymentexecution.entity.DeploymentExecutionEntity;
 import ai.nova.platform.deploymentexecution.entity.ExecutionEventType;
+import ai.nova.platform.deploymentexecution.entity.ExecutionLogLevel;
 import ai.nova.platform.deploymentexecution.entity.ExecutionProviderCode;
 import ai.nova.platform.deploymentexecution.entity.ExecutionStatus;
-import ai.nova.platform.deploymentexecution.provider.DeploymentExecutionProvider;
 import ai.nova.platform.deploymentexecution.provider.DeploymentExecutionProviderRegistry;
 import ai.nova.platform.deploymentexecution.provider.ExecutionContext;
 import ai.nova.platform.deploymentexecution.repository.DeploymentExecutionRepository;
@@ -41,6 +45,9 @@ public class DeploymentExecutionService {
     private final DeploymentExecutionRepository executionRepository;
     private final DeploymentExecutionProviderRegistry providerRegistry;
     private final AuditRecordingSupport auditRecordingSupport;
+    private final ExecutionTransitionService transitionService;
+    private final DeploymentExecutionWorker worker;
+    private final ExecutorService deploymentExecutionExecutor;
 
     public DeploymentExecutionService(
             ExecutionProperties properties,
@@ -49,7 +56,10 @@ public class DeploymentExecutionService {
             ExecutionValidationService validationService,
             DeploymentExecutionRepository executionRepository,
             DeploymentExecutionProviderRegistry providerRegistry,
-            AuditRecordingSupport auditRecordingSupport) {
+            AuditRecordingSupport auditRecordingSupport,
+            ExecutionTransitionService transitionService,
+            DeploymentExecutionWorker worker,
+            @Qualifier("deploymentExecutionExecutor") ExecutorService deploymentExecutionExecutor) {
         this.properties = properties;
         this.authorizationService = authorizationService;
         this.storageService = storageService;
@@ -57,6 +67,9 @@ public class DeploymentExecutionService {
         this.executionRepository = executionRepository;
         this.providerRegistry = providerRegistry;
         this.auditRecordingSupport = auditRecordingSupport;
+        this.transitionService = transitionService;
+        this.worker = worker;
+        this.deploymentExecutionExecutor = deploymentExecutionExecutor;
     }
 
     @Transactional
@@ -101,90 +114,108 @@ public class DeploymentExecutionService {
             throw new ApiException(HttpStatus.CONFLICT, outcome.errorCode(), outcome.message());
         }
 
-        DeploymentExecutionEntity created = storageService.createQueued(
-                user.getOrganizationId(),
-                outcome.release().getProjectId(),
-                request.releaseId(),
-                request.environmentId(),
-                request.deploymentObservationId(),
-                provider,
-                outcome.release().getManifestHash(),
-                outcome.release().getContentFingerprint(),
-                fingerprint,
-                user.getUserId());
-        validationService.persistChecks(created.getId(), outcome.checks());
-        audit(user, created, AuditAction.QUEUE, AuditResult.SUCCESS, Map.of("provider", provider.name()));
-        return storageService.toDto(created);
+        return queueAfterValidation(request, user, provider, fingerprint, outcome);
     }
 
-    @Transactional
+    private DeploymentExecution queueAfterValidation(
+            CreateExecutionRequest request,
+            AuthenticatedUser user,
+            ExecutionProviderCode provider,
+            String fingerprint,
+            ValidationOutcome outcome) {
+        try {
+            DeploymentExecutionEntity created = storageService.createQueuedIsolated(
+                    user.getOrganizationId(),
+                    outcome.release().getProjectId(),
+                    request.releaseId(),
+                    request.environmentId(),
+                    request.deploymentObservationId(),
+                    provider,
+                    outcome.release().getManifestHash(),
+                    outcome.release().getContentFingerprint(),
+                    fingerprint,
+                    user.getUserId());
+            validationService.persistChecks(created.getId(), outcome.checks());
+            audit(user, created, AuditAction.QUEUE, AuditResult.SUCCESS, Map.of("provider", provider.name()));
+            return storageService.toDto(created);
+        } catch (DataIntegrityViolationException ex) {
+            var raced = executionRepository.findByOrganizationIdAndExecutionFingerprint(
+                    user.getOrganizationId(), fingerprint);
+            if (raced.isPresent()) {
+                return storageService.toDto(raced.get());
+            }
+            throw new ApiException(
+                    HttpStatus.CONFLICT,
+                    "EXECUTION_CONCURRENCY_BLOCKED",
+                    "Another active deployment execution exists for this environment");
+        }
+    }
+
+    /**
+     * Atomically claims QUEUED→STARTING and dispatches provider work to a managed executor.
+     * Returns immediately with STARTING; does not hold a DB transaction during provider I/O.
+     */
     public DeploymentExecution start(UUID id, AuthenticatedUser user) {
         authorizationService.require(user, DeploymentExecutionAuthorizationService.EXECUTION_RUN);
         requireEnabled();
 
         DeploymentExecutionEntity entity = storageService.requireForOrg(id, user.getOrganizationId());
         if (entity.getStatus() != ExecutionStatus.QUEUED) {
+            if (entity.getStatus() == ExecutionStatus.STARTING
+                    || entity.getStatus() == ExecutionStatus.DEPLOYING
+                    || entity.getStatus() == ExecutionStatus.VERIFYING
+                    || entity.getStatus() == ExecutionStatus.COMPLETED) {
+                throw new ApiException(
+                        HttpStatus.CONFLICT,
+                        "EXECUTION_ALREADY_STARTED",
+                        "Execution was already claimed or started");
+            }
             throw new ApiException(
                     HttpStatus.CONFLICT,
                     "EXECUTION_INVALID_STATUS",
                     "Execution must be QUEUED to start; was " + entity.getStatus());
         }
+        if (entity.isCancelRequested()) {
+            transitionService.finalizeCancelled(id, user);
+            throw new ApiException(
+                    HttpStatus.CONFLICT,
+                    "EXECUTION_INVALID_STATUS",
+                    "Execution was cancelled before start");
+        }
 
-        Instant now = Instant.now();
-        entity.setStatus(ExecutionStatus.STARTING);
-        entity.setStartedAt(now);
-        entity.setUpdatedAt(now);
-        executionRepository.save(entity);
-        storageService.appendEvent(id, ExecutionEventType.STARTING, "Execution starting", now);
-        audit(user, entity, AuditAction.START, AuditResult.SUCCESS, Map.of("provider", entity.getProvider().name()));
-
-        DeploymentExecutionProvider provider = providerRegistry.require(entity.getProvider());
-        ExecutionContext context = new ExecutionContext(
-                id,
-                entity.getOrganizationId(),
-                entity.getProjectId(),
-                entity.getReleaseOperationId(),
-                entity.getEnvironmentId(),
-                entity.getProvider(),
-                null,
-                storageService);
+        boolean claimed = transitionService.claimQueued(id, user.getOrganizationId(), user);
+        if (!claimed) {
+            DeploymentExecutionEntity latest = storageService.requireForOrg(id, user.getOrganizationId());
+            if (latest.isCancelRequested() || latest.getStatus() == ExecutionStatus.CANCELLED) {
+                throw new ApiException(
+                        HttpStatus.CONFLICT,
+                        "EXECUTION_INVALID_STATUS",
+                        "Execution was cancelled before start");
+            }
+            throw new ApiException(
+                    HttpStatus.CONFLICT,
+                    "EXECUTION_ALREADY_STARTED",
+                    "Execution was already claimed by another start request");
+        }
 
         try {
-            provider.prepare(context);
-            storageService.completeStep(id, "prepare", true, "Prepare completed");
-
-            entity.setStatus(ExecutionStatus.DEPLOYING);
-            entity.setUpdatedAt(Instant.now());
-            executionRepository.save(entity);
-            storageService.appendEvent(id, ExecutionEventType.DEPLOYING, "Deploying", Instant.now());
-
-            provider.deploy(context);
-            storageService.completeStep(id, "deploy", true, "Deploy completed");
-
-            entity.setStatus(ExecutionStatus.VERIFYING);
-            entity.setUpdatedAt(Instant.now());
-            executionRepository.save(entity);
-            storageService.appendEvent(id, ExecutionEventType.VERIFYING, "Verifying deployment", Instant.now());
-            audit(user, entity, AuditAction.VERIFY, AuditResult.SUCCESS, Map.of());
-
-            provider.verify(context);
-            storageService.completeStep(id, "verify", true, "Verify completed");
-
-            Instant finished = Instant.now();
-            entity.setStatus(ExecutionStatus.COMPLETED);
-            entity.setFinishedAt(finished);
-            entity.setDurationMs(ExecutionStorageService.computeDuration(entity.getStartedAt(), finished));
-            entity.setUpdatedAt(finished);
-            executionRepository.save(entity);
-            storageService.appendEvent(id, ExecutionEventType.COMPLETED, "Execution completed", finished);
-            audit(user, entity, AuditAction.COMPLETE, AuditResult.SUCCESS, Map.of());
-            return storageService.toDto(entity);
-        } catch (Exception ex) {
-            return failExecution(user, entity, ex);
+            deploymentExecutionExecutor.execute(() -> worker.run(id, user));
+        } catch (RejectedExecutionException ex) {
+            transitionService.failIfActive(
+                    id, "EXECUTION_QUEUE_FULL", "Deployment execution worker queue is full", user);
+            throw new ApiException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "EXECUTION_QUEUE_FULL",
+                    "Deployment execution worker queue is full");
         }
+
+        return storageService.toDto(storageService.requireForOrg(id, user.getOrganizationId()));
     }
 
-    @Transactional
+    /**
+     * Marks cancellation requested atomically, invokes provider.cancel (cooperative), and finalizes
+     * CANCELLED when the cancel path wins the race against COMPLETED.
+     */
     public DeploymentExecution cancel(UUID id, AuthenticatedUser user) {
         authorizationService.require(user, DeploymentExecutionAuthorizationService.EXECUTION_RUN);
         requireEnabled();
@@ -202,6 +233,20 @@ public class DeploymentExecutionService {
                     "Cannot cancel execution in status " + entity.getStatus());
         }
 
+        boolean marked = transitionService.requestCancel(id, user.getOrganizationId());
+        if (!marked && !entity.isCancelRequested()) {
+            DeploymentExecutionEntity latest = storageService.requireForOrg(id, user.getOrganizationId());
+            if (latest.getStatus() == ExecutionStatus.COMPLETED
+                    || latest.getStatus() == ExecutionStatus.FAILED
+                    || latest.getStatus() == ExecutionStatus.CANCELLED) {
+                throw new ApiException(
+                        HttpStatus.CONFLICT,
+                        "EXECUTION_INVALID_STATUS",
+                        "Cannot cancel execution in status " + latest.getStatus());
+            }
+        }
+
+        entity = storageService.requireForOrg(id, user.getOrganizationId());
         try {
             providerRegistry.require(entity.getProvider()).cancel(new ExecutionContext(
                     id,
@@ -213,18 +258,19 @@ public class DeploymentExecutionService {
                     null,
                     storageService));
         } catch (Exception ex) {
-            storageService.appendLog(id, ai.nova.platform.deploymentexecution.entity.ExecutionLogLevel.WARN, ex.getMessage());
+            storageService.appendLog(
+                    id,
+                    ExecutionLogLevel.WARN,
+                    "Provider cancel reported: " + (ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage()));
         }
 
-        Instant now = Instant.now();
-        entity.setStatus(ExecutionStatus.CANCELLED);
-        entity.setFinishedAt(now);
-        entity.setDurationMs(ExecutionStorageService.computeDuration(entity.getStartedAt(), now));
-        entity.setUpdatedAt(now);
-        executionRepository.save(entity);
-        storageService.appendEvent(id, ExecutionEventType.CANCELLED, "Execution cancelled", now);
-        audit(user, entity, AuditAction.CANCEL, AuditResult.SUCCESS, Map.of());
-        return storageService.toDto(entity);
+        storageService.appendLog(
+                id,
+                ExecutionLogLevel.WARN,
+                "Cancellation requested; provider cancellation may be cooperative");
+
+        transitionService.finalizeCancelled(id, user);
+        return storageService.toDto(storageService.requireForOrg(id, user.getOrganizationId()));
     }
 
     @Transactional(readOnly = true)
@@ -258,25 +304,6 @@ public class DeploymentExecutionService {
         return storageService.logs(id);
     }
 
-    private DeploymentExecution failExecution(
-            AuthenticatedUser user, DeploymentExecutionEntity entity, Exception ex) {
-        Instant now = Instant.now();
-        String code = ex instanceof ApiException api ? api.getCode() : "EXECUTION_FAILED";
-        String message = ex.getMessage() != null ? ex.getMessage() : "Execution failed";
-        entity.setStatus(ExecutionStatus.FAILED);
-        entity.setErrorCode(code);
-        entity.setErrorMessage(truncate(message, 2000));
-        entity.setFinishedAt(now);
-        entity.setDurationMs(ExecutionStorageService.computeDuration(entity.getStartedAt(), now));
-        entity.setUpdatedAt(now);
-        executionRepository.save(entity);
-        storageService.appendEvent(entity.getId(), ExecutionEventType.FAILED, message, now);
-        storageService.appendLog(
-                entity.getId(), ai.nova.platform.deploymentexecution.entity.ExecutionLogLevel.ERROR, message);
-        audit(user, entity, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", code));
-        throw new ApiException(HttpStatus.CONFLICT, code, message);
-    }
-
     private void audit(
             AuthenticatedUser user,
             DeploymentExecutionEntity entity,
@@ -300,12 +327,5 @@ public class DeploymentExecutionService {
             throw new ApiException(
                     HttpStatus.SERVICE_UNAVAILABLE, "EXECUTION_DISABLED", "Deployment Execution Engine is disabled");
         }
-    }
-
-    private static String truncate(String value, int max) {
-        if (value == null) {
-            return null;
-        }
-        return value.length() <= max ? value : value.substring(0, max);
     }
 }

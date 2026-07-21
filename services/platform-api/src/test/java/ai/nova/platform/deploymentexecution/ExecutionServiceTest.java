@@ -54,12 +54,27 @@ class ExecutionServiceTest {
         var ctx = seedSupport.seedExecutionReadyContext();
         var created = deploymentExecutionService.create(
                 new CreateExecutionRequest(
-                        ctx.releaseId(), ExecutionTestFixture.STAGING_ENVIRONMENT_ID, ctx.deploymentId(), ExecutionProviderCode.LOCAL, null),
+                        ctx.releaseId(),
+                        ExecutionTestFixture.STAGING_ENVIRONMENT_ID,
+                        ctx.deploymentId(),
+                        ExecutionProviderCode.LOCAL,
+                        null),
                 user);
         assertThat(created.status()).isEqualTo(ExecutionStatus.QUEUED);
 
-        var completed = deploymentExecutionService.start(created.id(), user);
-        assertThat(completed.status()).isEqualTo(ExecutionStatus.COMPLETED);
+        var started = deploymentExecutionService.start(created.id(), user);
+        assertThat(started.status())
+                .isIn(
+                        ExecutionStatus.STARTING,
+                        ExecutionStatus.DEPLOYING,
+                        ExecutionStatus.VERIFYING,
+                        ExecutionStatus.COMPLETED);
+
+        ExecutionTestFixture.awaitStatus(
+                () -> deploymentExecutionService.get(created.id(), user).status(),
+                ExecutionStatus.COMPLETED,
+                10_000);
+        var completed = deploymentExecutionService.get(created.id(), user);
         assertThat(completed.result()).isNotNull();
         assertThat(completed.result().success()).isTrue();
     }
