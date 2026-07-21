@@ -1,0 +1,242 @@
+<section class="identity">
+  <header class="identity__header">
+    <div>
+      <h1>Enterprise Identity</h1>
+      <p class="identity__subtitle">
+        Manage authentication providers, active sessions, login history, and multi-factor enrollment.
+      </p>
+    </div>
+    <div class="identity__actions">
+      <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="identity__error">You need IDENTITY_READ permission to view this page.</p>
+  } @else if (loading() && !config()) {
+    <div class="identity__loading"><mat-spinner diameter="36"></mat-spinner></div>
+  } @else if (error() && !config()) {
+    <p class="identity__error">{{ error() }}</p>
+  } @else {
+    @if (config(); as cfg) {
+      <mat-card class="identity__config">
+        <h3>Identity configuration</h3>
+        <div class="identity__meta">
+          <span>JWT access TTL: <strong>{{ cfg.jwtAccessTtlSeconds }}s</strong></span>
+          <span>JWT refresh TTL: <strong>{{ cfg.jwtRefreshTtlSeconds }}s</strong></span>
+          <span>Max concurrent sessions: <strong>{{ cfg.sessionMaxConcurrent }}</strong></span>
+          <span>MFA required: <strong>{{ cfg.mfaRequired ? 'Yes' : 'No' }}</strong></span>
+          <span>SCIM: <strong>{{ cfg.scimEnabled ? 'Enabled' : 'Disabled' }}</strong></span>
+        </div>
+        <p class="identity__policy">Password policy: {{ describePasswordPolicy(cfg) }}</p>
+      </mat-card>
+    }
+
+    <mat-tab-group dynamicHeight>
+      <mat-tab label="Providers">
+        <mat-card class="identity__tab-body">
+          @if (permissions.canManageProviders()) {
+            <p class="identity__hint">Provider management requires IDENTITY_PROVIDER_MANAGE.</p>
+          }
+          @for (provider of providers(); track provider.id) {
+            <article class="identity__row">
+              <div class="identity__row-main">
+                <mat-icon>{{ providerTypeIcon(provider.type) }}</mat-icon>
+                <div>
+                  <h4>
+                    {{ provider.displayName || provider.name }}
+                    @if (provider.defaultProvider) {
+                      <span class="identity__badge">Default</span>
+                    }
+                  </h4>
+                  <p>{{ provider.type }} · {{ provider.status }}</p>
+                  @if (provider.issuerUrl) {
+                    <p class="identity__muted">{{ provider.issuerUrl }}</p>
+                  }
+                </div>
+              </div>
+              <span class="identity__timestamp">{{ provider.updatedAt | date: 'medium' }}</span>
+            </article>
+          } @empty {
+            <p>No identity providers configured.</p>
+          }
+          @if (activeProviders().length === 0 && providers().length > 0) {
+            <p class="identity__empty">No active providers.</p>
+          }
+        </mat-card>
+      </mat-tab>
+
+      <mat-tab label="Sessions">
+        <mat-card class="identity__tab-body">
+          <p class="identity__summary">
+            {{ activeSessions().length }} active session(s)
+            @if (config(); as cfg) {
+              · limit {{ cfg.sessionMaxConcurrent }}
+            }
+          </p>
+          @for (session of sessions(); track session.id) {
+            <article class="identity__row">
+              <div class="identity__row-main">
+                <mat-icon>{{ session.current ? 'devices' : 'computer' }}</mat-icon>
+                <div>
+                  <h4>
+                    {{ session.userDisplayName || session.userEmail }}
+                    @if (session.current) {
+                      <span class="identity__badge identity__badge--current">Current</span>
+                    }
+                  </h4>
+                  <p>{{ session.authMethod }} · {{ session.status }}</p>
+                  <p class="identity__muted">
+                    {{ session.ipAddress || 'Unknown IP' }} · {{ session.userAgent || 'Unknown agent' }}
+                  </p>
+                  <p class="identity__muted">
+                    Last seen {{ session.lastSeenAt | date: 'medium' }} · expires
+                    {{ session.expiresAt | date: 'medium' }}
+                  </p>
+                </div>
+              </div>
+              @if (permissions.canAdmin() && session.status === 'ACTIVE' && !session.current) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  color="warn"
+                  (click)="revokeSession(session.id)"
+                  [disabled]="loading()"
+                >
+                  Revoke
+                </button>
+              }
+            </article>
+          } @empty {
+            <p>No sessions found.</p>
+          }
+        </mat-card>
+      </mat-tab>
+
+      <mat-tab label="Login History">
+        <mat-card class="identity__tab-body">
+          <p class="identity__summary">
+            {{ loginHistory().length }} login event(s)
+            · {{ failedLogins().length }} failed
+          </p>
+          @for (entry of loginHistory(); track entry.id) {
+            <article class="identity__row">
+              <div class="identity__row-main">
+                <mat-icon>history</mat-icon>
+                <div>
+                  <h4>
+                    <span [class]="outcomeClass(entry.outcome)">{{ entry.outcome }}</span>
+                    · {{ entry.userEmail }}
+                  </h4>
+                  <p>{{ entry.authMethod }} · {{ entry.occurredAt | date: 'medium' }}</p>
+                  <p class="identity__muted">
+                    {{ entry.ipAddress || 'Unknown IP' }}
+                    @if (entry.providerName) {
+                      · {{ entry.providerName }}
+                    }
+                  </p>
+                  @if (entry.failureReason) {
+                    <p class="identity__error-inline">{{ entry.failureReason }}</p>
+                  }
+                </div>
+              </div>
+            </article>
+          } @empty {
+            <p>No login history entries.</p>
+          }
+        </mat-card>
+      </mat-tab>
+
+      <mat-tab label="MFA">
+        <mat-card class="identity__tab-body">
+          @if (mfaStatus(); as mfa) {
+            <div class="identity__mfa-status">
+              <p>Enrollment status: <strong>{{ mfa.status }}</strong></p>
+              <p>Required: <strong>{{ mfa.required ? 'Yes' : 'No' }}</strong></p>
+              @if (mfa.enrolledMethods.length > 0) {
+                <p>
+                  Enrolled methods:
+                  @for (method of mfa.enrolledMethods; track method) {
+                    <mat-chip>{{ method }}</mat-chip>
+                  }
+                </p>
+              }
+              @if (mfa.lastVerifiedAt) {
+                <p class="identity__muted">Last verified {{ mfa.lastVerifiedAt | date: 'medium' }}</p>
+              }
+            </div>
+          } @else {
+            <p>MFA status unavailable.</p>
+          }
+
+          @if (permissions.canManageMfa()) {
+            <section class="identity__mfa-enroll">
+              <h4>Enroll MFA</h4>
+              <mat-form-field appearance="outline">
+                <mat-label>Method</mat-label>
+                <select matNativeControl [(ngModel)]="selectedMfaMethod">
+                  <option value="TOTP">TOTP (authenticator app)</option>
+                  <option value="WEBAUTHN">WebAuthn (security key)</option>
+                </select>
+              </mat-form-field>
+              <button
+                mat-flat-button
+                color="primary"
+                type="button"
+                (click)="startMfaEnrollment()"
+                [disabled]="loading()"
+              >
+                Start enrollment
+              </button>
+
+              @if (enrollment(); as enroll) {
+                <div class="identity__enrollment">
+                  @if (enroll.qrCodeUri) {
+                    <p>QR URI: <code>{{ enroll.qrCodeUri }}</code></p>
+                  }
+                  @if (enroll.secret) {
+                    <p>Secret: <code>{{ enroll.secret }}</code></p>
+                  }
+                  <mat-form-field appearance="outline">
+                    <mat-label>Verification code</mat-label>
+                    <input matInput [(ngModel)]="mfaVerifyCode" />
+                  </mat-form-field>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="verifyMfaEnrollment()"
+                    [disabled]="!mfaVerifyCode.trim()"
+                  >
+                    Verify enrollment
+                  </button>
+                </div>
+              }
+              @if (verifyMessage()) {
+                <p class="identity__success">{{ verifyMessage() }}</p>
+              }
+            </section>
+          } @else {
+            <p class="identity__hint">MFA enrollment requires IDENTITY_MFA_MANAGE.</p>
+          }
+        </mat-card>
+      </mat-tab>
+    </mat-tab-group>
+
+    @if (permissions.canProvisionScim() && scimUsers().length > 0) {
+      <mat-card class="identity__scim">
+        <h3>SCIM provisioned users</h3>
+        <ul class="identity__list">
+          @for (user of scimUsers(); track user.id) {
+            <li>
+              <strong>{{ user.displayName || user.userName }}</strong>
+              <span>{{ user.active ? 'Active' : 'Inactive' }}</span>
+            </li>
+          }
+        </ul>
+      </mat-card>
+    }
+  }
+</section>

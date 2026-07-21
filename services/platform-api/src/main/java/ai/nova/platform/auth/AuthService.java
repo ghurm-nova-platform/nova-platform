@@ -20,6 +20,8 @@ import ai.nova.platform.audit.config.AuditProperties;
 import ai.nova.platform.audit.entity.AuditAction;
 import ai.nova.platform.audit.entity.AuditResult;
 import ai.nova.platform.audit.service.AuditRecordingSupport;
+import ai.nova.platform.identity.configuration.IdentityProperties;
+import ai.nova.platform.identity.service.AuthenticationService;
 import ai.nova.platform.permission.Permission;
 import ai.nova.platform.role.Role;
 import ai.nova.platform.security.AuthenticatedUser;
@@ -36,6 +38,8 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuditProperties auditProperties;
     private final AuditRecordingSupport auditRecordingSupport;
+    private final IdentityProperties identityProperties;
+    private final AuthenticationService identityAuthenticationService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public AuthService(
@@ -44,17 +48,59 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             AuditProperties auditProperties,
-            AuditRecordingSupport auditRecordingSupport) {
+            AuditRecordingSupport auditRecordingSupport,
+            IdentityProperties identityProperties,
+            AuthenticationService identityAuthenticationService) {
         this.userAccountRepository = userAccountRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.auditProperties = auditProperties;
         this.auditRecordingSupport = auditRecordingSupport;
+        this.identityProperties = identityProperties;
+        this.identityAuthenticationService = identityAuthenticationService;
     }
 
     @Transactional
-    public TokenResponse login(String email, String password, String ipAddress, String userAgent) {
+    public TokenResponse login(String email, String password, String mfaCode, String ipAddress, String userAgent) {
+        if (identityProperties.isEnabled()) {
+            return identityAuthenticationService.login(email, password, mfaCode, ipAddress, userAgent);
+        }
+        return legacyLogin(email, password, ipAddress, userAgent);
+    }
+
+    @Transactional
+    public TokenResponse refresh(String refreshTokenValue) {
+        if (identityProperties.isEnabled()) {
+            return identityAuthenticationService.refresh(refreshTokenValue);
+        }
+        return legacyRefresh(refreshTokenValue);
+    }
+
+    @Transactional
+    public void logout(String refreshTokenValue, String ipAddress, String userAgent) {
+        if (identityProperties.isEnabled()) {
+            identityAuthenticationService.logout(refreshTokenValue, ipAddress, userAgent);
+            return;
+        }
+        legacyLogout(refreshTokenValue, ipAddress, userAgent);
+    }
+
+    @Transactional(readOnly = true)
+    public MeResponse me(AuthenticatedUser principal) {
+        UserAccount user = userAccountRepository.findById(principal.getUserId())
+                .orElseThrow(() -> new AuthenticationFailedException("User not found"));
+
+        return new MeResponse(
+                user.getId(),
+                user.getOrganization().getId(),
+                user.getEmail(),
+                user.getDisplayName(),
+                roleCodes(user),
+                permissionCodes(user));
+    }
+
+    private TokenResponse legacyLogin(String email, String password, String ipAddress, String userAgent) {
         UserAccount user = userAccountRepository.findByEmailIgnoreCase(email.trim())
                 .orElseThrow(() -> {
                     publishLoginFailure(null, email, ipAddress, userAgent);
@@ -82,8 +128,7 @@ public class AuthService {
         return issueTokens(user);
     }
 
-    @Transactional
-    public TokenResponse refresh(String refreshTokenValue) {
+    private TokenResponse legacyRefresh(String refreshTokenValue) {
         RefreshToken stored = refreshTokenRepository.findByTokenHash(hashToken(refreshTokenValue))
                 .orElseThrow(() -> new AuthenticationFailedException("Invalid refresh token"));
 
@@ -103,8 +148,7 @@ public class AuthService {
         return issueTokens(user);
     }
 
-    @Transactional
-    public void logout(String refreshTokenValue, String ipAddress, String userAgent) {
+    private void legacyLogout(String refreshTokenValue, String ipAddress, String userAgent) {
         refreshTokenRepository.findByTokenHash(hashToken(refreshTokenValue)).ifPresent(token -> {
             token.revoke(Instant.now());
             refreshTokenRepository.save(token);
@@ -121,20 +165,6 @@ public class AuthService {
                         userAgent);
             }
         });
-    }
-
-    @Transactional(readOnly = true)
-    public MeResponse me(AuthenticatedUser principal) {
-        UserAccount user = userAccountRepository.findById(principal.getUserId())
-                .orElseThrow(() -> new AuthenticationFailedException("User not found"));
-
-        return new MeResponse(
-                user.getId(),
-                user.getOrganization().getId(),
-                user.getEmail(),
-                user.getDisplayName(),
-                roleCodes(user),
-                permissionCodes(user));
     }
 
     private void publishLoginFailure(UserAccount user, String email, String ipAddress, String userAgent) {

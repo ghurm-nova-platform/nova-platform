@@ -32,7 +32,11 @@ public class AuthController {
     @PostMapping("/login")
     public TokenResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         return authService.login(
-                request.email(), request.password(), httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"));
+                request.email(),
+                request.password(),
+                request.mfaCode(),
+                httpRequest.getRemoteAddr(),
+                httpRequest.getHeader("User-Agent"));
     }
 
     @PostMapping("/refresh")

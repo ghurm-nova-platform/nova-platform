@@ -48,3 +48,4 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0032](ADR-0032-multi-agent-collaboration.md) | Multi-Agent Collaboration Framework | Accepted |
 | [ADR-0033](ADR-0033-knowledge-engine.md) | Knowledge and Memory Engine (parallel to RAG) | Accepted |
 | [ADR-0034](ADR-0034-pr-review-engine.md) | Automated Pull Request Review Engine | Accepted |
+| [ADR-0035](ADR-0035-enterprise-identity.md) | Enterprise Identity | Accepted |

@@ -1,0 +1,196 @@
+.identity {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem 1.25rem 2rem;
+}
+
+.identity__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.identity__subtitle {
+  margin: 0.25rem 0 0;
+  opacity: 0.8;
+}
+
+.identity__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.identity__config h3 {
+  margin: 0 0 0.75rem;
+}
+
+.identity__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.identity__policy {
+  margin: 0.75rem 0 0;
+  opacity: 0.85;
+}
+
+.identity__tab-body {
+  margin-top: 1rem;
+}
+
+.identity__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.identity__row-main {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.identity__row-main h4 {
+  margin: 0 0 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.identity__row-main p {
+  margin: 0.15rem 0;
+}
+
+.identity__muted {
+  opacity: 0.7;
+  font-size: 0.875rem;
+}
+
+.identity__timestamp {
+  white-space: nowrap;
+  opacity: 0.7;
+  font-size: 0.875rem;
+}
+
+.identity__badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  border-radius: 0.25rem;
+  background: rgba(11, 95, 255, 0.12);
+  color: #0b5fff;
+}
+
+.identity__badge--current {
+  background: rgba(22, 163, 74, 0.12);
+  color: #16a34a;
+}
+
+.identity__summary {
+  margin: 0 0 0.75rem;
+  opacity: 0.85;
+}
+
+.identity__hint,
+.identity__empty {
+  opacity: 0.75;
+  margin: 0 0 0.75rem;
+}
+
+.identity__mfa-status {
+  margin-bottom: 1rem;
+}
+
+.identity__mfa-enroll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.identity__enrollment {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 28rem;
+}
+
+.identity__enrollment code {
+  word-break: break-all;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+}
+
+.identity__scim {
+  margin-top: 0.5rem;
+}
+
+.identity__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.identity__list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.identity__outcome {
+  font-weight: 600;
+}
+
+.identity__outcome--success {
+  color: #16a34a;
+}
+
+.identity__outcome--failure {
+  color: #dc2626;
+}
+
+.identity__outcome--mfa_required {
+  color: #d97706;
+}
+
+.identity__outcome--locked {
+  color: #991b1b;
+}
+
+.identity__error,
+.identity__error-inline {
+  color: #b42318;
+}
+
+.identity__success {
+  color: #16a34a;
+}
+
+.identity__loading {
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+}
+
+@media (max-width: 700px) {
+  .identity__row {
+    flex-direction: column;
+  }
+}

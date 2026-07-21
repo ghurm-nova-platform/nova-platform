@@ -283,6 +283,25 @@ nova:
       ttl-seconds: 60
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
+  identity:
+    enabled: true
+    session-idle-timeout: PT30M
+    session-absolute-timeout: P1D
+    max-concurrent-sessions: 5
+    password:
+      min-length: 12
+      require-uppercase: true
+      require-lowercase: true
+      require-digit: true
+      require-special: true
+      history-count: 5
+    mfa:
+      enabled: true
+      issuer: Nova
+    ldap:
+      enabled: false
+    oidc:
+      skip-jwks-verify: false
 
 management:
   endpoints:
