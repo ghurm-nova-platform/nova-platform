@@ -39,7 +39,7 @@ export class IdentityConfigurationPage implements OnInit {
   readonly verifyMessage = signal<string | null>(null);
 
   mfaVerifyCode = '';
-  selectedMfaMethod: 'TOTP' = 'TOTP';
+  selectedMfaMethod = 'TOTP' as const;
 
   ngOnInit(): void {
     this.reload();
