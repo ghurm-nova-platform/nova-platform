@@ -46,3 +46,4 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0030](ADR-0030-deployment-execution.md) | Deployment Execution Engine (provider-based) | Accepted |
 | [ADR-0031](ADR-0031-enterprise-dashboard.md) | Enterprise Dashboard read-only aggregation | Accepted |
 | [ADR-0032](ADR-0032-multi-agent-collaboration.md) | Multi-Agent Collaboration Framework | Accepted |
+| [ADR-0033](ADR-0033-knowledge-engine.md) | Knowledge and Memory Engine (parallel to RAG) | Accepted |

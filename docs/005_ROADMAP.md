@@ -89,10 +89,16 @@
 
 **Exit criteria:** Multiple agents collaborate in one session with full timeline, human intervention, and audit trail without distributed messaging.
 
-## After Beta
+### Sprint 6 — Knowledge and Memory Engine (Phase 2)
 
-- Knowledge and project memory (collaboration foundation in Sprint 6)
-- Knowledge and project memory
+- Structured knowledge documents with types, categories, tags, and visibility
+- Keyword search and memory surfacing for agents; document relations and import/export
+- REST API under `/api/knowledge`; audit via `AuditSource.KNOWLEDGE`
+- Parallel to existing RAG stack; no embeddings, vector stores, or semantic retrieval
+
+**Exit criteria:** Operators can store, search, relate, and export structured project knowledge via API with full audit trail, without embedding provider dependency.
+
+## After Beta
 - Pull-request review automation
 - Enterprise SSO and LDAP
 - Self-hosted deployment

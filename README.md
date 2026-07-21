@@ -77,6 +77,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Enterprise Audit Center](docs/040_AUDIT_CENTER.md)
 - [Enterprise Dashboard](docs/042_ENTERPRISE_DASHBOARD.md)
 - [Multi-Agent Collaboration](docs/043_MULTI_AGENT_COLLABORATION.md)
+- [Knowledge and Memory Engine](docs/044_KNOWLEDGE_ENGINE.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
@@ -92,4 +93,4 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 
 ## Current status
 
-Sprint 6 Phase 1 — Multi-Agent Collaboration Framework coordinates existing agents in collaboration sessions with shared context, immutable messages, parallel groups, conflict detection, and append-only timeline. Sprint 5 delivered Deployment Execution and Enterprise Dashboard on `main`.
+Sprint 6 Phase 2 — Knowledge and Memory Engine provides structured project documents with keyword search, relations, import/export, and agent memory surfacing via `/api/knowledge` (parallel to the RAG stack; no vectors/embeddings). Sprint 6 Phase 1 delivered Multi-Agent Collaboration; Sprint 5 delivered Deployment Execution and Enterprise Dashboard on `main`.
