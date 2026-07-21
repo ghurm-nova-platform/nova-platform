@@ -1,0 +1,133 @@
+<section class="deployment-execution-page">
+  <header class="page-header">
+    <div>
+      <h1>Deployment Execution</h1>
+      <p class="subtitle safety">
+        Deployment Execution Engine performs controlled deployments via pluggable providers. No automatic rollback,
+        blue/green, or canary.
+      </p>
+      <p class="subtitle">
+        Queue validated executions against published releases, run LOCAL/REST providers, and inspect steps, logs,
+        artifacts, and timeline.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">You need EXECUTION_RUN or EXECUTION_READ to use this page.</p>
+  } @else {
+    <form class="run-form" [formGroup]="form" (ngSubmit)="create()">
+      <mat-form-field appearance="outline">
+        <mat-label>Project ID (optional filter)</mat-label>
+        <input matInput formControlName="projectId" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Release ID</mat-label>
+        <input matInput formControlName="releaseId" placeholder="UUID" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Environment ID</mat-label>
+        <input matInput formControlName="environmentId" placeholder="UUID" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Provider</mat-label>
+        <mat-select formControlName="provider">
+          <mat-option value="LOCAL">LOCAL</mat-option>
+          <mat-option value="REST">REST</mat-option>
+          <mat-option value="KUBERNETES">KUBERNETES (adapter)</mat-option>
+          <mat-option value="ARGOCD">ARGOCD (adapter)</mat-option>
+          <mat-option value="HELM">HELM (adapter)</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <div class="actions">
+        @if (permissions.canRun()) {
+          <button mat-flat-button color="primary" type="submit" [disabled]="loading()">Create / Queue</button>
+          <button mat-stroked-button type="button" (click)="startSelected()" [disabled]="loading() || !selected()">
+            Start
+          </button>
+          <button mat-stroked-button type="button" (click)="cancelSelected()" [disabled]="loading() || !selected()">
+            Cancel
+          </button>
+        }
+        @if (permissions.canRead()) {
+          <button mat-stroked-button type="button" (click)="loadList()" [disabled]="loading()">Load list</button>
+          <button mat-stroked-button type="button" (click)="loadLogs()" [disabled]="loading() || !selected()">
+            Load logs
+          </button>
+        }
+      </div>
+    </form>
+
+    @if (loading()) {
+      <div class="loading"><mat-spinner diameter="36"></mat-spinner></div>
+    }
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    <div class="layout">
+      <aside class="list-panel">
+        <h2>Executions</h2>
+        @if (executions().length === 0) {
+          <p class="muted">No executions loaded.</p>
+        } @else {
+          @for (item of executions(); track item.id) {
+            <button type="button" class="list-item" [class.active]="selected()?.id === item.id" (click)="selectExecution(item)">
+              <strong>{{ item.status }}</strong>
+              <span>{{ item.provider }} · {{ item.currentStep ?? '—' }}</span>
+              <span class="muted">{{ formatDuration(item.durationMs) }}</span>
+            </button>
+          }
+        }
+      </aside>
+
+      @if (selected(); as exec) {
+        <section class="detail-panel">
+          <h2>Execution detail</h2>
+          <dl class="meta-grid">
+            <dt>Status</dt><dd>{{ exec.status }}</dd>
+            <dt>Step</dt><dd>{{ exec.currentStep ?? '—' }} / {{ exec.currentStage ?? '—' }}</dd>
+            <dt>Duration</dt><dd>{{ formatDuration(exec.durationMs) }}</dd>
+            <dt>Provider</dt><dd>{{ exec.provider }}</dd>
+          </dl>
+
+          @if (exec.steps.length > 0) {
+            <h3>Steps</h3>
+            <ul>
+              @for (step of exec.steps; track step.id) {
+                <li>{{ step.stepKey }} — {{ step.status }} — {{ step.detail ?? '' }}</li>
+              }
+            </ul>
+          }
+
+          @if (exec.timeline.length > 0) {
+            <h3>Timeline</h3>
+            <ul>
+              @for (event of exec.timeline; track event.at + event.eventType) {
+                <li>{{ event.eventType }} · {{ event.at }} · {{ event.detail ?? '' }}</li>
+              }
+            </ul>
+          }
+
+          @if (exec.artifacts.length > 0) {
+            <h3>Artifacts</h3>
+            <ul>
+              @for (artifact of exec.artifacts; track artifact.id) {
+                <li>{{ artifact.artifactType }} · {{ artifact.name }} · {{ artifact.contentRef ?? '' }}</li>
+              }
+            </ul>
+          }
+
+          @if (logs().length > 0) {
+            <h3>Logs</h3>
+            <ul class="logs">
+              @for (log of logs(); track log.createdAt + log.message) {
+                <li><strong>{{ log.level }}</strong> {{ log.message }}</li>
+              }
+            </ul>
+          }
+        </section>
+      }
+    </div>
+  }
+</section>

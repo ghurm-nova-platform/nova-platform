@@ -128,6 +128,13 @@ export const routes: Routes = [
           import('./features/deployments/deployment-page').then((m) => m.DeploymentPage),
       },
       {
+        path: 'deployment-execution',
+        loadComponent: () =>
+          import('./features/deployment-execution/deployment-execution-page').then(
+            (m) => m.DeploymentExecutionPage,
+          ),
+      },
+      {
         path: 'rollbacks',
         loadComponent: () =>
           import('./features/rollbacks/rollback-page').then((m) => m.RollbackPage),

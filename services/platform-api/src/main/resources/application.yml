@@ -228,6 +228,13 @@ nova:
     execution-enabled: false
     allow-plan-edit: false
     retain-history: true
+  execution:
+    enabled: true
+    provider: LOCAL
+    retry-count: 0
+    verification-timeout-seconds: 60
+    allow-cancel: true
+    rest-base-url: ""
   policy:
     enabled: true
     allow-custom-policies: true
