@@ -3,6 +3,7 @@ package ai.nova.platform.audit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import ai.nova.platform.audit.dto.AuditDtos.AuditEvent;
 import ai.nova.platform.audit.entity.AuditAction;
 import ai.nova.platform.audit.repository.AuditEventRepository;
 import ai.nova.platform.audit.service.AuditService;
+import ai.nova.platform.audit.service.AuditStorageService;
 import ai.nova.platform.audit.support.AuditTestFixture;
 
 @SpringBootTest(properties = {"nova.audit.enabled=true", "nova.audit.immutable=true"})
@@ -22,6 +24,9 @@ class AuditDatabaseImmutabilityTest {
 
     @Autowired
     private AuditService auditService;
+
+    @Autowired
+    private AuditStorageService storageService;
 
     @Autowired
     private AuditEventRepository eventRepository;
@@ -76,5 +81,23 @@ class AuditDatabaseImmutabilityTest {
         UUID entityId = UUID.randomUUID();
         AuditEvent saved = auditService.record(AuditTestFixture.sampleEvent(entityId, AuditAction.UPDATE));
         assertThat(saved.id()).isNotNull();
+    }
+
+    @Test
+    void auditSessionEndStillSucceeds() {
+        UUID sessionId = UUID.randomUUID();
+        Instant now = Instant.now();
+        storageService.startSession(
+                sessionId,
+                AuditTestFixture.USER_ID,
+                AuditTestFixture.ORG_ID,
+                "127.0.0.1",
+                "junit",
+                now);
+        storageService.endSession(sessionId, now.plusSeconds(5));
+
+        Instant endedAt = jdbcTemplate.queryForObject(
+                "SELECT ended_at FROM audit_sessions WHERE session_id = ?", Instant.class, sessionId);
+        assertThat(endedAt).isNotNull();
     }
 }

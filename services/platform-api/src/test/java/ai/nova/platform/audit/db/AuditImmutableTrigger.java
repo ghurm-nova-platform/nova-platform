@@ -7,7 +7,8 @@ import org.h2.api.Trigger;
 
 /**
  * H2 append-only guard for audit tables. INSERT is allowed; UPDATE and DELETE raise AUDIT_IMMUTABLE.
- * Lives in test scope because H2 is test-only; referenced by V51 migration when running against H2.
+ * Lives in test scope because H2 is test-only; referenced by Flyway {@code V51__audit_database_immutability}
+ * when migrating against H2.
  */
 public class AuditImmutableTrigger implements Trigger {
 

@@ -49,4 +49,23 @@ class AuditImmutabilityTest {
                         .count())
                 .isEqualTo(1);
     }
+
+    @Test
+    void concurrentDuplicatePublishingStoresOneEvent() throws Exception {
+        UUID entityId = UUID.randomUUID();
+        RecordAuditEventRequest request = AuditTestFixture.sampleEvent(entityId, AuditAction.OBSERVE);
+
+        Thread first = new Thread(() -> auditService.record(request));
+        Thread second = new Thread(() -> auditService.record(request));
+        first.start();
+        second.start();
+        first.join();
+        second.join();
+
+        assertThat(eventRepository.findAll().stream()
+                        .filter(e -> e.getOrganizationId().equals(AuditTestFixture.ORG_ID)
+                                && entityId.equals(e.getEntityId()))
+                        .count())
+                .isEqualTo(1);
+    }
 }

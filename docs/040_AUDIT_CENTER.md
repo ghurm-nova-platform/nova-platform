@@ -68,7 +68,7 @@ Fingerprint inputs are canonicalized: details maps are sorted recursively (`Tree
 - `audit_correlation` — correlation/request/session links
 - `audit_indexes` — denormalized search keys
 
-**V51** extends CHECK constraints for lifecycle actions (`START`, `COMPLETE`, `FAIL`, `PREPARE`, `READY`, `PUBLISH`) and subsystem sources. Database-level immutability triggers block `UPDATE`/`DELETE` on `audit_events`, `audit_correlation`, and `audit_indexes` (PostgreSQL function + H2 Java trigger). `INSERT` remains allowed. `audit_sessions.ended_at` and `audit_entities.display_label` remain intentionally mutable.
+**V51** (`db/scripts/V51__audit_database_immutability.sql`, applied by Flyway Java migration `V51__audit_database_immutability`) extends CHECK constraints for lifecycle actions (`START`, `COMPLETE`, `FAIL`, `PREPARE`, `READY`, `PUBLISH`) and subsystem sources. Database-level immutability triggers block `UPDATE`/`DELETE` on `audit_events`, `audit_correlation`, and `audit_indexes` (PostgreSQL `reject_audit_mutation()` from the SQL script; H2 Java trigger equivalent in tests). `INSERT` remains allowed. `audit_sessions.ended_at` and `audit_entities.display_label` remain intentionally mutable.
 
 ## Error codes
 
@@ -88,6 +88,7 @@ Fingerprint inputs are canonicalized: details maps are sorted recursively (`Tree
 **Orchestration & agents (Sprint 4 audit coverage)**
 
 - Orchestration runs: create, update, ready, start, cancel, archive (`ORCHESTRATION`)
+- Orchestration tasks: create, update (`ORCHESTRATION` / entity `TASK`)
 - Planner plan/import (`PLANNER`)
 - Coding generate (`CODING`)
 - Review run (`REVIEW`)

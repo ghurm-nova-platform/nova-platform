@@ -1,17 +1,28 @@
 package db.migration;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.flywaydb.core.api.migration.BaseJavaMigration;
 import org.flywaydb.core.api.migration.Context;
 
 /**
- * Extends audit CHECK constraints for Sprint 4 subsystem coverage and enforces append-only
- * semantics on audit_events, audit_correlation, and audit_indexes at the database layer.
+ * Flyway entrypoint for {@code classpath:db/scripts/V51__audit_database_immutability.sql}.
+ *
+ * <p>PostgreSQL executes the SQL script (CHECK extensions + {@code reject_audit_mutation} triggers).
+ * H2 (tests) applies the same CHECK extensions and installs equivalent Java triggers because H2
+ * cannot run PL/pgSQL.
  */
-public class V51__AuditDatabaseImmutability extends BaseJavaMigration {
+public class V51__audit_database_immutability extends BaseJavaMigration {
+
+    private static final String SCRIPT = "/db/scripts/V51__audit_database_immutability.sql";
 
     private static final String ACTION_CHECK = """
             CONSTRAINT chk_audit_events_action CHECK (action IN (
@@ -31,10 +42,12 @@ public class V51__AuditDatabaseImmutability extends BaseJavaMigration {
     @Override
     public void migrate(Context context) throws Exception {
         Connection connection = context.getConnection();
-        updateCheckConstraints(connection);
         if (isPostgreSql(connection)) {
-            installPostgreSqlImmutability(connection);
-        } else if (isH2(connection)) {
+            executeSqlScript(connection, loadScript());
+            return;
+        }
+        updateCheckConstraints(connection);
+        if (isH2(connection)) {
             installH2Immutability(connection);
         }
     }
@@ -46,29 +59,6 @@ public class V51__AuditDatabaseImmutability extends BaseJavaMigration {
             statement.execute("ALTER TABLE audit_events ADD " + ACTION_CHECK);
             statement.execute("ALTER TABLE audit_events ADD " + SOURCE_CHECK);
         }
-    }
-
-    private void installPostgreSqlImmutability(Connection connection) throws SQLException {
-        try (Statement statement = connection.createStatement()) {
-            statement.execute("""
-                    CREATE OR REPLACE FUNCTION reject_audit_mutation() RETURNS trigger AS $$
-                    BEGIN
-                      RAISE EXCEPTION 'AUDIT_IMMUTABLE';
-                    END;
-                    $$ LANGUAGE plpgsql""");
-            createPostgreSqlTrigger(statement, "audit_events", "trg_audit_events_immutable");
-            createPostgreSqlTrigger(statement, "audit_correlation", "trg_audit_correlation_immutable");
-            createPostgreSqlTrigger(statement, "audit_indexes", "trg_audit_indexes_immutable");
-        }
-    }
-
-    private void createPostgreSqlTrigger(Statement statement, String table, String triggerName) throws SQLException {
-        statement.execute("DROP TRIGGER IF EXISTS " + triggerName + " ON " + table);
-        statement.execute("""
-                CREATE TRIGGER %s
-                BEFORE UPDATE OR DELETE ON %s
-                FOR EACH ROW EXECUTE PROCEDURE reject_audit_mutation()"""
-                .formatted(triggerName, table));
     }
 
     private void installH2Immutability(Connection connection) throws SQLException {
@@ -91,6 +81,52 @@ public class V51__AuditDatabaseImmutability extends BaseJavaMigration {
                 CREATE TRIGGER %s BEFORE %s ON %s
                 FOR EACH ROW CALL "%s\""""
                 .formatted(triggerName, event, table, triggerClass));
+    }
+
+    private void executeSqlScript(Connection connection, String script) throws SQLException {
+        for (String statementSql : splitStatements(script)) {
+            if (statementSql.isBlank()) {
+                continue;
+            }
+            try (Statement statement = connection.createStatement()) {
+                statement.execute(statementSql);
+            }
+        }
+    }
+
+    private List<String> splitStatements(String script) {
+        List<String> statements = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inDollar = false;
+        for (String line : script.split("\\R")) {
+            String trimmed = line.trim();
+            if (trimmed.startsWith("--") && !inDollar) {
+                continue;
+            }
+            if (trimmed.contains("$$")) {
+                inDollar = !inDollar;
+            }
+            current.append(line).append('\n');
+            if (!inDollar && trimmed.endsWith(";")) {
+                statements.add(current.toString().trim());
+                current.setLength(0);
+            }
+        }
+        if (!current.toString().isBlank()) {
+            statements.add(current.toString().trim());
+        }
+        return statements;
+    }
+
+    private String loadScript() throws Exception {
+        try (var in = getClass().getResourceAsStream(SCRIPT)) {
+            if (in == null) {
+                throw new IllegalStateException("Missing classpath resource " + SCRIPT);
+            }
+            try (var reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+                return reader.lines().collect(Collectors.joining("\n"));
+            }
+        }
     }
 
     private boolean isPostgreSql(Connection connection) throws SQLException {

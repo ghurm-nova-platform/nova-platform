@@ -18,7 +18,7 @@ Nova Platform already has domain-specific `*_audit_log` and `*_events` tables fo
 Introduce package `ai.nova.platform.audit` with:
 
 1. Flyway migration `V50__audit_center.sql` creating `audit_events`, `audit_entities`, `audit_sessions`, `audit_correlation`, and `audit_indexes`
-2. Flyway Java migration `V51__AuditDatabaseImmutability` extending CHECK constraints and enforcing append-only triggers on events/correlation/indexes (PostgreSQL + H2)
+2. Flyway migration script `V51__audit_database_immutability.sql` (under `db/scripts`, applied by Java migration `V51__audit_database_immutability`) extending CHECK constraints and enforcing append-only triggers on events/correlation/indexes (PostgreSQL PL/pgSQL; H2 Java trigger in tests)
 3. Internal append-only publisher (`AuditPublisher` with `REQUIRES_NEW`) and fingerprint idempotency with canonical JSON details
 4. Read-only controller `/api/audit` guarded by `AUDIT_READ`
 5. Optional REST capture filter and auth security event wiring behind `nova.audit` flags
