@@ -321,6 +321,31 @@ nova:
       enabled: false
     session:
       timeout: PT30M
+  llm:
+    enabled: true
+    default-provider: DETERMINISTIC
+    fallback-to-deterministic: true
+    timeout:
+      seconds: 60
+    retry:
+      max-attempts: 2
+      backoff-ms: 200
+    cache:
+      enabled: true
+      ttl-seconds: 300
+    scheduler:
+      enabled: true
+      worker-count: 2
+      queue-capacity: 64
+    ollama:
+      enabled: false
+      base-url: http://127.0.0.1:11434
+    llamacpp:
+      enabled: false
+      base-url: http://127.0.0.1:8080
+    vllm:
+      enabled: false
+      base-url: http://127.0.0.1:8000
 
 management:
   endpoints:

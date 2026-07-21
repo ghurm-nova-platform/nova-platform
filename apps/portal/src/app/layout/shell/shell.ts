@@ -67,6 +67,7 @@ export class Shell {
     { labelEn: 'Knowledge', labelAr: 'المعرفة', path: '/knowledge', icon: 'menu_book' },
     { labelEn: 'PR Review', labelAr: 'مراجعة الطلبات', path: '/pr-review', icon: 'fact_check' },
     { labelEn: 'Identity', labelAr: 'الهوية', path: '/identity', icon: 'badge' },
+    { labelEn: 'Local LLM', labelAr: 'نماذج محلية', path: '/llm', icon: 'memory' },
     { labelEn: 'Organizations', labelAr: 'المنظمات', path: '/organizations', icon: 'business' },
     { labelEn: 'Projects', labelAr: 'المشاريع', path: '/projects', icon: 'folder' },
     { labelEn: 'Model providers', labelAr: 'مزودو النماذج', path: '/model-providers', icon: 'hub' },

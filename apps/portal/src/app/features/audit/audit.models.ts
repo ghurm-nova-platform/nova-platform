@@ -9,7 +9,8 @@ export type AuditEntityType =
   | 'TASK'
   | 'REPOSITORY'
   | 'USER'
-  | 'CONFIGURATION';
+  | 'CONFIGURATION'
+  | 'LLM_RUNTIME';
 
 export type AuditAction =
   | 'CREATE'
@@ -57,7 +58,8 @@ export type AuditSource =
   | 'PULL_REQUEST'
   | 'CI_OBSERVATION'
   | 'REPAIR'
-  | 'APPROVAL_GATE';
+  | 'APPROVAL_GATE'
+  | 'LLM_RUNTIME';
 
 export interface AuditEvent {
   id: string;

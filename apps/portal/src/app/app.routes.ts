@@ -44,6 +44,10 @@ export const routes: Routes = [
           import('./features/identity/identity.routes').then((m) => m.identityRoutes),
       },
       {
+        path: 'llm',
+        loadComponent: () => import('./features/llm/llm-page').then((m) => m.LlmPage),
+      },
+      {
         path: 'organizations',
         loadComponent: () =>
           import('./features/organizations/organizations-page').then((m) => m.OrganizationsPage),

@@ -14,5 +14,6 @@ public enum AuditEntityType {
     CONFIGURATION,
     KNOWLEDGE,
     PR_REVIEW,
-    IDENTITY
+    IDENTITY,
+    LLM_RUNTIME
 }
