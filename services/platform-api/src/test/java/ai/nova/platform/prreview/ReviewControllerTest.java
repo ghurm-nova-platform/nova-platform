@@ -125,7 +125,7 @@ class ReviewControllerTest {
     }
 
     @Test
-    void exportRequiresExportPermission() throws Exception {
+    void exportAllowedWithReadPermission() throws Exception {
         String escapedDiff = "public class Ok { int x = 1; }"
                 .replace("\"", "\\\"");
         MvcResult runResult = mockMvc.perform(post("/api/pr-review/run")
@@ -140,7 +140,11 @@ class ReviewControllerTest {
                         .header("Authorization", "Bearer " + readToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"format\":\"json\"}"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("PR_REVIEW_PERMISSION_DENIED"));
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/pr-review/" + runId + "/export")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"format\":\"json\"}"))
+                .andExpect(status().isUnauthorized());
     }
 }
