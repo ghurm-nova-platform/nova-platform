@@ -140,7 +140,7 @@ All endpoints share base path `/api/identity` unless noted.
 
 Full CRUD at `/groups`, `/roles`, `/permissions` with `IDENTITY_GROUP_ADMIN`, `IDENTITY_ROLE_ADMIN`, `IDENTITY_PERMISSION_ADMIN` respectively. Groups also support `POST /groups/{id}/sync`.
 
-### Sessions
+### Session endpoints
 
 | Method | Path | Permission |
 |--------|------|------------|
@@ -165,7 +165,7 @@ Full CRUD at `/groups`, `/roles`, `/permissions` with `IDENTITY_GROUP_ADMIN`, `I
 | GET | `/login-history`, `/security-events` | `IDENTITY_AUDIT_READ` |
 | GET/POST | `/export/{users\|groups\|roles\|permissions\|login-history}?format=csv\|json\|xlsx` | `IDENTITY_READ` |
 
-### SCIM
+### SCIM endpoints
 
 | Method | Path | Permission |
 |--------|------|------------|
