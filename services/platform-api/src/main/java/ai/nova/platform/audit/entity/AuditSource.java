@@ -24,5 +24,6 @@ public enum AuditSource {
     APPROVAL_GATE,
     DEPLOYMENT_EXECUTION,
     COLLABORATION,
-    KNOWLEDGE
+    KNOWLEDGE,
+    PR_REVIEW
 }

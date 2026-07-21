@@ -78,6 +78,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Enterprise Dashboard](docs/042_ENTERPRISE_DASHBOARD.md)
 - [Multi-Agent Collaboration](docs/043_MULTI_AGENT_COLLABORATION.md)
 - [Knowledge and Memory Engine](docs/044_KNOWLEDGE_ENGINE.md)
+- [Automated PR Review Engine](docs/045_PR_REVIEW_ENGINE.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
@@ -93,4 +94,4 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 
 ## Current status
 
-Sprint 6 Phase 2 — Knowledge and Memory Engine provides structured project documents with keyword search, relations, import/export, and agent memory surfacing via `/api/knowledge` (parallel to the RAG stack; no vectors/embeddings). Sprint 6 Phase 1 delivered Multi-Agent Collaboration; Sprint 5 delivered Deployment Execution and Enterprise Dashboard on `main`.
+Sprint 6 Phase 3 — Automated PR Review Engine analyzes supplied PR diffs with rule-based heuristics, six-category risk scores, knowledge linkage, and recommendations via `/api/pr-review` and portal `/pr-review` (no LLM, auto-merge, commit, push, fix, or GitHub writes). Sprint 6 Phase 2 — Knowledge and Memory Engine provides structured project documents with keyword search, relations, import/export, and agent memory surfacing via `/api/knowledge` (parallel to the RAG stack; no vectors/embeddings). Sprint 6 Phase 1 delivered Multi-Agent Collaboration; Sprint 5 delivered Deployment Execution and Enterprise Dashboard on `main`.

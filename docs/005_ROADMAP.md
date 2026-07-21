@@ -98,9 +98,21 @@
 
 **Exit criteria:** Operators can store, search, relate, and export structured project knowledge via API with full audit trail, without embedding provider dependency.
 
+### Sprint 6 — Automated PR Review Engine (Phase 3)
+
+- Rule-based PR analysis across architecture, security, performance, quality, testing, documentation, database, API, and infrastructure (`ai.nova.platform.prreview`)
+- Six category scores (0–100), overall score, and risk score (`100 - overallScore`); results `APPROVED`..`REJECTED`
+- Findings and recommendations only — no auto-merge, commit, push, fix, approve, LLM, or GitHub writes
+- Knowledge Engine reuse via `KnowledgeMemoryService` (ADR, decisions, bugs, PR reviews, releases, best practices, runbooks); no duplicate storage
+- Flyway V57 tables: `pr_review_runs`, `pr_review_findings`, `pr_review_recommendations`
+- Permissions `PR_REVIEW_READ`, `PR_REVIEW_RUN`, `PR_REVIEW_ADMIN`; audit via `AuditSource.PR_REVIEW`
+- Portal `/pr-review`; REST `/api/pr-review`; export markdown, JSON, PDF
+
+**Exit criteria:** Operators can run a PR review from supplied diff/metadata, inspect findings/risk/knowledge links, and export reports without any Git write actions.
+
 ## After Beta
 
-- Pull-request review automation
+- LLM-assisted PR review (optional)
 - Enterprise SSO and LDAP
 - Self-hosted deployment
 - Local model support
