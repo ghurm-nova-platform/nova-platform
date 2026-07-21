@@ -1,0 +1,20 @@
+<div class="risk-gauge" [class.risk-gauge--high]="riskLevel() === 'high'" [class.risk-gauge--medium]="riskLevel() === 'medium'" [class.risk-gauge--low]="riskLevel() === 'low'">
+  <div class="risk-gauge__chart">
+    <svg viewBox="0 0 120 70" aria-hidden="true">
+      <path class="risk-gauge__track" d="M10 60 A50 50 0 0 1 110 60" />
+      <path
+        class="risk-gauge__value"
+        d="M10 60 A50 50 0 0 1 110 60"
+        [style.stroke-dashoffset]="gaugeOffset()"
+      />
+    </svg>
+    <div class="risk-gauge__center">
+      <span class="risk-gauge__label">Risk</span>
+      <strong class="risk-gauge__risk">{{ riskScore() }}</strong>
+    </div>
+  </div>
+  <div class="risk-gauge__overall">
+    <span>Overall score</span>
+    <strong>{{ overallScore() }}</strong>
+  </div>
+</div>

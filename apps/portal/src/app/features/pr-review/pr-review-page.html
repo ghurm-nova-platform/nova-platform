@@ -1,0 +1,296 @@
+<section class="pr-review">
+  <header class="pr-review__header">
+    <div>
+      <h1>PR Review Engine</h1>
+      <p class="pr-review__subtitle">
+        Heuristic pull request analysis — reports and recommendations only. No auto-merge.
+      </p>
+    </div>
+    <div class="pr-review__actions">
+      <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+      @if (permissions.canRun() && selectedId()) {
+        <button mat-stroked-button type="button" (click)="rerunSelected()" [disabled]="loading()">
+          <mat-icon>replay</mat-icon>
+          Rerun
+        </button>
+      }
+      @if (permissions.canRead() && selectedId()) {
+        <button mat-stroked-button type="button" (click)="exportSelected('markdown')">
+          Export MD
+        </button>
+        <button mat-stroked-button type="button" (click)="exportSelected('json')">
+          Export JSON
+        </button>
+        <button mat-flat-button color="primary" type="button" (click)="exportSelected('pdf')">
+          Export PDF
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="pr-review__error">You need PR_REVIEW_READ permission to view this page.</p>
+  } @else if (loading() && runs().length === 0) {
+    <div class="pr-review__loading"><mat-spinner diameter="36"></mat-spinner></div>
+  } @else if (error() && !detail()) {
+    <p class="pr-review__error">{{ error() }}</p>
+  } @else {
+    <div class="pr-review__layout">
+      <mat-card class="pr-review__runs">
+        <mat-card-header>
+          <mat-card-title>Review runs</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          @if (runs().length === 0) {
+            <p>No review runs yet.</p>
+          } @else {
+            <ul class="pr-review__list">
+              @for (run of runs(); track run.id) {
+                <li>
+                  <button
+                    type="button"
+                    class="pr-review__list-item"
+                    [class.pr-review__list-item--active]="selectedId() === run.id"
+                    (click)="selectRun(run.id)"
+                  >
+                    <strong>{{ run.pullRequestTitle || ('PR #' + (run.pullRequestNumber ?? run.id)) }}</strong>
+                    <span>{{ run.result || run.status }} · risk {{ run.riskScore }}</span>
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </mat-card-content>
+      </mat-card>
+
+      <div class="pr-review__content">
+        <mat-tab-group dynamicHeight>
+          <mat-tab [label]="'Reviews'">
+            <div class="pr-review__tab-body">
+              @if (detail(); as d) {
+                <mat-card class="pr-review__summary">
+                  <h3>{{ d.pullRequestTitle || ('Review ' + d.id) }}</h3>
+                  @if (d.summary) {
+                    <p>{{ d.summary }}</p>
+                  }
+                  <div class="pr-review__meta">
+                    <span>Result: <strong>{{ d.result || d.status }}</strong></span>
+                    @if (durationMs(); as ms) {
+                      <span>Duration: <strong>{{ ms }} ms</strong></span>
+                    }
+                  </div>
+                  <div class="pr-review__dashboard">
+                    <app-risk-gauge [riskScore]="d.riskScore" [overallScore]="d.overallScore" />
+                    <div class="pr-review__panel">
+                      <h4>Category scores</h4>
+                      <ul class="pr-review__scores-list">
+                        @for (entry of categoryScores() | keyvalue; track entry.key) {
+                          <li><span>{{ entry.key }}</span><strong>{{ entry.value }}</strong></li>
+                        }
+                      </ul>
+                    </div>
+                    <div class="pr-review__panel">
+                      <h4>Severity distribution</h4>
+                      <ul class="pr-review__scores-list">
+                        @for (entry of severityDistribution() | keyvalue; track entry.key) {
+                          <li>
+                            <span [class]="severityClass(entry.key)">{{ entry.key }}</span>
+                            <strong>{{ entry.value }}</strong>
+                          </li>
+                        } @empty {
+                          <li>No findings recorded.</li>
+                        }
+                      </ul>
+                    </div>
+                  </div>
+                  <div class="pr-review__finding-groups">
+                    <section>
+                      <h4>Architecture findings</h4>
+                      @for (finding of architectureFindings(); track finding.id) {
+                        <article class="pr-review__finding">
+                          <h5 [class]="severityClass(finding.severity)">{{ finding.title }}</h5>
+                          <p>{{ finding.description }}</p>
+                        </article>
+                      } @empty {
+                        <p class="pr-review__empty">No architecture findings.</p>
+                      }
+                    </section>
+                    <section>
+                      <h4>Security findings</h4>
+                      @for (finding of securityFindings(); track finding.id) {
+                        <article class="pr-review__finding">
+                          <h5 [class]="severityClass(finding.severity)">{{ finding.title }}</h5>
+                          <p>{{ finding.description }}</p>
+                        </article>
+                      } @empty {
+                        <p class="pr-review__empty">No security findings.</p>
+                      }
+                    </section>
+                    <section>
+                      <h4>Performance findings</h4>
+                      @for (finding of performanceFindings(); track finding.id) {
+                        <article class="pr-review__finding">
+                          <h5 [class]="severityClass(finding.severity)">{{ finding.title }}</h5>
+                          <p>{{ finding.description }}</p>
+                        </article>
+                      } @empty {
+                        <p class="pr-review__empty">No performance findings.</p>
+                      }
+                    </section>
+                  </div>
+                  @if (recommendations().length > 0) {
+                    <h4>Top recommendations</h4>
+                    @for (rec of recommendations().slice(0, 3); track rec.id) {
+                      <article class="pr-review__finding">
+                        <h5>[{{ rec.priority }}] {{ rec.title }}</h5>
+                        <p>{{ rec.description }}</p>
+                      </article>
+                    }
+                  }
+                </mat-card>
+              } @else {
+                <mat-card>
+                  <p>Select a review run to inspect risk and findings.</p>
+                </mat-card>
+              }
+
+              @if (permissions.canRun()) {
+                <mat-card class="pr-review__form">
+                  <h3>Run review</h3>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Project ID</mat-label>
+                    <input matInput [(ngModel)]="projectId" />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>PR number</mat-label>
+                    <input matInput type="number" [(ngModel)]="pullRequestNumber" />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="pr-review__full">
+                    <mat-label>PR title</mat-label>
+                    <input matInput [(ngModel)]="pullRequestTitle" />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Source branch</mat-label>
+                    <input matInput [(ngModel)]="sourceBranch" />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Target branch</mat-label>
+                    <input matInput [(ngModel)]="targetBranch" />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="pr-review__full">
+                    <mat-label>Diff content</mat-label>
+                    <textarea matInput rows="8" [(ngModel)]="diffContent"></textarea>
+                  </mat-form-field>
+                  <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    [disabled]="loading() || !projectId || !diffContent.trim()"
+                    (click)="runReview()"
+                  >
+                    Run
+                  </button>
+                </mat-card>
+              }
+            </div>
+          </mat-tab>
+
+          <mat-tab [label]="'Findings'">
+            <mat-card class="pr-review__tab-body">
+              @for (finding of findings(); track finding.id) {
+                <article class="pr-review__finding">
+                  <h4>
+                    <span [class]="severityClass(finding.severity)">{{ finding.severity }}</span>
+                    · {{ finding.category }} · {{ finding.title }}
+                  </h4>
+                  <p>{{ finding.description }}</p>
+                  <p><strong>Recommendation:</strong> {{ finding.recommendation }}</p>
+                  @if (finding.evidenceExcerpt) {
+                    <pre>{{ finding.evidenceExcerpt }}</pre>
+                  }
+                </article>
+              } @empty {
+                <p>No findings for the selected run.</p>
+              }
+            </mat-card>
+          </mat-tab>
+
+          <mat-tab [label]="'Recommendations'">
+            <mat-card class="pr-review__tab-body">
+              @for (rec of recommendations(); track rec.id) {
+                <article class="pr-review__finding">
+                  <h4>[{{ rec.priority }}] {{ rec.title }}</h4>
+                  <p>{{ rec.description }}</p>
+                </article>
+              } @empty {
+                <p>No recommendations for the selected run.</p>
+              }
+            </mat-card>
+          </mat-tab>
+
+          <mat-tab [label]="'Risk Score'">
+            <mat-card class="pr-review__tab-body">
+              @if (detail(); as d) {
+                <div class="pr-review__dashboard pr-review__dashboard--risk">
+                  <app-risk-gauge [riskScore]="d.riskScore" [overallScore]="d.overallScore" />
+                  @if (risk(); as r) {
+                    <div class="pr-review__panel">
+                      <h4>Risk breakdown</h4>
+                      <p>Result: <strong>{{ r.result || d.result }}</strong></p>
+                      <ul class="pr-review__scores-list">
+                        @for (entry of r.categoryScores | keyvalue; track entry.key) {
+                          <li><span>{{ entry.key }}</span><strong>{{ entry.value }}</strong></li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p>Select a review run to view risk score.</p>
+              }
+            </mat-card>
+          </mat-tab>
+
+          <mat-tab [label]="'Knowledge References'">
+            <mat-card class="pr-review__tab-body">
+              @for (ref of knowledge(); track ref.findingId) {
+                <article class="pr-review__finding">
+                  <h4>{{ ref.findingTitle }} ({{ ref.category }})</h4>
+                  <p>{{ ref.knowledgeDocumentIds.join(', ') }}</p>
+                </article>
+              } @empty {
+                <p>No knowledge references attached.</p>
+              }
+            </mat-card>
+          </mat-tab>
+
+          <mat-tab [label]="'History'">
+            <mat-card class="pr-review__tab-body">
+              <ul class="pr-review__list">
+                @for (run of historyRuns(); track run.id) {
+                  <li>
+                    <button
+                      type="button"
+                      class="pr-review__list-item"
+                      [class.pr-review__list-item--active]="selectedId() === run.id"
+                      (click)="selectRun(run.id)"
+                    >
+                      <strong>{{ run.createdAt | date: 'medium' }}</strong>
+                      <span>{{ run.pullRequestTitle || run.id }}</span>
+                      <span>{{ run.result || run.status }} · {{ run.overallScore }}</span>
+                    </button>
+                  </li>
+                } @empty {
+                  <li>No history entries yet.</li>
+                }
+              </ul>
+            </mat-card>
+          </mat-tab>
+        </mat-tab-group>
+      </div>
+    </div>
+  }
+</section>

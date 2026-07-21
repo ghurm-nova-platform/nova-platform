@@ -12,5 +12,6 @@ public enum AuditEntityType {
     REPOSITORY,
     USER,
     CONFIGURATION,
-    KNOWLEDGE
+    KNOWLEDGE,
+    PR_REVIEW
 }

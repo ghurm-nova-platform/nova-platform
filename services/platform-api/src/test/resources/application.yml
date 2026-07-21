@@ -264,6 +264,17 @@ nova:
     enabled: true
     polling-seconds: 10
     max-messages: 500
+  pr-review:
+    enabled: true
+    max-diff-characters: 200000
+    default-limit: 50
+    max-findings: 200
+    max-recommendations: 100
+    parallel-analysis: false
+    export-enabled: true
+    cache:
+      enabled: false
+      ttl-seconds: 30
   secrets:
     # Test-only 32-byte AES key (all zeros). Never use in production.
     master-key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="

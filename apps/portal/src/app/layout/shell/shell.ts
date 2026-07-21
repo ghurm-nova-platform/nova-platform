@@ -65,6 +65,7 @@ export class Shell {
     { labelEn: 'Dashboard', labelAr: 'لوحة التحكم', path: '/dashboard', icon: 'dashboard' },
     { labelEn: 'Collaboration', labelAr: 'التعاون', path: '/collaboration', icon: 'groups' },
     { labelEn: 'Knowledge', labelAr: 'المعرفة', path: '/knowledge', icon: 'menu_book' },
+    { labelEn: 'PR Review', labelAr: 'مراجعة الطلبات', path: '/pr-review', icon: 'fact_check' },
     { labelEn: 'Organizations', labelAr: 'المنظمات', path: '/organizations', icon: 'business' },
     { labelEn: 'Projects', labelAr: 'المشاريع', path: '/projects', icon: 'folder' },
     { labelEn: 'Model providers', labelAr: 'مزودو النماذج', path: '/model-providers', icon: 'hub' },

@@ -32,6 +32,11 @@ export const routes: Routes = [
           import('./features/knowledge-engine/knowledge-engine-page').then((m) => m.KnowledgeEnginePage),
       },
       {
+        path: 'pr-review',
+        loadComponent: () =>
+          import('./features/pr-review/pr-review-page').then((m) => m.PrReviewPage),
+      },
+      {
         path: 'organizations',
         loadComponent: () =>
           import('./features/organizations/organizations-page').then((m) => m.OrganizationsPage),
