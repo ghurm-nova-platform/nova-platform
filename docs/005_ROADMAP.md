@@ -72,6 +72,14 @@
 
 **Exit criteria:** Beta 0.1 is deployable with documented limitations, monitoring, rollback, and support procedures.
 
+### Sprint 5 — Enterprise Dashboard (Phase 2)
+
+- Read-only executive dashboard aggregating existing domain APIs
+- Portal `/dashboard` with pipeline charts, tables, and 30s polling
+- CSV/Excel/PDF export; in-memory cache with admin refresh
+
+**Exit criteria:** Operators can view unified pipeline/release/deployment/audit signals without new operational tables or real-time infrastructure.
+
 ## After Beta
 
 - Multiple collaborating engineering agents

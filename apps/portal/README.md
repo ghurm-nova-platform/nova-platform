@@ -2,6 +2,14 @@
 
 Angular 20 administration portal for organizations, projects, agents, feedback, policies, usage, and settings.
 
+## Sprint 5 Phase 2 scope
+
+- Enterprise Dashboard under `/dashboard` (default landing route)
+- Read-only snapshot across pipeline, releases, deployments, environments, audit, approvals, CI, rollbacks, and cost placeholder
+- ECharts pipeline and environment charts; HTTP polling using API refresh rate (default 30s)
+- DASHBOARD_* permission helper; admin cache refresh and CSV export
+- Safety statement: aggregates existing domain data only; never mutates business records
+
 ## Sprint 2 Phase 1 scope
 
 - Orchestration runs under `/orchestration-runs`
