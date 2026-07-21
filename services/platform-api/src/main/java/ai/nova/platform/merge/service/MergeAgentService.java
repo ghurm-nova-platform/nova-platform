@@ -2,6 +2,7 @@ package ai.nova.platform.merge.service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -10,6 +11,11 @@ import org.springframework.stereotype.Service;
 import ai.nova.platform.approval.dto.ApprovalDtos.ApprovalDecision;
 import ai.nova.platform.approval.entity.ApprovalDecisionValue;
 import ai.nova.platform.approval.service.ApprovalStorageService;
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.ci.dto.CiDtos.CiObservationOperation;
 import ai.nova.platform.ci.service.CiStorageService;
 import ai.nova.platform.git.dto.GitDtos.GitOperation;
@@ -63,6 +69,7 @@ public class MergeAgentService {
     private final MergeRemoteVerifier remoteVerifier;
     private final MergeStorageService storageService;
     private final MergeProvider mergeProvider;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public MergeAgentService(
             MergeAuthorizationService authorizationService,
@@ -78,7 +85,8 @@ public class MergeAgentService {
             MergeValidator mergeValidator,
             MergeRemoteVerifier remoteVerifier,
             MergeStorageService storageService,
-            MergeProvider mergeProvider) {
+            MergeProvider mergeProvider,
+            AuditRecordingSupport auditRecordingSupport) {
         this.authorizationService = authorizationService;
         this.properties = properties;
         this.pullRequestProperties = pullRequestProperties;
@@ -93,6 +101,7 @@ public class MergeAgentService {
         this.remoteVerifier = remoteVerifier;
         this.storageService = storageService;
         this.mergeProvider = mergeProvider;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     public MergeOperation run(MergeRunRequest request, AuthenticatedUser user) {
@@ -177,10 +186,12 @@ public class MergeAgentService {
         if (!validation.passed()) {
             storageService.appendEvent(
                     operationId, MergeEventType.VALIDATION_FAILED, validation.errorMessage(), Instant.now());
+            publishAudit(user, task, operationId, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", validation.errorCode()));
             return storageService.markFailed(operationId, validation.errorCode(), validation.errorMessage(), eligible);
         }
 
         storageService.appendEvent(operationId, MergeEventType.VALIDATION_PASSED, "All blocking checks passed", Instant.now());
+        publishAudit(user, task, operationId, AuditAction.VALIDATE, AuditResult.SUCCESS, Map.of("operationId", operationId.toString()));
         storageService.updateStatus(operationId, MergeStatus.MERGING);
         storageService.appendEvent(operationId, MergeEventType.MERGE_STARTED, "Calling merge provider", Instant.now());
 
@@ -254,7 +265,7 @@ public class MergeAgentService {
                 Instant.now());
 
         MergeOutcome persisted = MergeRemoteVerifier.toPersistedOutcome(verified, outcome);
-        return storageService.markSucceeded(
+        MergeOperation result = storageService.markSucceeded(
                 operationId,
                 mergeProvider.providerId(),
                 persisted.mergeCommitSha(),
@@ -263,6 +274,8 @@ public class MergeAgentService {
                 persisted.providerMessage(),
                 persisted.alreadyMerged(),
                 eligible);
+        publishAudit(user, task, operationId, AuditAction.MERGE, AuditResult.SUCCESS, Map.of("operationId", operationId.toString()));
+        return result;
     }
 
     public MergeOperation getLatest(UUID taskId, AuthenticatedUser user) {
@@ -376,7 +389,35 @@ public class MergeAgentService {
 
     private MergeOperation failVerification(UUID operationId, String code, String message, boolean eligible) {
         storageService.appendEvent(operationId, MergeEventType.VERIFY_FAILED, message, Instant.now());
-        return storageService.markFailed(operationId, code, message, eligible);
+        MergeOperation failed = storageService.markFailed(operationId, code, message, eligible);
+        return failed;
+    }
+
+    private void publishAudit(
+            AuthenticatedUser user,
+            AgentOrchestrationTask task,
+            UUID operationId,
+            AuditAction action,
+            AuditResult result,
+            Map<String, Object> details) {
+        try {
+            Map<String, Object> enriched = new java.util.LinkedHashMap<>(details);
+            if (operationId != null && !enriched.containsKey("operationId")) {
+                enriched.put("operationId", operationId.toString());
+            }
+            auditRecordingSupport.recordDomainEvent(
+                    user,
+                    task.getProjectId(),
+                    AuditEntityType.MERGE,
+                    operationId,
+                    task.getDisplayName(),
+                    action,
+                    result,
+                    AuditSource.MERGE_AGENT,
+                    enriched);
+        } catch (RuntimeException ignored) {
+            // AuditPublisher swallows failures; guard against unexpected propagation.
+        }
     }
 
     private UUID resolveOperationId(AgentOrchestrationTask task, ApprovalDecision approval, UUID organizationId) {

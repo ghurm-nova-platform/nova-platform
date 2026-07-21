@@ -4,12 +4,18 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.deployment.entity.DeploymentEnvironmentEntity;
 import ai.nova.platform.deployment.entity.DeploymentOperationEntity;
 import ai.nova.platform.deployment.repository.DeploymentEnvironmentRepository;
@@ -48,6 +54,7 @@ public class RollbackManagerService {
     private final ReleaseOperationRepository releaseOperationRepository;
     private final DeploymentOperationRepository deploymentOperationRepository;
     private final DeploymentEnvironmentRepository environmentRepository;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public RollbackManagerService(
             RollbackProperties properties,
@@ -58,7 +65,8 @@ public class RollbackManagerService {
             RollbackPlanRepository planRepository,
             ReleaseOperationRepository releaseOperationRepository,
             DeploymentOperationRepository deploymentOperationRepository,
-            DeploymentEnvironmentRepository environmentRepository) {
+            DeploymentEnvironmentRepository environmentRepository,
+            AuditRecordingSupport auditRecordingSupport) {
         this.properties = properties;
         this.authorizationService = authorizationService;
         this.storageService = storageService;
@@ -68,6 +76,7 @@ public class RollbackManagerService {
         this.releaseOperationRepository = releaseOperationRepository;
         this.deploymentOperationRepository = deploymentOperationRepository;
         this.environmentRepository = environmentRepository;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     @Transactional
@@ -151,6 +160,16 @@ public class RollbackManagerService {
                 hashResult.planJson(),
                 hashResult.planHash(),
                 user.getUserId());
+        auditRecordingSupport.recordDomainEvent(
+                user,
+                current.getProjectId(),
+                AuditEntityType.ROLLBACK,
+                created.getId(),
+                created.getCurrentVersion() + "->" + created.getTargetVersion(),
+                AuditAction.CREATE,
+                AuditResult.SUCCESS,
+                AuditSource.ROLLBACK_MANAGER,
+                Map.of("strategy", request.strategy().name(), "environment", environmentCode));
         return storageService.toDto(created);
     }
 

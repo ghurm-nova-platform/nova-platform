@@ -3,6 +3,7 @@ package ai.nova.platform.release.service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -10,6 +11,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.project.ProjectRepository;
 import ai.nova.platform.release.config.ReleaseProperties;
 import ai.nova.platform.release.dto.ReleaseDtos.ArtifactRef;
@@ -45,6 +51,7 @@ public class ReleaseManagerService {
     private final ReleaseVersionService versionService;
     private final ReleaseOperationRepository operationRepository;
     private final ProjectRepository projectRepository;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public ReleaseManagerService(
             ReleaseProperties properties,
@@ -53,7 +60,8 @@ public class ReleaseManagerService {
             ReleaseManifestService manifestService,
             ReleaseVersionService versionService,
             ReleaseOperationRepository operationRepository,
-            ProjectRepository projectRepository) {
+            ProjectRepository projectRepository,
+            AuditRecordingSupport auditRecordingSupport) {
         this.properties = properties;
         this.authorizationService = authorizationService;
         this.storageService = storageService;
@@ -61,6 +69,7 @@ public class ReleaseManagerService {
         this.versionService = versionService;
         this.operationRepository = operationRepository;
         this.projectRepository = projectRepository;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     @Transactional
@@ -134,6 +143,7 @@ public class ReleaseManagerService {
                 user.getUserId(),
                 contents,
                 artifacts);
+        publishAudit(user, created, AuditAction.CREATE, AuditResult.SUCCESS, Map.of("status", created.getStatus().name()));
         return storageService.toDto(created);
     }
 
@@ -165,6 +175,7 @@ public class ReleaseManagerService {
         }
 
         storageService.markPreparing(releaseId);
+        publishAudit(user, entity, AuditAction.PREPARE, AuditResult.SUCCESS, Map.of("releaseId", releaseId.toString()));
         try {
             ManifestResult manifest = manifestService.build(
                     storageService.require(releaseId),
@@ -178,12 +189,17 @@ public class ReleaseManagerService {
                         "RELEASE_MANIFEST_CHANGED",
                         "Release manifest hash changed unexpectedly");
             }
-            return storageService.toDto(storageService.markReady(releaseId, manifest));
+            ReleaseOperationEntity ready = storageService.markReady(releaseId, manifest);
+            publishAudit(user, ready, AuditAction.READY, AuditResult.SUCCESS, Map.of("status", ready.getStatus().name()));
+            return storageService.toDto(ready);
         } catch (ApiException ex) {
             storageService.markFailed(releaseId, ex.getCode(), ex.getMessage());
+            publishAudit(user, entity, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", ex.getCode()));
             throw ex;
         } catch (RuntimeException ex) {
             storageService.markFailed(releaseId, "RELEASE_MANIFEST_CHANGED", ex.getMessage());
+            publishAudit(
+                    user, entity, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", "RELEASE_MANIFEST_CHANGED"));
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "RELEASE_MANIFEST_CHANGED", ex.getMessage());
         }
     }
@@ -213,11 +229,19 @@ public class ReleaseManagerService {
                 entity, storageService.contents(releaseId), storageService.artifacts(releaseId));
         if (!Objects.equals(entity.getManifestHash(), recomputed.manifestHash())) {
             storageService.markFailed(releaseId, "RELEASE_MANIFEST_CHANGED", "Manifest hash mismatch on publish");
+            publishAudit(
+                    user,
+                    entity,
+                    AuditAction.FAIL,
+                    AuditResult.FAILURE,
+                    Map.of("errorCode", "RELEASE_MANIFEST_CHANGED"));
             throw new ApiException(
                     HttpStatus.CONFLICT, "RELEASE_MANIFEST_CHANGED", "Manifest hash mismatch on publish");
         }
 
-        return storageService.toDto(storageService.markPublished(releaseId));
+        ReleaseOperationEntity published = storageService.markPublished(releaseId);
+        publishAudit(user, published, AuditAction.PUBLISH, AuditResult.SUCCESS, Map.of("status", published.getStatus().name()));
+        return storageService.toDto(published);
     }
 
     @Transactional(readOnly = true)
@@ -292,5 +316,27 @@ public class ReleaseManagerService {
             result.add(new ArtifactFingerprint(ref.artifactType(), ref.artifactUri(), ref.artifactHash()));
         }
         return result;
+    }
+
+    private void publishAudit(
+            AuthenticatedUser user,
+            ReleaseOperationEntity entity,
+            AuditAction action,
+            AuditResult result,
+            Map<String, Object> details) {
+        try {
+            auditRecordingSupport.recordDomainEvent(
+                    user,
+                    entity.getProjectId(),
+                    AuditEntityType.RELEASE,
+                    entity.getId(),
+                    entity.getReleaseName(),
+                    action,
+                    result,
+                    AuditSource.RELEASE_MANAGER,
+                    details);
+        } catch (RuntimeException ignored) {
+            // AuditPublisher swallows failures; guard against unexpected propagation.
+        }
     }
 }

@@ -3,12 +3,18 @@ package ai.nova.platform.deployment.service;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.deployment.config.DeploymentProperties;
 import ai.nova.platform.deployment.dto.DeploymentDtos.Deployment;
 import ai.nova.platform.deployment.dto.DeploymentDtos.EnvironmentView;
@@ -41,6 +47,7 @@ public class DeploymentObservationService {
     private final DeploymentOperationRepository operationRepository;
     private final DeploymentEnvironmentRepository environmentRepository;
     private final ReleaseOperationRepository releaseOperationRepository;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public DeploymentObservationService(
             DeploymentProperties properties,
@@ -48,13 +55,15 @@ public class DeploymentObservationService {
             DeploymentStorageService storageService,
             DeploymentOperationRepository operationRepository,
             DeploymentEnvironmentRepository environmentRepository,
-            ReleaseOperationRepository releaseOperationRepository) {
+            ReleaseOperationRepository releaseOperationRepository,
+            AuditRecordingSupport auditRecordingSupport) {
         this.properties = properties;
         this.authorizationService = authorizationService;
         this.storageService = storageService;
         this.operationRepository = operationRepository;
         this.environmentRepository = environmentRepository;
         this.releaseOperationRepository = releaseOperationRepository;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     @Transactional
@@ -129,6 +138,16 @@ public class DeploymentObservationService {
                 request.finishedAt(),
                 request.logMetadata(),
                 request.artifacts());
+        auditRecordingSupport.recordDomainEvent(
+                user,
+                release.getProjectId(),
+                AuditEntityType.DEPLOYMENT,
+                created.getId(),
+                created.getExternalDeploymentKey(),
+                AuditAction.OBSERVE,
+                AuditResult.SUCCESS,
+                AuditSource.DEPLOYMENT_OBSERVATION,
+                Map.of("releaseId", release.getId().toString(), "environment", environment.getCode()));
         return storageService.toDto(created);
     }
 

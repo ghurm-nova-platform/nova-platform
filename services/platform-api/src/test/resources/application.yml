@@ -230,6 +230,13 @@ nova:
     allow-delete: false
     retain-history: true
     allow-multiple-production: false
+  audit:
+    enabled: true
+    immutable: true
+    retain-history: true
+    # Avoid capturing every MockMvc call (many tests use synthetic principals/orgs).
+    capture-rest-api: false
+    capture-security-events: true
   secrets:
     # Test-only 32-byte AES key (all zeros). Never use in production.
     master-key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="

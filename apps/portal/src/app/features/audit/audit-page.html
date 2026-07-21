@@ -1,0 +1,122 @@
+<section class="audit-page">
+  <header class="page-header">
+    <div>
+      <h1>Audit Center</h1>
+      <p class="subtitle safety">
+        Enterprise Audit Center is append-only and read-only in the portal. It never modifies business data.
+      </p>
+      <p class="subtitle">
+        Search immutable audit events across environments, policies, deployments, rollbacks, and security activity.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="banner error">You need AUDIT_READ to use this page.</p>
+  } @else {
+    <form class="search-form" [formGroup]="form" (ngSubmit)="search()">
+      <mat-form-field appearance="outline">
+        <mat-label>Project ID</mat-label>
+        <input matInput formControlName="projectId" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Entity type</mat-label>
+        <mat-select formControlName="entityType">
+          <mat-option value="">Any</mat-option>
+          <mat-option value="ENVIRONMENT">ENVIRONMENT</mat-option>
+          <mat-option value="POLICY">POLICY</mat-option>
+          <mat-option value="DEPLOYMENT">DEPLOYMENT</mat-option>
+          <mat-option value="ROLLBACK">ROLLBACK</mat-option>
+          <mat-option value="USER">USER</mat-option>
+          <mat-option value="CONFIGURATION">CONFIGURATION</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Entity ID</mat-label>
+        <input matInput formControlName="entityId" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Action</mat-label>
+        <mat-select formControlName="action">
+          <mat-option value="">Any</mat-option>
+          <mat-option value="CREATE">CREATE</mat-option>
+          <mat-option value="UPDATE">UPDATE</mat-option>
+          <mat-option value="ACCESS">ACCESS</mat-option>
+          <mat-option value="LOGIN">LOGIN</mat-option>
+          <mat-option value="LOGOUT">LOGOUT</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Severity</mat-label>
+        <mat-select formControlName="severity">
+          <mat-option value="">Any</mat-option>
+          <mat-option value="LOW">LOW</mat-option>
+          <mat-option value="MEDIUM">MEDIUM</mat-option>
+          <mat-option value="HIGH">HIGH</mat-option>
+          <mat-option value="CRITICAL">CRITICAL</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Correlation ID</mat-label>
+        <input matInput formControlName="correlationId" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Request ID</mat-label>
+        <input matInput formControlName="requestId" />
+      </mat-form-field>
+      <button mat-flat-button color="primary" type="submit" [disabled]="loading()">Search</button>
+      <button mat-stroked-button type="button" (click)="loadRecent()" [disabled]="loading()">Recent</button>
+    </form>
+
+    @if (loading()) {
+      <mat-spinner diameter="40"></mat-spinner>
+    }
+    @if (error()) {
+      <p class="banner error">{{ error() }}</p>
+    }
+
+    <div class="layout">
+      <div class="list-panel">
+        <h2>Events ({{ total() }})</h2>
+        @for (event of events(); track event.id) {
+          <button
+            type="button"
+            class="event-row"
+            [class.selected]="selected()?.id === event.id"
+            (click)="selectEvent(event)"
+          >
+            <span class="action">{{ event.action }}</span>
+            <span class="entity">{{ event.entityType }} {{ event.entityLabel ?? event.entityId ?? '' }}</span>
+            <span class="meta">{{ event.createdAt }}</span>
+          </button>
+        }
+      </div>
+
+      @if (selected(); as detail) {
+        <div class="detail-panel">
+          <h2>Event detail</h2>
+          <dl>
+            <dt>ID</dt>
+            <dd>{{ detail.id }}</dd>
+            <dt>Action</dt>
+            <dd>{{ detail.action }}</dd>
+            <dt>Result</dt>
+            <dd>{{ detail.result }}</dd>
+            <dt>Severity</dt>
+            <dd>{{ detail.severity }}</dd>
+            <dt>Source</dt>
+            <dd>{{ detail.source }}</dd>
+            <dt>User</dt>
+            <dd>{{ detail.username ?? detail.userId ?? '—' }}</dd>
+            <dt>Correlation</dt>
+            <dd>{{ detail.correlationId ?? '—' }}</dd>
+            <dt>Request</dt>
+            <dd>{{ detail.requestId ?? '—' }}</dd>
+            <dt>Created</dt>
+            <dd>{{ detail.createdAt }}</dd>
+          </dl>
+        </div>
+      }
+    </div>
+  }
+</section>

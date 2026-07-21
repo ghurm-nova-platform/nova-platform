@@ -3,6 +3,7 @@ package ai.nova.platform.approval.service;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -10,6 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.nova.platform.approval.config.ApprovalGateProperties;
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.approval.dto.ApprovalDtos.ApprovalDecision;
 import ai.nova.platform.approval.dto.ApprovalDtos.ApprovalRequirement;
 import ai.nova.platform.approval.dto.ApprovalDtos.ApprovalRunRequest;
@@ -46,6 +52,7 @@ public class ApprovalGateService {
     private final ApprovalStaleGuard staleGuard;
     private final ApprovalCommentSanitizer commentSanitizer;
     private final ApprovalDecisionRepository decisionRepository;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public ApprovalGateService(
             ApprovalAuthorizationService authorizationService,
@@ -59,7 +66,8 @@ public class ApprovalGateService {
             ApprovalStorageService storageService,
             ApprovalStaleGuard staleGuard,
             ApprovalCommentSanitizer commentSanitizer,
-            ApprovalDecisionRepository decisionRepository) {
+            ApprovalDecisionRepository decisionRepository,
+            AuditRecordingSupport auditRecordingSupport) {
         this.authorizationService = authorizationService;
         this.properties = properties;
         this.taskRepository = taskRepository;
@@ -72,6 +80,7 @@ public class ApprovalGateService {
         this.staleGuard = staleGuard;
         this.commentSanitizer = commentSanitizer;
         this.decisionRepository = decisionRepository;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     @Transactional
@@ -121,6 +130,7 @@ public class ApprovalGateService {
 
         if (!bundle.hasMinimumPersistenceEvidence()) {
             storageService.markFailed(operationId, "APPROVAL_EVIDENCE_INCOMPLETE", calculation.reasonSummary());
+            publishAudit(user, task, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", "APPROVAL_EVIDENCE_INCOMPLETE"));
             return buildTransientDecision(
                     task, policy, bundle, evidenceFp, decisionFp, calculation, requiredHumanApprovals, receivedApprovals, rejectionCount, rules);
         }
@@ -149,6 +159,12 @@ public class ApprovalGateService {
                 ? ApprovalOperationStatus.WAITING_FOR_HUMAN
                 : ApprovalOperationStatus.SUCCEEDED;
         storageService.updateOperationStatus(operationId, opStatus, calculation.decision(), Instant.now());
+        publishAudit(
+                user,
+                task,
+                AuditAction.VALIDATE,
+                AuditResult.SUCCESS,
+                Map.of("decisionId", decisionId.toString(), "decision", calculation.decision().name()));
         return storageService.findLatest(task.getId(), user.getOrganizationId());
     }
 
@@ -223,7 +239,9 @@ public class ApprovalGateService {
                 decisionEntity.getEvidenceFingerprint(),
                 request != null ? request.idempotencyKey() : null);
 
-        return recalculateHumanDecision(task, policy, decisionEntity, user);
+        ApprovalDecision result = recalculateHumanDecision(task, policy, decisionEntity, user);
+        publishAudit(user, task, AuditAction.APPROVE, AuditResult.SUCCESS, Map.of("decisionId", decisionEntity.getId().toString()));
+        return result;
     }
 
     @Transactional
@@ -264,7 +282,9 @@ public class ApprovalGateService {
                 decisionEntity.getEvidenceFingerprint(),
                 request != null ? request.idempotencyKey() : null);
 
-        return recalculateHumanDecision(task, policy, decisionEntity, user);
+        ApprovalDecision result = recalculateHumanDecision(task, policy, decisionEntity, user);
+        publishAudit(user, task, AuditAction.REJECT, AuditResult.SUCCESS, Map.of("decisionId", decisionEntity.getId().toString()));
+        return result;
     }
 
     private ApprovalDecision recalculateHumanDecision(
@@ -421,5 +441,27 @@ public class ApprovalGateService {
                 .findByIdAndOrganizationId(taskId, organizationId)
                 .orElseThrow(() -> new ApiException(
                         HttpStatus.NOT_FOUND, "APPROVAL_TASK_NOT_FOUND", "Task not found for approval gate"));
+    }
+
+    private void publishAudit(
+            AuthenticatedUser user,
+            AgentOrchestrationTask task,
+            AuditAction action,
+            AuditResult result,
+            Map<String, Object> details) {
+        try {
+            auditRecordingSupport.recordDomainEvent(
+                    user,
+                    task.getProjectId(),
+                    AuditEntityType.APPROVAL,
+                    task.getId(),
+                    task.getDisplayName(),
+                    action,
+                    result,
+                    AuditSource.APPROVAL_GATE,
+                    details);
+        } catch (RuntimeException ignored) {
+            // AuditPublisher swallows failures; guard against unexpected propagation.
+        }
     }
 }

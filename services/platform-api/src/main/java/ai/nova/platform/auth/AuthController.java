@@ -1,5 +1,6 @@
 package ai.nova.platform.auth;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
@@ -29,8 +30,9 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public TokenResponse login(@Valid @RequestBody LoginRequest request) {
-        return authService.login(request.email(), request.password());
+    public TokenResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        return authService.login(
+                request.email(), request.password(), httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"));
     }
 
     @PostMapping("/refresh")
@@ -40,8 +42,9 @@ public class AuthController {
 
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void logout(@Valid @RequestBody LogoutRequest request) {
-        authService.logout(request.refreshToken());
+    public void logout(@Valid @RequestBody LogoutRequest request, HttpServletRequest httpRequest) {
+        authService.logout(
+                request.refreshToken(), httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"));
     }
 
     @GetMapping("/me")

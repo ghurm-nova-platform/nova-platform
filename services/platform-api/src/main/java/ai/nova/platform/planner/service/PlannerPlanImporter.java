@@ -11,6 +11,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.orchestration.dto.OrchestrationDtos.CreateDependencyRequest;
 import ai.nova.platform.orchestration.dto.OrchestrationDtos.CreateRunRequest;
 import ai.nova.platform.orchestration.dto.OrchestrationDtos.CreateTaskRequest;
@@ -41,6 +46,7 @@ public class PlannerPlanImporter {
     private final OrchestrationTaskService taskService;
     private final OrchestrationGraphService graphService;
     private final ObjectMapper objectMapper;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public PlannerPlanImporter(
             PlannerAuthorizationService authorizationService,
@@ -48,13 +54,15 @@ public class PlannerPlanImporter {
             OrchestrationRunService runService,
             OrchestrationTaskService taskService,
             OrchestrationGraphService graphService,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            AuditRecordingSupport auditRecordingSupport) {
         this.authorizationService = authorizationService;
         this.planValidator = planValidator;
         this.runService = runService;
         this.taskService = taskService;
         this.graphService = graphService;
         this.objectMapper = objectMapper;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     /**
@@ -151,6 +159,7 @@ public class PlannerPlanImporter {
             graphService.addDependency(run.id(), new CreateDependencyRequest(fromId, toId, type), user);
         }
 
+        publishAudit(user, run.id(), request.projectId(), AuditAction.COMPLETE, Map.of("runId", run.id().toString()));
         return runService.get(run.id(), user);
     }
 
@@ -161,5 +170,27 @@ public class PlannerPlanImporter {
             return suffix;
         }
         return base + " [" + suffix + "]";
+    }
+
+    private void publishAudit(
+            AuthenticatedUser user,
+            UUID runId,
+            UUID projectId,
+            AuditAction action,
+            Map<String, Object> details) {
+        try {
+            auditRecordingSupport.recordDomainEvent(
+                    user,
+                    projectId,
+                    AuditEntityType.CONFIGURATION,
+                    runId,
+                    "planner-import",
+                    action,
+                    AuditResult.SUCCESS,
+                    AuditSource.PLANNER,
+                    details);
+        } catch (RuntimeException ignored) {
+            // AuditPublisher swallows failures; guard against unexpected propagation.
+        }
     }
 }

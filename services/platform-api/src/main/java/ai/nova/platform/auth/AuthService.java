@@ -16,6 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import ai.nova.platform.auth.AuthDtos.MeResponse;
 import ai.nova.platform.auth.AuthDtos.TokenResponse;
+import ai.nova.platform.audit.config.AuditProperties;
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.permission.Permission;
 import ai.nova.platform.role.Role;
 import ai.nova.platform.security.AuthenticatedUser;
@@ -30,26 +34,49 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final AuditProperties auditProperties;
+    private final AuditRecordingSupport auditRecordingSupport;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public AuthService(
             UserAccountRepository userAccountRepository,
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
-            JwtService jwtService) {
+            JwtService jwtService,
+            AuditProperties auditProperties,
+            AuditRecordingSupport auditRecordingSupport) {
         this.userAccountRepository = userAccountRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.auditProperties = auditProperties;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     @Transactional
-    public TokenResponse login(String email, String password) {
+    public TokenResponse login(String email, String password, String ipAddress, String userAgent) {
         UserAccount user = userAccountRepository.findByEmailIgnoreCase(email.trim())
-                .orElseThrow(() -> new AuthenticationFailedException("Invalid email or password"));
+                .orElseThrow(() -> {
+                    publishLoginFailure(null, email, ipAddress, userAgent);
+                    return new AuthenticationFailedException("Invalid email or password");
+                });
 
         if (!user.isEnabled() || !passwordEncoder.matches(password, user.getPasswordHash())) {
+            publishLoginFailure(user, email, ipAddress, userAgent);
             throw new AuthenticationFailedException("Invalid email or password");
+        }
+
+        UUID sessionId = UUID.randomUUID();
+        if (auditProperties.isEnabled() && auditProperties.isCaptureSecurityEvents()) {
+            auditRecordingSupport.recordSecurityEvent(
+                    user.getOrganization().getId(),
+                    user.getId(),
+                    user.getDisplayName(),
+                    sessionId,
+                    AuditAction.LOGIN,
+                    AuditResult.SUCCESS,
+                    ipAddress,
+                    userAgent);
         }
 
         return issueTokens(user);
@@ -77,10 +104,22 @@ public class AuthService {
     }
 
     @Transactional
-    public void logout(String refreshTokenValue) {
+    public void logout(String refreshTokenValue, String ipAddress, String userAgent) {
         refreshTokenRepository.findByTokenHash(hashToken(refreshTokenValue)).ifPresent(token -> {
             token.revoke(Instant.now());
             refreshTokenRepository.save(token);
+            UserAccount user = token.getUser();
+            if (auditProperties.isEnabled() && auditProperties.isCaptureSecurityEvents()) {
+                auditRecordingSupport.recordSecurityEvent(
+                        user.getOrganization().getId(),
+                        user.getId(),
+                        user.getDisplayName(),
+                        null,
+                        AuditAction.LOGOUT,
+                        AuditResult.SUCCESS,
+                        ipAddress,
+                        userAgent);
+            }
         });
     }
 
@@ -96,6 +135,27 @@ public class AuthService {
                 user.getDisplayName(),
                 roleCodes(user),
                 permissionCodes(user));
+    }
+
+    private void publishLoginFailure(UserAccount user, String email, String ipAddress, String userAgent) {
+        if (!auditProperties.isEnabled() || !auditProperties.isCaptureSecurityEvents()) {
+            return;
+        }
+        UUID organizationId = user != null ? user.getOrganization().getId() : null;
+        UUID userId = user != null ? user.getId() : null;
+        String username = user != null ? user.getDisplayName() : email;
+        if (organizationId == null) {
+            return;
+        }
+        auditRecordingSupport.recordSecurityEvent(
+                organizationId,
+                userId,
+                username,
+                null,
+                AuditAction.LOGIN,
+                AuditResult.FAILURE,
+                ipAddress,
+                userAgent);
     }
 
     private TokenResponse issueTokens(UserAccount user) {

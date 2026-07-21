@@ -16,6 +16,11 @@ import ai.nova.platform.agent.runtime.ExecutionRequest;
 import ai.nova.platform.agent.runtime.RuntimeFinalResponse;
 import ai.nova.platform.agent.runtime.RuntimeMessage;
 import ai.nova.platform.agent.runtime.RuntimeTurnResult;
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.coding.dto.CodingDtos.GeneratedArtifactResponse;
 import ai.nova.platform.coding.service.ArtifactStorageService;
 import ai.nova.platform.orchestration.entity.AgentOrchestrationRun;
@@ -52,6 +57,7 @@ public class ReviewAgentService {
     private final ReviewJsonParser jsonParser;
     private final ReviewValidator validator;
     private final ReviewStorageService storageService;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public ReviewAgentService(
             ReviewAuthorizationService authorizationService,
@@ -65,7 +71,8 @@ public class ReviewAgentService {
             ReviewPromptBuilder promptBuilder,
             ReviewJsonParser jsonParser,
             ReviewValidator validator,
-            ReviewStorageService storageService) {
+            ReviewStorageService storageService,
+            AuditRecordingSupport auditRecordingSupport) {
         this.authorizationService = authorizationService;
         this.properties = properties;
         this.taskRepository = taskRepository;
@@ -78,6 +85,7 @@ public class ReviewAgentService {
         this.jsonParser = jsonParser;
         this.validator = validator;
         this.storageService = storageService;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     public ReviewResult run(ReviewRunRequest request, AuthenticatedUser user) {
@@ -87,6 +95,7 @@ public class ReviewAgentService {
         }
 
         AgentOrchestrationTask task = requireTask(request.taskId(), user.getOrganizationId());
+        publishTaskAudit(user, task, AuditAction.CREATE, AuditResult.SUCCESS, Map.of());
         AgentOrchestrationRun run = runRepository
                 .findByIdAndOrganizationId(task.getRunId(), user.getOrganizationId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "ORCHESTRATION_RUN_NOT_FOUND", "Run not found"));
@@ -146,27 +155,38 @@ public class ReviewAgentService {
                 null);
 
         long started = System.currentTimeMillis();
-        // External AI call — keep outside DB write transactions.
-        RuntimeTurnResult turn = agentRuntimeClient.execute(executionRequest);
-        long reviewTimeMs = System.currentTimeMillis() - started;
-        if (!turn.isFinal() || turn.finalResponse() == null) {
-            throw new ApiException(
-                    HttpStatus.BAD_REQUEST,
-                    "REVIEW_INVALID_JSON",
-                    "Review agent must return a final JSON response without tool calls");
-        }
-        RuntimeFinalResponse finalResponse = turn.finalResponse();
-        ParsedReviewOutput parsed = jsonParser.parse(finalResponse.responseText());
-        validator.validate(parsed);
+        try {
+            RuntimeTurnResult turn = agentRuntimeClient.execute(executionRequest);
+            long reviewTimeMs = System.currentTimeMillis() - started;
+            if (!turn.isFinal() || turn.finalResponse() == null) {
+                publishTaskAudit(
+                        user, task, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", "REVIEW_INVALID_JSON"));
+                throw new ApiException(
+                        HttpStatus.BAD_REQUEST,
+                        "REVIEW_INVALID_JSON",
+                        "Review agent must return a final JSON response without tool calls");
+            }
+            RuntimeFinalResponse finalResponse = turn.finalResponse();
+            ParsedReviewOutput parsed = jsonParser.parse(finalResponse.responseText());
+            validator.validate(parsed);
 
-        return storageService.replaceReview(
-                task,
-                artifacts,
-                parsed,
-                (long) finalResponse.totalTokens(),
-                model,
-                provider,
-                reviewTimeMs);
+            ReviewResult result = storageService.replaceReview(
+                    task,
+                    artifacts,
+                    parsed,
+                    (long) finalResponse.totalTokens(),
+                    model,
+                    provider,
+                    reviewTimeMs);
+            publishTaskAudit(user, task, AuditAction.COMPLETE, AuditResult.SUCCESS, Map.of("approved", parsed.approved()));
+            return result;
+        } catch (ApiException ex) {
+            publishTaskAudit(user, task, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", ex.getCode()));
+            throw ex;
+        } catch (RuntimeException ex) {
+            publishTaskAudit(user, task, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", "REVIEW_FAILED"));
+            throw ex;
+        }
     }
 
     @Transactional(readOnly = true)
@@ -209,5 +229,27 @@ public class ReviewAgentService {
         }
         settings.put("visibility", project.getVisibility().name());
         return settings;
+    }
+
+    private void publishTaskAudit(
+            AuthenticatedUser user,
+            AgentOrchestrationTask task,
+            AuditAction action,
+            AuditResult result,
+            Map<String, Object> details) {
+        try {
+            auditRecordingSupport.recordDomainEvent(
+                    user,
+                    task.getProjectId(),
+                    AuditEntityType.TASK,
+                    task.getId(),
+                    task.getDisplayName(),
+                    action,
+                    result,
+                    AuditSource.REVIEW,
+                    details);
+        } catch (RuntimeException ignored) {
+            // AuditPublisher swallows failures; guard against unexpected propagation.
+        }
     }
 }

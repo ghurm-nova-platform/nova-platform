@@ -1,6 +1,7 @@
 package ai.nova.platform.planner.service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,11 @@ import ai.nova.platform.agent.runtime.ExecutionRequest;
 import ai.nova.platform.agent.runtime.RuntimeFinalResponse;
 import ai.nova.platform.agent.runtime.RuntimeMessage;
 import ai.nova.platform.agent.runtime.RuntimeTurnResult;
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.planner.config.PlannerProperties;
 import ai.nova.platform.planner.dto.PlannerDtos.ExecutionEstimate;
 import ai.nova.platform.planner.dto.PlannerDtos.ExecutionPlan;
@@ -46,6 +52,7 @@ public class PlannerService {
     private final PlannerEstimationService estimationService;
     private final PlannerProperties properties;
     private final ObjectMapper objectMapper;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public PlannerService(
             PlannerAuthorizationService authorizationService,
@@ -58,7 +65,8 @@ public class PlannerService {
             PlannerPlanValidator planValidator,
             PlannerEstimationService estimationService,
             PlannerProperties properties,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            AuditRecordingSupport auditRecordingSupport) {
         this.authorizationService = authorizationService;
         this.projectRepository = projectRepository;
         this.templateRepository = templateRepository;
@@ -70,6 +78,7 @@ public class PlannerService {
         this.estimationService = estimationService;
         this.properties = properties;
         this.objectMapper = objectMapper;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     public PlannerResponse plan(PlannerRequest request, AuthenticatedUser user) {
@@ -78,6 +87,8 @@ public class PlannerService {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "PLANNER_DISABLED", "Planner is disabled");
         }
         Project project = requireProject(request.projectId(), user.getOrganizationId());
+        UUID planOperationId = UUID.randomUUID();
+        publishAudit(user, project, planOperationId, AuditAction.CREATE, AuditResult.SUCCESS, Map.of());
         String objective = request.objective().trim();
         if (objective.length() > properties.getMaxObjectiveLength()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "PLANNER_OBJECTIVE_TOO_LONG", "Objective exceeds maximum length");
@@ -117,38 +128,72 @@ public class PlannerService {
                 null);
 
         // External AI call — no open DB write transaction around provider invocation.
-        RuntimeTurnResult turn = agentRuntimeClient.execute(executionRequest);
-        if (!turn.isFinal() || turn.finalResponse() == null) {
-            throw new ApiException(
-                    HttpStatus.BAD_REQUEST,
-                    "PLANNER_INVALID_OUTPUT",
-                    "Planner must return a final JSON response without tool calls");
-        }
-        RuntimeFinalResponse finalResponse = turn.finalResponse();
-        ExecutionPlan plan = jsonParser.parse(finalResponse.responseText(), objective);
-        planValidator.validate(plan);
-        ExecutionEstimate estimate = estimationService.estimate(plan);
-        ExecutionPlan enriched = new ExecutionPlan(
-                plan.objective(),
-                plan.executionMode(),
-                plan.failurePolicy(),
-                plan.maxParallelTasks(),
-                plan.maximumDurationMs(),
-                estimate.complexity(),
-                estimate.estimatedTokens(),
-                estimate.estimatedDurationSeconds(),
-                estimate.estimatedCostUsd(),
-                estimate.riskLevel(),
-                plan.tasks(),
-                plan.dependencies(),
-                plan.metadata());
+        try {
+            RuntimeTurnResult turn = agentRuntimeClient.execute(executionRequest);
+            if (!turn.isFinal() || turn.finalResponse() == null) {
+                publishAudit(
+                        user,
+                        project,
+                        planOperationId,
+                        AuditAction.FAIL,
+                        AuditResult.FAILURE,
+                        Map.of("errorCode", "PLANNER_INVALID_OUTPUT"));
+                throw new ApiException(
+                        HttpStatus.BAD_REQUEST,
+                        "PLANNER_INVALID_OUTPUT",
+                        "Planner must return a final JSON response without tool calls");
+            }
+            RuntimeFinalResponse finalResponse = turn.finalResponse();
+            ExecutionPlan plan = jsonParser.parse(finalResponse.responseText(), objective);
+            planValidator.validate(plan);
+            ExecutionEstimate estimate = estimationService.estimate(plan);
+            ExecutionPlan enriched = new ExecutionPlan(
+                    plan.objective(),
+                    plan.executionMode(),
+                    plan.failurePolicy(),
+                    plan.maxParallelTasks(),
+                    plan.maximumDurationMs(),
+                    estimate.complexity(),
+                    estimate.estimatedTokens(),
+                    estimate.estimatedDurationSeconds(),
+                    estimate.estimatedCostUsd(),
+                    estimate.riskLevel(),
+                    plan.tasks(),
+                    plan.dependencies(),
+                    plan.metadata());
 
-        return new PlannerResponse(
-                enriched,
-                estimate,
-                sanitizeRaw(finalResponse.responseText()),
-                template != null ? template.getId() : null,
-                true);
+            publishAudit(
+                    user,
+                    project,
+                    planOperationId,
+                    AuditAction.COMPLETE,
+                    AuditResult.SUCCESS,
+                    Map.of("taskCount", enriched.tasks() == null ? 0 : enriched.tasks().size()));
+            return new PlannerResponse(
+                    enriched,
+                    estimate,
+                    sanitizeRaw(finalResponse.responseText()),
+                    template != null ? template.getId() : null,
+                    true);
+        } catch (ApiException ex) {
+            publishAudit(
+                    user,
+                    project,
+                    planOperationId,
+                    AuditAction.FAIL,
+                    AuditResult.FAILURE,
+                    Map.of("errorCode", ex.getCode()));
+            throw ex;
+        } catch (RuntimeException ex) {
+            publishAudit(
+                    user,
+                    project,
+                    planOperationId,
+                    AuditAction.FAIL,
+                    AuditResult.FAILURE,
+                    Map.of("errorCode", "PLANNER_FAILED"));
+            throw ex;
+        }
     }
 
     @Transactional(readOnly = true)
@@ -197,5 +242,28 @@ public class PlannerService {
         }
         // Bound stored/returned raw planner text for clients.
         return raw.length() > 50000 ? raw.substring(0, 50000) : raw;
+    }
+
+    private void publishAudit(
+            AuthenticatedUser user,
+            Project project,
+            UUID operationId,
+            AuditAction action,
+            AuditResult result,
+            Map<String, Object> details) {
+        try {
+            auditRecordingSupport.recordDomainEvent(
+                    user,
+                    project.getId(),
+                    AuditEntityType.CONFIGURATION,
+                    operationId,
+                    "planner-plan",
+                    action,
+                    result,
+                    AuditSource.PLANNER,
+                    details);
+        } catch (RuntimeException ignored) {
+            // AuditPublisher swallows failures; guard against unexpected propagation.
+        }
     }
 }

@@ -16,6 +16,11 @@ import ai.nova.platform.agent.runtime.ExecutionRequest;
 import ai.nova.platform.agent.runtime.RuntimeFinalResponse;
 import ai.nova.platform.agent.runtime.RuntimeMessage;
 import ai.nova.platform.agent.runtime.RuntimeTurnResult;
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.coding.dto.CodingDtos.GeneratedArtifactResponse;
 import ai.nova.platform.coding.service.ArtifactStorageService;
 import ai.nova.platform.orchestration.entity.AgentOrchestrationRun;
@@ -61,6 +66,7 @@ public class PatchAgentService {
     private final PatchJsonParser jsonParser;
     private final PatchValidator validator;
     private final PatchStorageService storageService;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public PatchAgentService(
             PatchAuthorizationService authorizationService,
@@ -76,7 +82,8 @@ public class PatchAgentService {
             PatchPromptBuilder promptBuilder,
             PatchJsonParser jsonParser,
             PatchValidator validator,
-            PatchStorageService storageService) {
+            PatchStorageService storageService,
+            AuditRecordingSupport auditRecordingSupport) {
         this.authorizationService = authorizationService;
         this.properties = properties;
         this.taskRepository = taskRepository;
@@ -91,6 +98,7 @@ public class PatchAgentService {
         this.jsonParser = jsonParser;
         this.validator = validator;
         this.storageService = storageService;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     public PatchResult run(PatchRunRequest request, AuthenticatedUser user) {
@@ -100,6 +108,7 @@ public class PatchAgentService {
         }
 
         AgentOrchestrationTask task = requireTask(request.taskId(), user.getOrganizationId());
+        publishTaskAudit(user, task, AuditAction.CREATE, AuditResult.SUCCESS, Map.of());
         AgentOrchestrationRun run = runRepository
                 .findByIdAndOrganizationId(task.getRunId(), user.getOrganizationId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "ORCHESTRATION_RUN_NOT_FOUND", "Run not found"));
@@ -185,27 +194,39 @@ public class PatchAgentService {
                 null);
 
         long started = System.currentTimeMillis();
-        RuntimeTurnResult turn = agentRuntimeClient.execute(executionRequest);
-        long generationTimeMs = System.currentTimeMillis() - started;
-        if (!turn.isFinal() || turn.finalResponse() == null) {
-            throw new ApiException(
-                    HttpStatus.BAD_REQUEST,
-                    "PATCH_INVALID_JSON",
-                    "Patch agent must return a final JSON response without tool calls");
-        }
-        RuntimeFinalResponse finalResponse = turn.finalResponse();
-        ParsedPatchOutput parsed = jsonParser.parse(finalResponse.responseText());
-        ParsedDiff diff = validator.validate(parsed);
+        try {
+            RuntimeTurnResult turn = agentRuntimeClient.execute(executionRequest);
+            long generationTimeMs = System.currentTimeMillis() - started;
+            if (!turn.isFinal() || turn.finalResponse() == null) {
+                publishTaskAudit(
+                        user, task, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", "PATCH_INVALID_JSON"));
+                throw new ApiException(
+                        HttpStatus.BAD_REQUEST,
+                        "PATCH_INVALID_JSON",
+                        "Patch agent must return a final JSON response without tool calls");
+            }
+            RuntimeFinalResponse finalResponse = turn.finalResponse();
+            ParsedPatchOutput parsed = jsonParser.parse(finalResponse.responseText());
+            ParsedDiff diff = validator.validate(parsed);
 
-        return storageService.replaceResult(
-                task,
-                artifacts,
-                parsed,
-                diff,
-                (long) finalResponse.totalTokens(),
-                model,
-                provider,
-                generationTimeMs);
+            PatchResult result = storageService.replaceResult(
+                    task,
+                    artifacts,
+                    parsed,
+                    diff,
+                    (long) finalResponse.totalTokens(),
+                    model,
+                    provider,
+                    generationTimeMs);
+            publishTaskAudit(user, task, AuditAction.COMPLETE, AuditResult.SUCCESS, Map.of());
+            return result;
+        } catch (ApiException ex) {
+            publishTaskAudit(user, task, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", ex.getCode()));
+            throw ex;
+        } catch (RuntimeException ex) {
+            publishTaskAudit(user, task, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", "PATCH_FAILED"));
+            throw ex;
+        }
     }
 
     @Transactional(readOnly = true)
@@ -248,5 +269,27 @@ public class PatchAgentService {
         }
         settings.put("visibility", project.getVisibility().name());
         return settings;
+    }
+
+    private void publishTaskAudit(
+            AuthenticatedUser user,
+            AgentOrchestrationTask task,
+            AuditAction action,
+            AuditResult result,
+            Map<String, Object> details) {
+        try {
+            auditRecordingSupport.recordDomainEvent(
+                    user,
+                    task.getProjectId(),
+                    AuditEntityType.TASK,
+                    task.getId(),
+                    task.getDisplayName(),
+                    action,
+                    result,
+                    AuditSource.PATCH,
+                    details);
+        } catch (RuntimeException ignored) {
+            // AuditPublisher swallows failures; guard against unexpected propagation.
+        }
     }
 }

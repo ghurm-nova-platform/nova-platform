@@ -4,12 +4,18 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.ci.config.CiObservationProperties;
 import ai.nova.platform.ci.dto.CiDtos.CiObservationOperation;
 import ai.nova.platform.ci.dto.CiDtos.CiRunRequest;
@@ -50,6 +56,7 @@ public class CiObservationAgentService {
     private final CiProviderRegistry providerRegistry;
     private final CiHealthAggregator healthAggregator;
     private final CiStorageService storageService;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public CiObservationAgentService(
             CiAuthorizationService authorizationService,
@@ -60,7 +67,8 @@ public class CiObservationAgentService {
             ProjectRepositoryConfigService repositoryConfigService,
             CiProviderRegistry providerRegistry,
             CiHealthAggregator healthAggregator,
-            CiStorageService storageService) {
+            CiStorageService storageService,
+            AuditRecordingSupport auditRecordingSupport) {
         this.authorizationService = authorizationService;
         this.properties = properties;
         this.taskRepository = taskRepository;
@@ -70,6 +78,7 @@ public class CiObservationAgentService {
         this.providerRegistry = providerRegistry;
         this.healthAggregator = healthAggregator;
         this.storageService = storageService;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     public CiObservationOperation run(CiRunRequest request, AuthenticatedUser user) {
@@ -86,6 +95,7 @@ public class CiObservationAgentService {
         timeline.add(new TimelineEvent("STARTED", startedAt, "CI observation agent started"));
 
         AgentOrchestrationTask task = requireTask(request.taskId(), user.getOrganizationId());
+        publishTaskAudit(user, task, AuditAction.CREATE, AuditResult.SUCCESS, Map.of());
         projectRepository
                 .findByIdAndOrganizationId(task.getProjectId(), user.getOrganizationId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PROJECT_NOT_FOUND", "Project not found"));
@@ -155,12 +165,21 @@ public class CiObservationAgentService {
                     Instant.now(),
                     timeline);
             timeline.add(new TimelineEvent("COMPLETED", Instant.now(), "SUCCEEDED"));
+            publishTaskAudit(
+                    user,
+                    task,
+                    AuditAction.OBSERVE,
+                    AuditResult.SUCCESS,
+                    Map.of("operationId", operationId.toString(), "status", health.overallStatus().name()));
             return result;
         } catch (ApiException ex) {
             storageService.markFailed(operationId, ex.getCode(), ex.getMessage(), Instant.now(), timeline);
+            publishTaskAudit(user, task, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", ex.getCode()));
             throw ex;
         } catch (RuntimeException ex) {
             storageService.markFailed(operationId, "CI_FETCH_FAILED", ex.getMessage(), Instant.now(), timeline);
+            publishTaskAudit(
+                    user, task, AuditAction.FAIL, AuditResult.FAILURE, Map.of("errorCode", "CI_FETCH_FAILED"));
             throw ex;
         }
     }
@@ -237,5 +256,27 @@ public class CiObservationAgentService {
                 .findByIdAndOrganizationId(taskId, organizationId)
                 .orElseThrow(() -> new ApiException(
                         HttpStatus.NOT_FOUND, "CI_INVALID_REQUEST", "Orchestration task not found"));
+    }
+
+    private void publishTaskAudit(
+            AuthenticatedUser user,
+            AgentOrchestrationTask task,
+            AuditAction action,
+            AuditResult result,
+            Map<String, Object> details) {
+        try {
+            auditRecordingSupport.recordDomainEvent(
+                    user,
+                    task.getProjectId(),
+                    AuditEntityType.TASK,
+                    task.getId(),
+                    task.getDisplayName(),
+                    action,
+                    result,
+                    AuditSource.CI_OBSERVATION,
+                    details);
+        } catch (RuntimeException ignored) {
+            // AuditPublisher swallows failures; guard against unexpected propagation.
+        }
     }
 }

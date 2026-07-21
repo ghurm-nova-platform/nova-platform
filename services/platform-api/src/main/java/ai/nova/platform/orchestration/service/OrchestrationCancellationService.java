@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -12,6 +13,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.nova.platform.agent.runtime.AgentRuntimeClient;
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.orchestration.dto.OrchestrationDtos.RunResponse;
 import ai.nova.platform.orchestration.entity.AgentOrchestrationRun;
 import ai.nova.platform.orchestration.entity.AgentOrchestrationTask;
@@ -53,6 +59,7 @@ public class OrchestrationCancellationService {
     private final OrchestrationMapper mapper;
     private final AgentRuntimeClient agentRuntimeClient;
     private final Clock clock;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public OrchestrationCancellationService(
             AgentOrchestrationRunRepository runRepository,
@@ -63,7 +70,8 @@ public class OrchestrationCancellationService {
             OrchestrationRunFinalizer runFinalizer,
             OrchestrationMapper mapper,
             AgentRuntimeClient agentRuntimeClient,
-            Clock clock) {
+            Clock clock,
+            AuditRecordingSupport auditRecordingSupport) {
         this.runRepository = runRepository;
         this.taskRepository = taskRepository;
         this.attemptRepository = attemptRepository;
@@ -73,6 +81,7 @@ public class OrchestrationCancellationService {
         this.mapper = mapper;
         this.agentRuntimeClient = agentRuntimeClient;
         this.clock = clock;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     @Transactional
@@ -105,6 +114,7 @@ public class OrchestrationCancellationService {
             eventService.appendEvent(run, null, OrchestrationEventType.RUN_CANCELLED, null, user.getUserId());
             cancelAllTasks(run, sanitized, now, user.getUserId());
             runRepository.save(run);
+            publishAudit(user, run, AuditAction.UPDATE, Map.of("status", run.getStatus().name(), "cancelled", true));
             return mapper.toRunResponse(
                     run, taskRepository.findByRunIdAndOrganizationId(run.getId(), run.getOrganizationId()));
         }
@@ -118,6 +128,7 @@ public class OrchestrationCancellationService {
         cancelAllTasks(run, sanitized, now, user.getUserId());
         runRepository.save(run);
         runFinalizer.finalizeIfNeeded(run);
+        publishAudit(user, run, AuditAction.UPDATE, Map.of("status", run.getStatus().name(), "cancelRequested", true));
         return mapper.toRunResponse(
                 run, taskRepository.findByRunIdAndOrganizationId(run.getId(), run.getOrganizationId()));
     }
@@ -174,5 +185,23 @@ public class OrchestrationCancellationService {
         }
         String trimmed = reason.trim();
         return trimmed.length() > 500 ? trimmed.substring(0, 500) : trimmed;
+    }
+
+    private void publishAudit(
+            AuthenticatedUser user, AgentOrchestrationRun run, AuditAction action, Map<String, Object> details) {
+        try {
+            auditRecordingSupport.recordDomainEvent(
+                    user,
+                    run.getProjectId(),
+                    AuditEntityType.CONFIGURATION,
+                    run.getId(),
+                    run.getName(),
+                    action,
+                    AuditResult.SUCCESS,
+                    AuditSource.ORCHESTRATION,
+                    details);
+        } catch (RuntimeException ignored) {
+            // AuditPublisher swallows failures; guard against unexpected propagation.
+        }
     }
 }

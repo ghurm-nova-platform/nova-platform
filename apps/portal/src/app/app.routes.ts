@@ -143,6 +143,10 @@ export const routes: Routes = [
           import('./features/environments/environment-page').then((m) => m.EnvironmentPage),
       },
       {
+        path: 'audit',
+        loadComponent: () => import('./features/audit/audit-page').then((m) => m.AuditPage),
+      },
+      {
         path: 'orchestration-runs',
         loadComponent: () =>
           import('./features/orchestration/orchestration-runs-list-page').then(

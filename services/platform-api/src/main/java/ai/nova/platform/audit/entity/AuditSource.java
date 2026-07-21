@@ -1,0 +1,25 @@
+package ai.nova.platform.audit.entity;
+
+public enum AuditSource {
+    PORTAL,
+    REST_API,
+    SYSTEM,
+    SCHEDULER,
+    MERGE_AGENT,
+    RELEASE_MANAGER,
+    DEPLOYMENT_OBSERVATION,
+    ROLLBACK_MANAGER,
+    RELEASE_POLICIES,
+    ENVIRONMENT_MANAGEMENT,
+    ORCHESTRATION,
+    PLANNER,
+    CODING,
+    REVIEW,
+    TESTING,
+    PATCH,
+    GIT_INTEGRATION,
+    PULL_REQUEST,
+    CI_OBSERVATION,
+    REPAIR,
+    APPROVAL_GATE
+}

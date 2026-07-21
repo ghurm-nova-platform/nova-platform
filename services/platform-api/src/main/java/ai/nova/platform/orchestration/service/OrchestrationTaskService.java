@@ -3,6 +3,7 @@ package ai.nova.platform.orchestration.service;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -16,6 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import ai.nova.platform.agent.repository.AgentRepository;
+import ai.nova.platform.audit.entity.AuditAction;
+import ai.nova.platform.audit.entity.AuditEntityType;
+import ai.nova.platform.audit.entity.AuditResult;
+import ai.nova.platform.audit.entity.AuditSource;
+import ai.nova.platform.audit.service.AuditRecordingSupport;
 import ai.nova.platform.orchestration.config.OrchestrationProperties;
 import ai.nova.platform.orchestration.dto.OrchestrationDtos.AttemptResponse;
 import ai.nova.platform.orchestration.dto.OrchestrationDtos.CreateTaskRequest;
@@ -51,6 +57,7 @@ public class OrchestrationTaskService {
     private final OrchestrationProperties properties;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final AuditRecordingSupport auditRecordingSupport;
 
     public OrchestrationTaskService(
             AgentOrchestrationRunRepository runRepository,
@@ -63,7 +70,8 @@ public class OrchestrationTaskService {
             OrchestrationMapper mapper,
             OrchestrationProperties properties,
             ObjectMapper objectMapper,
-            Clock clock) {
+            Clock clock,
+            AuditRecordingSupport auditRecordingSupport) {
         this.runRepository = runRepository;
         this.taskRepository = taskRepository;
         this.attemptRepository = attemptRepository;
@@ -75,6 +83,7 @@ public class OrchestrationTaskService {
         this.properties = properties;
         this.objectMapper = objectMapper;
         this.clock = clock;
+        this.auditRecordingSupport = auditRecordingSupport;
     }
 
     @Transactional
@@ -136,6 +145,12 @@ public class OrchestrationTaskService {
         task.setSequenceOrder(request.sequenceOrder());
         taskRepository.save(task);
         eventService.appendEvent(run, task.getId(), OrchestrationEventType.TASK_CREATED, null, user.getUserId());
+        publishAudit(
+                user,
+                task,
+                AuditAction.CREATE,
+                AuditResult.SUCCESS,
+                Map.of("runId", run.getId().toString(), "taskKey", task.getTaskKey(), "status", task.getStatus().name()));
         return mapper.toTaskResponse(task);
     }
 
@@ -210,6 +225,12 @@ public class OrchestrationTaskService {
             throw new ApiException(HttpStatus.CONFLICT, "OPTIMISTIC_LOCK_CONFLICT", "Task was modified by another request");
         }
         eventService.appendEvent(run, task.getId(), OrchestrationEventType.TASK_UPDATED, null, user.getUserId());
+        publishAudit(
+                user,
+                task,
+                AuditAction.UPDATE,
+                AuditResult.SUCCESS,
+                Map.of("runId", run.getId().toString(), "taskKey", task.getTaskKey(), "status", task.getStatus().name()));
         return mapper.toTaskResponse(task);
     }
 
@@ -279,5 +300,27 @@ public class OrchestrationTaskService {
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private void publishAudit(
+            AuthenticatedUser user,
+            AgentOrchestrationTask task,
+            AuditAction action,
+            AuditResult result,
+            Map<String, Object> details) {
+        try {
+            auditRecordingSupport.recordDomainEvent(
+                    user,
+                    task.getProjectId(),
+                    AuditEntityType.TASK,
+                    task.getId(),
+                    task.getDisplayName(),
+                    action,
+                    result,
+                    AuditSource.ORCHESTRATION,
+                    details);
+        } catch (RuntimeException ignored) {
+            // Audit must not change task lifecycle outcomes.
+        }
     }
 }
