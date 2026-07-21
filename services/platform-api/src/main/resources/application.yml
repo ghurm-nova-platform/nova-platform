@@ -253,6 +253,12 @@ nova:
     retain-history: true
     capture-rest-api: true
     capture-security-events: true
+  dashboard:
+    enabled: true
+    refresh-rate-seconds: 30
+    cache:
+      enabled: true
+      ttl-seconds: 30
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 

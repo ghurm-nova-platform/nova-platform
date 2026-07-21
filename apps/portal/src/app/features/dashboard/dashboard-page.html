@@ -1,0 +1,207 @@
+<section class="dashboard">
+  <header class="dashboard__header">
+    <div>
+      <h1>Enterprise Dashboard</h1>
+      <p class="dashboard__subtitle">
+        Read-only operational overview across pipeline, releases, deployments, and governance.
+      </p>
+    </div>
+    <div class="dashboard__actions">
+      @if (permissions.canAdmin()) {
+        <button mat-stroked-button type="button" (click)="refresh()" [disabled]="loading()">
+          <mat-icon>refresh</mat-icon>
+          Refresh cache
+        </button>
+      }
+      <button mat-stroked-button type="button" (click)="export('csv')" [disabled]="loading() || !snapshot()">
+        Export CSV
+      </button>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="dashboard__error">You need DASHBOARD_READ permission to view this page.</p>
+  } @else if (loading() && !snapshot()) {
+    <div class="dashboard__loading">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  } @else if (error()) {
+    <p class="dashboard__error">{{ error() }}</p>
+  } @else if (snapshot(); as data) {
+    <p class="dashboard__meta">
+      Generated {{ data.meta.generatedAt | date: 'medium' }}
+      @if (data.meta.fromCache) {
+        <span>(cached)</span>
+      }
+    </p>
+
+    <div class="dashboard__cards">
+      <mat-card>
+        <mat-card-title>Projects</mat-card-title>
+        <mat-card-content>{{ data.overview.projectCount }}</mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-title>Active runs</mat-card-title>
+        <mat-card-content>{{ data.overview.activeRunCount }}</mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-title>Releases</mat-card-title>
+        <mat-card-content>{{ data.overview.releaseCount }}</mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-title>Executions</mat-card-title>
+        <mat-card-content>{{ data.overview.executionCount }}</mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-title>Pending approvals</mat-card-title>
+        <mat-card-content>{{ data.overview.pendingApprovalCount }}</mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-title>Pipeline success</mat-card-title>
+        <mat-card-content>{{ data.overview.kpis.pipelineSuccessRate | number: '1.0-1' }}%</mat-card-content>
+      </mat-card>
+    </div>
+
+    <div class="dashboard__grid">
+      <mat-card class="dashboard__panel dashboard__panel--wide">
+        <mat-card-header>
+          <mat-card-title>Live pipeline</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div echarts [options]="pipelineChartOptions()" class="dashboard__chart"></div>
+          <div class="dashboard__pipeline-list">
+            @for (stage of data.pipeline.stages; track stage.stage) {
+              <div class="dashboard__pipeline-row">
+                <span>{{ stage.label }}</span>
+                <span>C {{ stage.current }}</span>
+                <span>W {{ stage.waiting }}</span>
+                <span>F {{ stage.failed }}</span>
+                <span>S {{ stage.success }}</span>
+              </div>
+            }
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="dashboard__panel">
+        <mat-card-header>
+          <mat-card-title>Running deployments</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          @if (data.deployments.running.length === 0) {
+            <p class="dashboard__empty">No active deployment executions.</p>
+          } @else {
+            <table class="dashboard__table">
+              <thead>
+                <tr>
+                  <th>Provider</th>
+                  <th>Status</th>
+                  <th>Progress</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of data.deployments.running; track item.id) {
+                  <tr>
+                    <td>{{ item.provider }}</td>
+                    <td>{{ item.status }}</td>
+                    <td>{{ item.progressPercent }}%</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="dashboard__panel">
+        <mat-card-header>
+          <mat-card-title>Releases</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="dashboard__stats">
+            <span>Published {{ data.releases.published }}</span>
+            <span>Ready {{ data.releases.ready }}</span>
+            <span>Blocked {{ data.releases.blocked }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="dashboard__panel">
+        <mat-card-header>
+          <mat-card-title>Environments</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div echarts [options]="environmentChartOptions()" class="dashboard__chart dashboard__chart--small"></div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="dashboard__panel dashboard__panel--wide">
+        <mat-card-header>
+          <mat-card-title>Audit feed</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          @if (data.audit.events.length === 0) {
+            <p class="dashboard__empty">No recent audit events.</p>
+          } @else {
+            <table class="dashboard__table">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Entity</th>
+                  <th>Action</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (event of data.audit.events; track event.id) {
+                  <tr>
+                    <td>{{ event.createdAt | date: 'short' }}</td>
+                    <td>{{ event.entityType }}</td>
+                    <td>{{ event.action }}</td>
+                    <td>{{ event.result }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="dashboard__panel">
+        <mat-card-header>
+          <mat-card-title>Approval queue</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="dashboard__stats">
+            <span>Waiting {{ data.approvals.waiting }}</span>
+            <span>Expired {{ data.approvals.expired }}</span>
+            <span>Blocked {{ data.approvals.blocked }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="dashboard__panel">
+        <mat-card-header>
+          <mat-card-title>CI</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="dashboard__stats">
+            <span>Failed {{ data.ci.failedBuilds }}</span>
+            <span>Queue {{ data.ci.queueDepth }}</span>
+            <span>Avg {{ data.ci.avgDurationMs }} ms</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="dashboard__panel">
+        <mat-card-header>
+          <mat-card-title>Cost (placeholder)</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p>{{ data.cost.note }}</p>
+          <p>Estimated total: {{ data.cost.estimatedTotalCost }}</p>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  }
+</section>

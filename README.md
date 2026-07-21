@@ -75,6 +75,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Release Policies](docs/038_RELEASE_POLICIES.md)
 - [Environment Management](docs/039_ENVIRONMENT_MANAGEMENT.md)
 - [Enterprise Audit Center](docs/040_AUDIT_CENTER.md)
+- [Enterprise Dashboard](docs/042_ENTERPRISE_DASHBOARD.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
