@@ -61,6 +61,9 @@ public class CollaborationService {
     private final CollaborationSessionService sessionService;
     private final CollaborationCoordinator coordinator;
     private final CollaborationTimelineService timelineService;
+    private final CollaborationReferenceValidator referenceValidator;
+    private final CollaborationStateTransitionValidator stateValidator;
+    private final CollaborationPersistenceSupport persistence;
     private final CollaborationSessionRepository sessionRepository;
     private final CollaborationParticipantRepository participantRepository;
     private final CollaborationTaskRepository taskRepository;
@@ -77,6 +80,9 @@ public class CollaborationService {
             CollaborationSessionService sessionService,
             CollaborationCoordinator coordinator,
             CollaborationTimelineService timelineService,
+            CollaborationReferenceValidator referenceValidator,
+            CollaborationStateTransitionValidator stateValidator,
+            CollaborationPersistenceSupport persistence,
             CollaborationSessionRepository sessionRepository,
             CollaborationParticipantRepository participantRepository,
             CollaborationTaskRepository taskRepository,
@@ -91,6 +97,9 @@ public class CollaborationService {
         this.sessionService = sessionService;
         this.coordinator = coordinator;
         this.timelineService = timelineService;
+        this.referenceValidator = referenceValidator;
+        this.stateValidator = stateValidator;
+        this.persistence = persistence;
         this.sessionRepository = sessionRepository;
         this.participantRepository = participantRepository;
         this.taskRepository = taskRepository;
@@ -222,7 +231,7 @@ public class CollaborationService {
     public SessionDetail assign(UUID sessionId, AssignTaskRequest request, AuthenticatedUser user) {
         authorizationService.requireWrite(user);
         requireEnabled();
-        CollaborationSessionEntity session = sessionService.requireSession(sessionId, user.getOrganizationId());
+        CollaborationSessionEntity session = requireSessionForWrite(sessionId, user.getOrganizationId());
         coordinator.handleTaskAction(session, request);
         audit(user, session, AuditAction.UPDATE, AuditResult.SUCCESS, Map.of("taskId", request.taskId().toString()));
         return sessionService.loadDetail(sessionId, user.getOrganizationId());
@@ -232,15 +241,19 @@ public class CollaborationService {
     public SessionDetail sendMessage(UUID sessionId, SendMessageRequest request, AuthenticatedUser user) {
         authorizationService.requireWrite(user);
         requireEnabled();
-        CollaborationSessionEntity session = sessionService.requireSession(sessionId, user.getOrganizationId());
+        CollaborationSessionEntity session = sessionRepository
+                .findByIdAndOrganizationIdForUpdate(sessionId, user.getOrganizationId())
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND, "COLLABORATION_SESSION_NOT_FOUND", "Collaboration session not found"));
         requireWritableSession(session);
+        referenceValidator.requireTaskReferenceForMutation(session, request.taskId(), user.getOrganizationId());
 
-        if (request.taskId() != null) {
-            taskRepository
-                    .findByIdAndOrganizationId(request.taskId(), session.getOrganizationId())
-                    .filter(task -> task.getSessionId().equals(sessionId))
-                    .orElseThrow(() -> new ApiException(
-                            HttpStatus.NOT_FOUND, "COLLABORATION_TASK_NOT_FOUND", "Task not found"));
+        long messageCount = messageRepository.countBySessionIdAndOrganizationId(sessionId, user.getOrganizationId());
+        if (messageCount >= properties.getMaxMessages()) {
+            throw new ApiException(
+                    HttpStatus.CONFLICT,
+                    "COLLABORATION_MESSAGE_LIMIT_REACHED",
+                    "Message limit reached for this collaboration session");
         }
 
         Instant now = Instant.now();
@@ -274,7 +287,8 @@ public class CollaborationService {
     public SessionDetail recordDecision(UUID sessionId, RecordDecisionRequest request, AuthenticatedUser user) {
         authorizationService.requireWrite(user);
         requireEnabled();
-        CollaborationSessionEntity session = sessionService.requireSession(sessionId, user.getOrganizationId());
+        CollaborationSessionEntity session = requireSessionForWrite(sessionId, user.getOrganizationId());
+        referenceValidator.requireTaskReferenceForMutation(session, request.taskId(), user.getOrganizationId());
 
         Instant now = Instant.now();
         CollaborationDecisionEntity decision = new CollaborationDecisionEntity(
@@ -316,7 +330,7 @@ public class CollaborationService {
     public SessionDetail pause(UUID sessionId, AuthenticatedUser user) {
         authorizationService.requireAdmin(user);
         requireEnabled();
-        CollaborationSessionEntity session = sessionService.requireSession(sessionId, user.getOrganizationId());
+        CollaborationSessionEntity session = requireSessionForWrite(sessionId, user.getOrganizationId());
         coordinator.pauseSession(session);
         audit(user, session, AuditAction.UPDATE, AuditResult.SUCCESS, Map.of("action", "pause"));
         return sessionService.loadDetail(sessionId, user.getOrganizationId());
@@ -326,7 +340,7 @@ public class CollaborationService {
     public SessionDetail resume(UUID sessionId, AuthenticatedUser user) {
         authorizationService.requireAdmin(user);
         requireEnabled();
-        CollaborationSessionEntity session = sessionService.requireSession(sessionId, user.getOrganizationId());
+        CollaborationSessionEntity session = requireSessionForWrite(sessionId, user.getOrganizationId());
         coordinator.resumeSession(session);
         audit(user, session, AuditAction.UPDATE, AuditResult.SUCCESS, Map.of("action", "resume"));
         return sessionService.loadDetail(sessionId, user.getOrganizationId());
@@ -336,7 +350,7 @@ public class CollaborationService {
     public SessionDetail cancel(UUID sessionId, AuthenticatedUser user) {
         authorizationService.requireAdmin(user);
         requireEnabled();
-        CollaborationSessionEntity session = sessionService.requireSession(sessionId, user.getOrganizationId());
+        CollaborationSessionEntity session = requireSessionForWrite(sessionId, user.getOrganizationId());
         coordinator.cancelSession(session);
         audit(user, session, AuditAction.CANCEL, AuditResult.SUCCESS, Map.of());
         return sessionService.loadDetail(sessionId, user.getOrganizationId());
@@ -357,11 +371,12 @@ public class CollaborationService {
                 }
             }
             case RESOLVE_CONFLICT -> {
+                stateValidator.requireSessionTransition(session.getStatus(), CollaborationSessionStatus.ACTIVE);
                 session.setConflictDetected(false);
                 session.setConflictDetailsJson(null);
                 session.setStatus(CollaborationSessionStatus.ACTIVE);
                 session.setUpdatedAt(Instant.now());
-                sessionRepository.save(session);
+                persistence.saveSession(session);
             }
             case PAUSE -> coordinator.pauseSession(session);
             case RESUME -> coordinator.resumeSession(session);
@@ -373,11 +388,14 @@ public class CollaborationService {
     }
 
     private CollaborationTaskEntity requireTask(CollaborationSessionEntity session, UUID taskId) {
-        return taskRepository
-                .findByIdAndOrganizationId(taskId, session.getOrganizationId())
-                .filter(task -> task.getSessionId().equals(session.getId()))
+        return referenceValidator.requireTask(session, taskId, session.getOrganizationId());
+    }
+
+    private CollaborationSessionEntity requireSessionForWrite(UUID sessionId, UUID organizationId) {
+        return sessionRepository
+                .findByIdAndOrganizationId(sessionId, organizationId)
                 .orElseThrow(() -> new ApiException(
-                        HttpStatus.NOT_FOUND, "COLLABORATION_TASK_NOT_FOUND", "Task not found"));
+                        HttpStatus.NOT_FOUND, "COLLABORATION_SESSION_NOT_FOUND", "Collaboration session not found"));
     }
 
     private CollaborationTimelineEventType resolveTimelineType(CollaborationDecisionType decisionType) {
@@ -433,14 +451,7 @@ public class CollaborationService {
     }
 
     private void requireWritableSession(CollaborationSessionEntity session) {
-        if (session.getStatus() == CollaborationSessionStatus.CANCELLED
-                || session.getStatus() == CollaborationSessionStatus.COMPLETED
-                || session.getStatus() == CollaborationSessionStatus.FAILED) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT,
-                    "COLLABORATION_SESSION_INVALID_STATUS",
-                    "Session is not accepting messages");
-        }
+        stateValidator.requireMutableSession(session.getStatus());
     }
 
     private void requireEnabled() {

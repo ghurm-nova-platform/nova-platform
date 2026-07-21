@@ -24,36 +24,32 @@ import ai.nova.platform.collaboration.entity.CollaborationSessionStatus;
 import ai.nova.platform.collaboration.entity.CollaborationTaskEntity;
 import ai.nova.platform.collaboration.entity.CollaborationTaskStatus;
 import ai.nova.platform.collaboration.entity.CollaborationTimelineEventType;
-import ai.nova.platform.collaboration.repository.CollaborationParticipantRepository;
-import ai.nova.platform.collaboration.repository.CollaborationSessionRepository;
 import ai.nova.platform.collaboration.repository.CollaborationTaskRepository;
 import ai.nova.platform.web.error.ApiException;
 
 @Service
 public class CollaborationCoordinator {
 
-    private static final List<CollaborationTaskStatus> ACTIVE_TASK_STATUSES = List.of(
-            CollaborationTaskStatus.ASSIGNED,
-            CollaborationTaskStatus.IN_PROGRESS,
-            CollaborationTaskStatus.BLOCKED);
-
     private static final List<CollaborationTaskStatus> CONFLICT_STATUSES = List.of(
             CollaborationTaskStatus.ASSIGNED, CollaborationTaskStatus.IN_PROGRESS);
 
-    private final CollaborationSessionRepository sessionRepository;
-    private final CollaborationParticipantRepository participantRepository;
+    private final CollaborationPersistenceSupport persistence;
+    private final CollaborationReferenceValidator referenceValidator;
+    private final CollaborationStateTransitionValidator stateValidator;
     private final CollaborationTaskRepository taskRepository;
     private final CollaborationTimelineService timelineService;
     private final ObjectMapper objectMapper;
 
     public CollaborationCoordinator(
-            CollaborationSessionRepository sessionRepository,
-            CollaborationParticipantRepository participantRepository,
+            CollaborationPersistenceSupport persistence,
+            CollaborationReferenceValidator referenceValidator,
+            CollaborationStateTransitionValidator stateValidator,
             CollaborationTaskRepository taskRepository,
             CollaborationTimelineService timelineService,
             ObjectMapper objectMapper) {
-        this.sessionRepository = sessionRepository;
-        this.participantRepository = participantRepository;
+        this.persistence = persistence;
+        this.referenceValidator = referenceValidator;
+        this.stateValidator = stateValidator;
         this.taskRepository = taskRepository;
         this.timelineService = timelineService;
         this.objectMapper = objectMapper;
@@ -62,9 +58,10 @@ public class CollaborationCoordinator {
     @Transactional
     public CollaborationTaskEntity handleTaskAction(
             CollaborationSessionEntity session, AssignTaskRequest request) {
-        requireActiveSession(session);
-        CollaborationTaskEntity task = requireTask(session, request.taskId());
+        requireMutableSession(session);
+        CollaborationTaskEntity task = referenceValidator.requireTask(session, request.taskId(), session.getOrganizationId());
         TaskAction action = request.action() == null ? TaskAction.ASSIGN : request.action();
+        stateValidator.requireTaskAction(task.getStatus(), action);
 
         return switch (action) {
             case ASSIGN -> assignTask(session, task, request.participantId(), request.artifactRef(), request.parallelGroup());
@@ -84,22 +81,20 @@ public class CollaborationCoordinator {
             UUID participantId,
             String artifactRef,
             String parallelGroup) {
-        requireActiveSession(session);
+        requireMutableSession(session);
+        stateValidator.requireTaskAction(task.getStatus(), TaskAction.ASSIGN);
         if (participantId == null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "COLLABORATION_INVALID_REQUEST", "participantId is required");
         }
-        if (task.getStatus() != CollaborationTaskStatus.PENDING && task.getStatus() != CollaborationTaskStatus.ASSIGNED) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT,
-                    "COLLABORATION_TASK_INVALID_STATUS",
-                    "Task cannot be assigned in status " + task.getStatus());
-        }
+
         ensureDependenciesMet(session, task);
         ensureParallelGroupReady(session, task);
 
-        CollaborationParticipantEntity participant = requireParticipant(session, participantId);
-        Instant now = Instant.now();
+        CollaborationParticipantEntity participant =
+                referenceValidator.requireParticipant(session, participantId, session.getOrganizationId());
+        ensureParticipantAvailable(session, participantId, task.getId());
 
+        Instant now = Instant.now();
         task.setParticipantId(participant.getId());
         task.setStatus(CollaborationTaskStatus.ASSIGNED);
         task.setAssignedAt(now);
@@ -110,7 +105,7 @@ public class CollaborationCoordinator {
             task.setParallelGroup(parallelGroup);
         }
         task.setUpdatedAt(now);
-        taskRepository.save(task);
+        persistence.saveTask(task);
 
         participant.setCurrentTaskId(task.getId());
         participant.setStatus(CollaborationParticipantStatus.ACTIVE);
@@ -118,7 +113,7 @@ public class CollaborationCoordinator {
             participant.setStartedAt(now);
         }
         participant.setUpdatedAt(now);
-        participantRepository.save(participant);
+        persistence.saveParticipant(participant);
 
         activateSessionIfNeeded(session, now);
         detectConflicts(session);
@@ -140,14 +135,8 @@ public class CollaborationCoordinator {
     @Transactional
     public CollaborationTaskEntity completeTask(
             CollaborationSessionEntity session, CollaborationTaskEntity task, UUID participantId) {
-        requireActiveSession(session);
-        if (task.getStatus() != CollaborationTaskStatus.ASSIGNED
-                && task.getStatus() != CollaborationTaskStatus.IN_PROGRESS) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT,
-                    "COLLABORATION_TASK_INVALID_STATUS",
-                    "Task cannot be completed in status " + task.getStatus());
-        }
+        requireMutableSession(session);
+        stateValidator.requireTaskAction(task.getStatus(), TaskAction.COMPLETE);
 
         CollaborationParticipantEntity participant = resolveParticipantForTask(session, task, participantId);
         Instant now = Instant.now();
@@ -156,15 +145,9 @@ public class CollaborationCoordinator {
         task.setCompletedAt(now);
         task.setCompletedByParticipantId(participant.getId());
         task.setUpdatedAt(now);
-        taskRepository.save(task);
+        persistence.saveTask(task);
 
-        participant.setCurrentTaskId(null);
-        participant.setProgressPercent(100);
-        participant.setStatus(CollaborationParticipantStatus.COMPLETED);
-        participant.setCompletedAt(now);
-        participant.setUpdatedAt(now);
-        participantRepository.save(participant);
-
+        refreshParticipantAfterTaskChange(session, participant, task.getId(), now);
         detectConflicts(session);
         refreshSessionCompletion(session, now);
 
@@ -185,22 +168,20 @@ public class CollaborationCoordinator {
     @Transactional
     public CollaborationTaskEntity rejectTask(
             CollaborationSessionEntity session, CollaborationTaskEntity task, String reason) {
-        requireActiveSession(session);
-        if (task.getStatus() == CollaborationTaskStatus.COMPLETED
-                || task.getStatus() == CollaborationTaskStatus.CANCELLED) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT,
-                    "COLLABORATION_TASK_INVALID_STATUS",
-                    "Task cannot be rejected in status " + task.getStatus());
-        }
+        requireMutableSession(session);
+        stateValidator.requireTaskAction(task.getStatus(), TaskAction.REJECT);
 
         Instant now = Instant.now();
         task.setStatus(CollaborationTaskStatus.REJECTED);
         task.setCompletedAt(now);
         task.setUpdatedAt(now);
-        taskRepository.save(task);
+        persistence.saveTask(task);
 
-        clearParticipantCurrentTask(session, task.getParticipantId(), now);
+        if (task.getParticipantId() != null) {
+            CollaborationParticipantEntity participant = referenceValidator.requireParticipant(
+                    session, task.getParticipantId(), session.getOrganizationId());
+            refreshParticipantAfterTaskChange(session, participant, task.getId(), now);
+        }
         detectConflicts(session);
 
         timelineService.append(
@@ -224,17 +205,28 @@ public class CollaborationCoordinator {
             UUID reassignToParticipantId,
             String artifactRef,
             String parallelGroup) {
+        requireMutableSession(session);
+        stateValidator.requireTaskAction(task.getStatus(), TaskAction.REASSIGN);
         if (reassignToParticipantId == null) {
             throw new ApiException(
                     HttpStatus.BAD_REQUEST, "COLLABORATION_INVALID_REQUEST", "reassignToParticipantId is required");
         }
-        clearParticipantCurrentTask(session, task.getParticipantId(), Instant.now());
+
+        UUID previousParticipantId = task.getParticipantId();
+        Instant now = Instant.now();
         task.setStatus(CollaborationTaskStatus.PENDING);
         task.setParticipantId(null);
         task.setAssignedAt(null);
         task.setStartedAt(null);
-        task.setUpdatedAt(Instant.now());
-        taskRepository.save(task);
+        task.setUpdatedAt(now);
+        persistence.saveTask(task);
+
+        if (previousParticipantId != null) {
+            CollaborationParticipantEntity previousParticipant = referenceValidator.requireParticipant(
+                    session, previousParticipantId, session.getOrganizationId());
+            refreshParticipantAfterTaskChange(session, previousParticipant, task.getId(), now);
+        }
+
         return assignTask(session, task, reassignToParticipantId, artifactRef, parallelGroup);
     }
 
@@ -244,34 +236,30 @@ public class CollaborationCoordinator {
             CollaborationTaskEntity task,
             UUID blockedByTaskId,
             String reason) {
-        requireActiveSession(session);
-        if (task.getStatus() == CollaborationTaskStatus.COMPLETED
-                || task.getStatus() == CollaborationTaskStatus.CANCELLED) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT,
-                    "COLLABORATION_TASK_INVALID_STATUS",
-                    "Task cannot be blocked in status " + task.getStatus());
+        requireMutableSession(session);
+        stateValidator.requireTaskAction(task.getStatus(), TaskAction.BLOCK);
+        if (blockedByTaskId != null) {
+            referenceValidator.requireDependencyTask(session, blockedByTaskId, session.getOrganizationId());
         }
 
         Instant now = Instant.now();
         task.setStatus(CollaborationTaskStatus.BLOCKED);
         task.setBlockedByTaskId(blockedByTaskId);
         task.setUpdatedAt(now);
-        taskRepository.save(task);
+        persistence.saveTask(task);
 
         if (task.getParticipantId() != null) {
-            participantRepository
-                    .findByIdAndOrganizationId(task.getParticipantId(), session.getOrganizationId())
-                    .ifPresent(participant -> {
-                        participant.setStatus(CollaborationParticipantStatus.BLOCKED);
-                        participant.setUpdatedAt(now);
-                        participantRepository.save(participant);
-                    });
+            CollaborationParticipantEntity participant = referenceValidator.requireParticipant(
+                    session, task.getParticipantId(), session.getOrganizationId());
+            participant.setStatus(CollaborationParticipantStatus.BLOCKED);
+            participant.setUpdatedAt(now);
+            persistence.saveParticipant(participant);
         }
 
+        stateValidator.requireSessionTransition(session.getStatus(), CollaborationSessionStatus.BLOCKED);
         session.setStatus(CollaborationSessionStatus.BLOCKED);
         session.setUpdatedAt(now);
-        sessionRepository.save(session);
+        persistence.saveSession(session);
 
         timelineService.append(
                 session.getId(),
@@ -289,12 +277,8 @@ public class CollaborationCoordinator {
 
     @Transactional
     public CollaborationTaskEntity resumeTask(CollaborationSessionEntity session, CollaborationTaskEntity task) {
-        if (task.getStatus() != CollaborationTaskStatus.BLOCKED) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT,
-                    "COLLABORATION_TASK_INVALID_STATUS",
-                    "Task is not blocked");
-        }
+        requireMutableSession(session);
+        stateValidator.requireTaskAction(task.getStatus(), TaskAction.RESUME);
 
         Instant now = Instant.now();
         task.setStatus(CollaborationTaskStatus.IN_PROGRESS);
@@ -303,22 +287,22 @@ public class CollaborationCoordinator {
         if (task.getStartedAt() == null) {
             task.setStartedAt(now);
         }
-        taskRepository.save(task);
+        persistence.saveTask(task);
 
         if (task.getParticipantId() != null) {
-            participantRepository
-                    .findByIdAndOrganizationId(task.getParticipantId(), session.getOrganizationId())
-                    .ifPresent(participant -> {
-                        participant.setStatus(CollaborationParticipantStatus.ACTIVE);
-                        participant.setUpdatedAt(now);
-                        participantRepository.save(participant);
-                    });
+            CollaborationParticipantEntity participant = referenceValidator.requireParticipant(
+                    session, task.getParticipantId(), session.getOrganizationId());
+            participant.setStatus(CollaborationParticipantStatus.ACTIVE);
+            participant.setCurrentTaskId(task.getId());
+            participant.setUpdatedAt(now);
+            persistence.saveParticipant(participant);
         }
 
         if (session.getStatus() == CollaborationSessionStatus.BLOCKED) {
+            stateValidator.requireSessionTransition(session.getStatus(), CollaborationSessionStatus.ACTIVE);
             session.setStatus(CollaborationSessionStatus.ACTIVE);
             session.setUpdatedAt(now);
-            sessionRepository.save(session);
+            persistence.saveSession(session);
         }
 
         timelineService.append(
@@ -338,20 +322,19 @@ public class CollaborationCoordinator {
     @Transactional
     public CollaborationTaskEntity cancelTask(
             CollaborationSessionEntity session, CollaborationTaskEntity task, String reason) {
-        if (task.getStatus() == CollaborationTaskStatus.COMPLETED) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT,
-                    "COLLABORATION_TASK_INVALID_STATUS",
-                    "Completed task cannot be cancelled");
-        }
+        stateValidator.requireTaskAction(task.getStatus(), TaskAction.CANCEL);
 
         Instant now = Instant.now();
         task.setStatus(CollaborationTaskStatus.CANCELLED);
         task.setCompletedAt(now);
         task.setUpdatedAt(now);
-        taskRepository.save(task);
+        persistence.saveTask(task);
 
-        clearParticipantCurrentTask(session, task.getParticipantId(), now);
+        if (task.getParticipantId() != null) {
+            CollaborationParticipantEntity participant = referenceValidator.requireParticipant(
+                    session, task.getParticipantId(), session.getOrganizationId());
+            refreshParticipantAfterTaskChange(session, participant, task.getId(), now);
+        }
 
         timelineService.append(
                 session.getId(),
@@ -394,6 +377,7 @@ public class CollaborationCoordinator {
         boolean conflictDetected = !conflicts.isEmpty();
         session.setConflictDetected(conflictDetected);
         if (conflictDetected) {
+            stateValidator.requireSessionTransition(session.getStatus(), CollaborationSessionStatus.BLOCKED);
             session.setStatus(CollaborationSessionStatus.BLOCKED);
             session.setConflictDetailsJson(serializeConflictDetails(conflicts));
             timelineService.append(
@@ -409,28 +393,23 @@ public class CollaborationCoordinator {
         } else {
             session.setConflictDetailsJson(null);
             if (session.getStatus() == CollaborationSessionStatus.BLOCKED && !hasBlockedTasks(session)) {
+                stateValidator.requireSessionTransition(session.getStatus(), CollaborationSessionStatus.ACTIVE);
                 session.setStatus(CollaborationSessionStatus.ACTIVE);
             }
         }
         session.setUpdatedAt(Instant.now());
-        sessionRepository.save(session);
+        persistence.saveSession(session);
     }
 
     @Transactional
     public void pauseSession(CollaborationSessionEntity session) {
-        if (session.getStatus() == CollaborationSessionStatus.COMPLETED
-                || session.getStatus() == CollaborationSessionStatus.CANCELLED
-                || session.getStatus() == CollaborationSessionStatus.FAILED) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT,
-                    "COLLABORATION_SESSION_INVALID_STATUS",
-                    "Session cannot be paused in status " + session.getStatus());
-        }
+        stateValidator.requireMutableSession(session.getStatus());
+        stateValidator.requireSessionTransition(session.getStatus(), CollaborationSessionStatus.WAITING);
 
         Instant now = Instant.now();
         session.setStatus(CollaborationSessionStatus.WAITING);
         session.setUpdatedAt(now);
-        sessionRepository.save(session);
+        persistence.saveSession(session);
 
         timelineService.append(
                 session.getId(),
@@ -446,20 +425,15 @@ public class CollaborationCoordinator {
 
     @Transactional
     public void resumeSession(CollaborationSessionEntity session) {
-        if (session.getStatus() != CollaborationSessionStatus.WAITING
-                && session.getStatus() != CollaborationSessionStatus.BLOCKED) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT,
-                    "COLLABORATION_SESSION_INVALID_STATUS",
-                    "Session cannot be resumed from status " + session.getStatus());
-        }
+        CollaborationSessionStatus target = session.isConflictDetected()
+                ? CollaborationSessionStatus.BLOCKED
+                : CollaborationSessionStatus.ACTIVE;
+        stateValidator.requireSessionTransition(session.getStatus(), target);
 
         Instant now = Instant.now();
-        session.setStatus(session.isConflictDetected()
-                ? CollaborationSessionStatus.BLOCKED
-                : CollaborationSessionStatus.ACTIVE);
+        session.setStatus(target);
         session.setUpdatedAt(now);
-        sessionRepository.save(session);
+        persistence.saveSession(session);
 
         timelineService.append(
                 session.getId(),
@@ -475,17 +449,12 @@ public class CollaborationCoordinator {
 
     @Transactional
     public void cancelSession(CollaborationSessionEntity session) {
-        if (session.getStatus() == CollaborationSessionStatus.COMPLETED
-                || session.getStatus() == CollaborationSessionStatus.CANCELLED) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT,
-                    "COLLABORATION_SESSION_INVALID_STATUS",
-                    "Session is already terminal");
-        }
+        stateValidator.requireMutableSession(session.getStatus());
+        stateValidator.requireSessionTransition(session.getStatus(), CollaborationSessionStatus.CANCELLED);
 
         Instant now = Instant.now();
         List<CollaborationTaskEntity> tasks = taskRepository.findBySessionIdAndOrganizationIdAndStatusIn(
-                session.getId(), session.getOrganizationId(), ACTIVE_TASK_STATUSES);
+                session.getId(), session.getOrganizationId(), stateValidator.activeTaskStatuses());
         for (CollaborationTaskEntity task : tasks) {
             cancelTask(session, task, "Session cancelled");
         }
@@ -493,7 +462,7 @@ public class CollaborationCoordinator {
         session.setStatus(CollaborationSessionStatus.CANCELLED);
         session.setCompletedAt(now);
         session.setUpdatedAt(now);
-        sessionRepository.save(session);
+        persistence.saveSession(session);
 
         timelineService.append(
                 session.getId(),
@@ -507,14 +476,68 @@ public class CollaborationCoordinator {
                 Map.of());
     }
 
+    private void ensureParticipantAvailable(CollaborationSessionEntity session, UUID participantId, UUID excludingTaskId) {
+        List<CollaborationTaskEntity> activeTasks = taskRepository.findBySessionIdAndOrganizationIdAndParticipantIdAndStatusIn(
+                session.getId(), session.getOrganizationId(), participantId, stateValidator.activeTaskStatuses());
+        boolean busy = activeTasks.stream().anyMatch(task -> !task.getId().equals(excludingTaskId));
+        if (busy) {
+            throw new ApiException(
+                    HttpStatus.CONFLICT,
+                    "COLLABORATION_PARTICIPANT_BUSY",
+                    "Participant already has an active task in this session");
+        }
+    }
+
+    private void refreshParticipantAfterTaskChange(
+            CollaborationSessionEntity session,
+            CollaborationParticipantEntity participant,
+            UUID affectedTaskId,
+            Instant now) {
+        if (affectedTaskId.equals(participant.getCurrentTaskId())) {
+            participant.setCurrentTaskId(null);
+        }
+
+        List<CollaborationTaskEntity> remainingActive = taskRepository.findBySessionIdAndOrganizationIdAndParticipantIdAndStatusIn(
+                session.getId(), session.getOrganizationId(), participant.getId(), stateValidator.activeTaskStatuses());
+
+        if (remainingActive.isEmpty()) {
+            List<CollaborationTaskEntity> participantTasks = taskRepository.findBySessionIdAndOrganizationIdAndParticipantId(
+                    session.getId(), session.getOrganizationId(), participant.getId());
+            boolean allTerminal = !participantTasks.isEmpty()
+                    && participantTasks.stream().allMatch(task -> stateValidator.isTerminalTask(task.getStatus()));
+            if (allTerminal) {
+                participant.setStatus(CollaborationParticipantStatus.COMPLETED);
+                participant.setProgressPercent(100);
+                participant.setCompletedAt(now);
+            } else {
+                participant.setStatus(CollaborationParticipantStatus.IDLE);
+                participant.setProgressPercent(0);
+                participant.setCompletedAt(null);
+            }
+        } else {
+            CollaborationTaskEntity current = remainingActive.getFirst();
+            participant.setCurrentTaskId(current.getId());
+            participant.setStatus(participantStatusForTask(current.getStatus()));
+            participant.setCompletedAt(null);
+        }
+        participant.setUpdatedAt(now);
+        persistence.saveParticipant(participant);
+    }
+
+    private CollaborationParticipantStatus participantStatusForTask(CollaborationTaskStatus taskStatus) {
+        return switch (taskStatus) {
+            case BLOCKED -> CollaborationParticipantStatus.BLOCKED;
+            case ASSIGNED, IN_PROGRESS -> CollaborationParticipantStatus.ACTIVE;
+            default -> CollaborationParticipantStatus.IDLE;
+        };
+    }
+
     private void ensureDependenciesMet(CollaborationSessionEntity session, CollaborationTaskEntity task) {
         if (task.getDependsOnTaskId() == null) {
             return;
         }
-        CollaborationTaskEntity dependency = taskRepository
-                .findByIdAndOrganizationId(task.getDependsOnTaskId(), session.getOrganizationId())
-                .orElseThrow(() -> new ApiException(
-                        HttpStatus.CONFLICT, "COLLABORATION_DEPENDENCY_MISSING", "Dependency task not found"));
+        CollaborationTaskEntity dependency = referenceValidator.requireDependencyTask(
+                session, task.getDependsOnTaskId(), session.getOrganizationId());
         if (dependency.getStatus() != CollaborationTaskStatus.COMPLETED) {
             throw new ApiException(
                     HttpStatus.CONFLICT,
@@ -534,10 +557,9 @@ public class CollaborationCoordinator {
                 continue;
             }
             if (groupTask.getDependsOnTaskId() != null) {
-                CollaborationTaskEntity dependency = taskRepository
-                        .findByIdAndOrganizationId(groupTask.getDependsOnTaskId(), session.getOrganizationId())
-                        .orElse(null);
-                if (dependency != null && dependency.getStatus() != CollaborationTaskStatus.COMPLETED) {
+                CollaborationTaskEntity dependency = referenceValidator.requireDependencyTask(
+                        session, groupTask.getDependsOnTaskId(), session.getOrganizationId());
+                if (dependency.getStatus() != CollaborationTaskStatus.COMPLETED) {
                     throw new ApiException(
                             HttpStatus.CONFLICT,
                             "COLLABORATION_PARALLEL_GROUP_BLOCKED",
@@ -550,12 +572,13 @@ public class CollaborationCoordinator {
     private void activateSessionIfNeeded(CollaborationSessionEntity session, Instant now) {
         if (session.getStatus() == CollaborationSessionStatus.CREATED
                 || session.getStatus() == CollaborationSessionStatus.STARTING) {
+            stateValidator.requireSessionTransition(session.getStatus(), CollaborationSessionStatus.ACTIVE);
             session.setStatus(CollaborationSessionStatus.ACTIVE);
             if (session.getStartedAt() == null) {
                 session.setStartedAt(now);
             }
             session.setUpdatedAt(now);
-            sessionRepository.save(session);
+            persistence.saveSession(session);
             timelineService.append(
                     session.getId(),
                     session.getOrganizationId(),
@@ -575,12 +598,13 @@ public class CollaborationCoordinator {
         if (tasks.isEmpty()) {
             return;
         }
-        boolean allTerminal = tasks.stream().allMatch(this::isTerminalTask);
+        boolean allTerminal = tasks.stream().allMatch(task -> stateValidator.isTerminalTask(task.getStatus()));
         if (allTerminal && session.getStatus() != CollaborationSessionStatus.COMPLETED) {
+            stateValidator.requireSessionTransition(session.getStatus(), CollaborationSessionStatus.COMPLETED);
             session.setStatus(CollaborationSessionStatus.COMPLETED);
             session.setCompletedAt(now);
             session.setUpdatedAt(now);
-            sessionRepository.save(session);
+            persistence.saveSession(session);
             timelineService.append(
                     session.getId(),
                     session.getOrganizationId(),
@@ -594,12 +618,6 @@ public class CollaborationCoordinator {
         }
     }
 
-    private boolean isTerminalTask(CollaborationTaskEntity task) {
-        return task.getStatus() == CollaborationTaskStatus.COMPLETED
-                || task.getStatus() == CollaborationTaskStatus.REJECTED
-                || task.getStatus() == CollaborationTaskStatus.CANCELLED;
-    }
-
     private boolean hasBlockedTasks(CollaborationSessionEntity session) {
         return !taskRepository
                 .findBySessionIdAndOrganizationIdAndStatusIn(
@@ -610,62 +628,17 @@ public class CollaborationCoordinator {
     private CollaborationParticipantEntity resolveParticipantForTask(
             CollaborationSessionEntity session, CollaborationTaskEntity task, UUID participantId) {
         if (participantId != null) {
-            return requireParticipant(session, participantId);
+            return referenceValidator.requireParticipant(session, participantId, session.getOrganizationId());
         }
         if (task.getParticipantId() == null) {
             throw new ApiException(
                     HttpStatus.BAD_REQUEST, "COLLABORATION_INVALID_REQUEST", "Task has no assigned participant");
         }
-        return requireParticipant(session, task.getParticipantId());
+        return referenceValidator.requireParticipant(session, task.getParticipantId(), session.getOrganizationId());
     }
 
-    private void clearParticipantCurrentTask(CollaborationSessionEntity session, UUID participantId, Instant now) {
-        if (participantId == null) {
-            return;
-        }
-        participantRepository
-                .findByIdAndOrganizationId(participantId, session.getOrganizationId())
-                .ifPresent(participant -> {
-                    participant.setCurrentTaskId(null);
-                    participant.setStatus(CollaborationParticipantStatus.IDLE);
-                    participant.setUpdatedAt(now);
-                    participantRepository.save(participant);
-                });
-    }
-
-    private CollaborationParticipantEntity requireParticipant(CollaborationSessionEntity session, UUID participantId) {
-        CollaborationParticipantEntity participant = participantRepository
-                .findByIdAndOrganizationId(participantId, session.getOrganizationId())
-                .orElseThrow(() -> new ApiException(
-                        HttpStatus.NOT_FOUND, "COLLABORATION_PARTICIPANT_NOT_FOUND", "Participant not found"));
-        if (!participant.getSessionId().equals(session.getId())) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT, "COLLABORATION_PARTICIPANT_MISMATCH", "Participant does not belong to session");
-        }
-        return participant;
-    }
-
-    private CollaborationTaskEntity requireTask(CollaborationSessionEntity session, UUID taskId) {
-        CollaborationTaskEntity task = taskRepository
-                .findByIdAndOrganizationId(taskId, session.getOrganizationId())
-                .orElseThrow(() -> new ApiException(
-                        HttpStatus.NOT_FOUND, "COLLABORATION_TASK_NOT_FOUND", "Task not found"));
-        if (!task.getSessionId().equals(session.getId())) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT, "COLLABORATION_TASK_MISMATCH", "Task does not belong to session");
-        }
-        return task;
-    }
-
-    private void requireActiveSession(CollaborationSessionEntity session) {
-        if (session.getStatus() == CollaborationSessionStatus.CANCELLED
-                || session.getStatus() == CollaborationSessionStatus.COMPLETED
-                || session.getStatus() == CollaborationSessionStatus.FAILED) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT,
-                    "COLLABORATION_SESSION_INVALID_STATUS",
-                    "Session is not active");
-        }
+    private void requireMutableSession(CollaborationSessionEntity session) {
+        stateValidator.requireMutableSession(session.getStatus());
         if (session.getStatus() == CollaborationSessionStatus.WAITING) {
             throw new ApiException(
                     HttpStatus.CONFLICT, "COLLABORATION_SESSION_PAUSED", "Session is paused");

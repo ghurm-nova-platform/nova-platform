@@ -64,6 +64,16 @@ Flyway `V55__collaboration_framework.sql` creates:
 
 Permissions: `COLLABORATION_READ`, `COLLABORATION_WRITE`, `COLLABORATION_ADMIN`.
 
+## Concurrency and consistency
+
+- Optimistic locking via `@Version` on sessions, participants, and tasks
+- Concurrent modification returns HTTP 409 `COLLABORATION_CONCURRENT_MODIFICATION` with reload-and-retry guidance
+- One active task per participant per session (`ASSIGNED`, `IN_PROGRESS`, `BLOCKED`)
+- Participant busy returns HTTP 409 `COLLABORATION_PARTICIPANT_BUSY`
+- Message limit enforced per session with HTTP 409 `COLLABORATION_MESSAGE_LIMIT_REACHED`
+- Session and task transitions validated centrally; terminal states reject further mutation
+- Cross-session and cross-tenant references rejected at service layer
+
 ## Audit
 
 All collaboration lifecycle events publish to Audit Center with `AuditSource.COLLABORATION`.

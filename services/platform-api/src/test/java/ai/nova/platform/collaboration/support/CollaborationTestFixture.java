@@ -7,6 +7,8 @@ import ai.nova.platform.audit.support.AuditTestFixture;
 import ai.nova.platform.collaboration.dto.CollaborationDtos.CreateSessionRequest;
 import ai.nova.platform.collaboration.dto.CollaborationDtos.InitialTaskRequest;
 import ai.nova.platform.collaboration.dto.CollaborationDtos.SharedContext;
+import ai.nova.platform.collaboration.dto.CollaborationDtos.SendMessageRequest;
+import ai.nova.platform.collaboration.entity.CollaborationMessageType;
 import ai.nova.platform.collaboration.entity.CollaborationParticipantRole;
 import ai.nova.platform.collaboration.security.CollaborationAuthorizationService;
 import ai.nova.platform.security.AuthenticatedUser;
@@ -16,6 +18,9 @@ public final class CollaborationTestFixture {
     public static final UUID ORG_ID = AuditTestFixture.ORG_ID;
     public static final UUID USER_ID = AuditTestFixture.USER_ID;
     public static final UUID PROJECT_ID = AuditTestFixture.PROJECT_ID;
+    public static final UUID OTHER_ORG_ID = UUID.fromString("99999999-9999-9999-9999-999999999999");
+    public static final UUID OTHER_USER_ID = UUID.fromString("99999999-9999-9999-9999-999999999998");
+    public static final UUID OTHER_PROJECT_ID = UUID.fromString("99999999-9999-9999-9999-999999999997");
 
     private CollaborationTestFixture() {
     }
@@ -56,6 +61,27 @@ public final class CollaborationTestFixture {
                         CollaborationAuthorizationService.COLLABORATION_WRITE,
                         CollaborationAuthorizationService.COLLABORATION_ADMIN),
                 true);
+    }
+
+    public static AuthenticatedUser collaborationOtherOrgWriteUser() {
+        return new AuthenticatedUser(
+                OTHER_USER_ID,
+                OTHER_ORG_ID,
+                "collaboration-writer-b@nova.local",
+                "Collaboration Writer B",
+                List.of("USER"),
+                List.of(
+                        CollaborationAuthorizationService.COLLABORATION_READ,
+                        CollaborationAuthorizationService.COLLABORATION_WRITE),
+                true);
+    }
+
+    public static SendMessageRequest infoMessage(String content) {
+        return new SendMessageRequest(CollaborationParticipantRole.CODING, CollaborationMessageType.INFO, content, null);
+    }
+
+    public static SendMessageRequest infoMessageForTask(String content, UUID taskId) {
+        return new SendMessageRequest(CollaborationParticipantRole.CODING, CollaborationMessageType.INFO, content, taskId);
     }
 
     public static AuthenticatedUser collaborationNoPermissionUser() {

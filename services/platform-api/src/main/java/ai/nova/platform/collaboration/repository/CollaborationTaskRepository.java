@@ -28,4 +28,19 @@ public interface CollaborationTaskRepository extends JpaRepository<Collaboration
 
     List<CollaborationTaskEntity> findBySessionIdAndOrganizationIdAndParallelGroup(
             UUID sessionId, UUID organizationId, String parallelGroup);
+
+    List<CollaborationTaskEntity> findBySessionIdAndOrganizationIdAndParticipantIdAndStatusIn(
+            UUID sessionId,
+            UUID organizationId,
+            UUID participantId,
+            Collection<CollaborationTaskStatus> statuses);
+
+    List<CollaborationTaskEntity> findBySessionIdAndOrganizationIdAndParticipantId(
+            UUID sessionId, UUID organizationId, UUID participantId);
+
+    boolean existsBySessionIdAndOrganizationIdAndParticipantIdAndStatusIn(
+            UUID sessionId,
+            UUID organizationId,
+            UUID participantId,
+            Collection<CollaborationTaskStatus> statuses);
 }

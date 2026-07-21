@@ -25,8 +25,11 @@ CREATE TABLE collaboration_sessions (
     completed_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
     CONSTRAINT fk_collab_sessions_org FOREIGN KEY (organization_id) REFERENCES organizations (id),
     CONSTRAINT fk_collab_sessions_project FOREIGN KEY (project_id) REFERENCES projects (id),
+    CONSTRAINT fk_collab_sessions_run FOREIGN KEY (orchestration_run_id) REFERENCES agent_orchestration_runs (id),
+    CONSTRAINT fk_collab_sessions_created_by FOREIGN KEY (created_by) REFERENCES users (id),
     CONSTRAINT chk_collab_sessions_status CHECK (status IN (
         'CREATED', 'STARTING', 'ACTIVE', 'WAITING', 'BLOCKED', 'COMPLETED', 'FAILED', 'CANCELLED'
     ))
@@ -49,13 +52,16 @@ CREATE TABLE collaboration_participants (
     completed_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
     CONSTRAINT fk_collab_participants_session FOREIGN KEY (session_id) REFERENCES collaboration_sessions (id),
     CONSTRAINT chk_collab_participants_status CHECK (status IN (
         'IDLE', 'ACTIVE', 'WAITING', 'BLOCKED', 'COMPLETED', 'FAILED'
-    ))
+    )),
+    CONSTRAINT chk_collab_participants_progress CHECK (progress_percent BETWEEN 0 AND 100)
 );
 
 CREATE INDEX idx_collab_participants_session ON collaboration_participants (session_id);
+CREATE INDEX idx_collab_participants_session_status ON collaboration_participants (session_id, status);
 
 CREATE TABLE collaboration_tasks (
     id UUID PRIMARY KEY,
@@ -75,13 +81,24 @@ CREATE TABLE collaboration_tasks (
     completed_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
     CONSTRAINT fk_collab_tasks_session FOREIGN KEY (session_id) REFERENCES collaboration_sessions (id),
+    CONSTRAINT fk_collab_tasks_participant FOREIGN KEY (participant_id) REFERENCES collaboration_participants (id),
+    CONSTRAINT fk_collab_tasks_depends_on FOREIGN KEY (depends_on_task_id) REFERENCES collaboration_tasks (id),
+    CONSTRAINT fk_collab_tasks_blocked_by FOREIGN KEY (blocked_by_task_id) REFERENCES collaboration_tasks (id),
+    CONSTRAINT fk_collab_tasks_completed_by FOREIGN KEY (completed_by_participant_id) REFERENCES collaboration_participants (id),
+    CONSTRAINT uq_collab_tasks_session_key UNIQUE (session_id, task_key),
     CONSTRAINT chk_collab_tasks_status CHECK (status IN (
         'PENDING', 'ASSIGNED', 'IN_PROGRESS', 'BLOCKED', 'COMPLETED', 'REJECTED', 'CANCELLED'
     ))
 );
 
 CREATE INDEX idx_collab_tasks_session ON collaboration_tasks (session_id);
+CREATE INDEX idx_collab_tasks_session_status ON collaboration_tasks (session_id, status);
+CREATE INDEX idx_collab_tasks_participant_status ON collaboration_tasks (participant_id, status);
+
+ALTER TABLE collaboration_participants
+    ADD CONSTRAINT fk_collab_participants_current_task FOREIGN KEY (current_task_id) REFERENCES collaboration_tasks (id);
 
 CREATE TABLE collaboration_messages (
     id UUID PRIMARY KEY,
@@ -93,6 +110,7 @@ CREATE TABLE collaboration_messages (
     task_id UUID,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT fk_collab_messages_session FOREIGN KEY (session_id) REFERENCES collaboration_sessions (id),
+    CONSTRAINT fk_collab_messages_task FOREIGN KEY (task_id) REFERENCES collaboration_tasks (id),
     CONSTRAINT chk_collab_messages_type CHECK (message_type IN (
         'TASK', 'QUESTION', 'ANSWER', 'WARNING', 'ERROR', 'INFO', 'APPROVAL_REQUEST', 'DECISION'
     ))
@@ -111,6 +129,8 @@ CREATE TABLE collaboration_decisions (
     task_id UUID,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT fk_collab_decisions_session FOREIGN KEY (session_id) REFERENCES collaboration_sessions (id),
+    CONSTRAINT fk_collab_decisions_task FOREIGN KEY (task_id) REFERENCES collaboration_tasks (id),
+    CONSTRAINT fk_collab_decisions_decided_by FOREIGN KEY (decided_by) REFERENCES users (id),
     CONSTRAINT chk_collab_decisions_type CHECK (decision_type IN (
         'APPROVE', 'REJECT', 'RESOLVE_CONFLICT', 'PAUSE', 'RESUME', 'CANCEL',
         'REQUEST_REVIEW', 'REQUEST_APPROVAL', 'REQUEST_CLARIFICATION'
@@ -131,7 +151,10 @@ CREATE TABLE collaboration_timeline_events (
     decision_id UUID,
     details_json TEXT,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    CONSTRAINT fk_collab_timeline_session FOREIGN KEY (session_id) REFERENCES collaboration_sessions (id)
+    CONSTRAINT fk_collab_timeline_session FOREIGN KEY (session_id) REFERENCES collaboration_sessions (id),
+    CONSTRAINT fk_collab_timeline_task FOREIGN KEY (task_id) REFERENCES collaboration_tasks (id),
+    CONSTRAINT fk_collab_timeline_message FOREIGN KEY (message_id) REFERENCES collaboration_messages (id),
+    CONSTRAINT fk_collab_timeline_decision FOREIGN KEY (decision_id) REFERENCES collaboration_decisions (id)
 );
 
 CREATE INDEX idx_collab_timeline_session ON collaboration_timeline_events (session_id, created_at ASC);

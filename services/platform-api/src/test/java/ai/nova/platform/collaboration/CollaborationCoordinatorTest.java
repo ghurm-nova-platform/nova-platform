@@ -16,14 +16,9 @@ import ai.nova.platform.agent.runtime.AgentRuntimeClient;
 import ai.nova.platform.collaboration.dto.CollaborationDtos.AssignTaskRequest;
 import ai.nova.platform.collaboration.dto.CollaborationDtos.SessionDetail;
 import ai.nova.platform.collaboration.dto.CollaborationDtos.TaskAction;
-import ai.nova.platform.collaboration.entity.CollaborationSessionEntity;
 import ai.nova.platform.collaboration.entity.CollaborationSessionStatus;
-import ai.nova.platform.collaboration.entity.CollaborationTaskEntity;
 import ai.nova.platform.collaboration.entity.CollaborationTaskStatus;
-import ai.nova.platform.collaboration.repository.CollaborationTaskRepository;
-import ai.nova.platform.collaboration.service.CollaborationCoordinator;
 import ai.nova.platform.collaboration.service.CollaborationService;
-import ai.nova.platform.collaboration.service.CollaborationSessionService;
 import ai.nova.platform.collaboration.support.CollaborationTestFixture;
 
 @SpringBootTest(properties = {"nova.collaboration.enabled=true", "nova.audit.enabled=true"})
@@ -31,15 +26,6 @@ class CollaborationCoordinatorTest {
 
     @Autowired
     private CollaborationService collaborationService;
-
-    @Autowired
-    private CollaborationCoordinator coordinator;
-
-    @Autowired
-    private CollaborationSessionService sessionService;
-
-    @Autowired
-    private CollaborationTaskRepository taskRepository;
 
     @MockitoBean
     private AgentRuntimeClient agentRuntimeClient;
@@ -108,25 +94,19 @@ class CollaborationCoordinatorTest {
                 .orElseThrow()
                 .id();
 
-        CollaborationSessionEntity sessionEntity =
-                sessionService.requireSession(session.id(), CollaborationTestFixture.ORG_ID);
-        CollaborationTaskEntity taskA = requireTask(taskAId);
-        CollaborationTaskEntity taskB = requireTask(taskBId);
-
-        coordinator.assignTask(sessionEntity, taskA, codingParticipant, null, group);
-        sessionEntity = sessionService.requireSession(session.id(), CollaborationTestFixture.ORG_ID);
-        coordinator.assignTask(sessionEntity, taskB, reviewParticipant, null, group);
+        collaborationService.assign(
+                session.id(),
+                new AssignTaskRequest(taskAId, TaskAction.ASSIGN, codingParticipant, null, null, null, group, null),
+                CollaborationTestFixture.collaborationWriteUser());
+        collaborationService.assign(
+                session.id(),
+                new AssignTaskRequest(taskBId, TaskAction.ASSIGN, reviewParticipant, null, null, null, group, null),
+                CollaborationTestFixture.collaborationWriteUser());
 
         SessionDetail updated = collaborationService.get(session.id(), CollaborationTestFixture.collaborationReadUser());
         assertThat(updated.tasks()).allMatch(t -> t.status() == CollaborationTaskStatus.ASSIGNED);
         assertThat(updated.tasks()).allMatch(t -> group.equals(t.parallelGroup()));
         assertThat(updated.status()).isEqualTo(CollaborationSessionStatus.ACTIVE);
         assertThat(updated.conflictDetected()).isFalse();
-    }
-
-    private CollaborationTaskEntity requireTask(UUID taskId) {
-        return taskRepository
-                .findByIdAndOrganizationId(taskId, CollaborationTestFixture.ORG_ID)
-                .orElseThrow();
     }
 }
