@@ -114,7 +114,7 @@
 
 - Enterprise identity layer as sole auth entry wrapping existing JWT (ADR-0002)
 - Provider registry: `LOCAL`, `SAML`, `OIDC`, `LDAP`; session management and admin revoke
-- Login history audit trail; MFA enrollment (TOTP, WebAuthn); SMS OTP deferred
+- Login history audit trail; MFA enrollment (TOTP); SMS OTP / WebAuthn deferred
 - Optional SCIM 2.0 user listing (`GET /api/scim/v2/Users`)
 - Flyway V58 tables: `identity_providers`, `identity_sessions`, `identity_login_events`, `identity_mfa_enrollments`, `identity_password_policies`
 - Permissions `IDENTITY_READ`, `IDENTITY_ADMIN`, `IDENTITY_PROVIDER_MANAGE`, `IDENTITY_MFA_MANAGE`, `SCIM_PROVISION`; audit via `AuditSource.IDENTITY`

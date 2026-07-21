@@ -3,21 +3,34 @@ package ai.nova.platform.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+
+import javax.crypto.SecretKey;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+
 class JwtServiceTest {
 
+    private static final String SECRET = "test-only-jwt-secret-key-32bytes-minimum!!";
+    private static final String ISSUER = "nova-platform-test";
+
     private JwtService jwtService;
+    private JwtProperties properties;
 
     @BeforeEach
     void setUp() {
-        JwtProperties properties = new JwtProperties();
-        properties.setSecret("test-only-jwt-secret-key-32bytes-minimum!!");
-        properties.setIssuer("nova-platform-test");
+        properties = new JwtProperties();
+        properties.setSecret(SECRET);
+        properties.setIssuer(ISSUER);
         jwtService = new JwtService(properties);
     }
 
@@ -59,5 +72,26 @@ class JwtServiceTest {
 
         assertThatThrownBy(() -> jwtService.parseAccessToken(token + "x"))
                 .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void rejectsExpiredToken() {
+        Instant past = Instant.now().minus(Duration.ofHours(1));
+        SecretKey key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+        UUID userId = UUID.randomUUID();
+        UUID organizationId = UUID.randomUUID();
+        String expired = Jwts.builder()
+                .issuer(ISSUER)
+                .subject(userId.toString())
+                .issuedAt(Date.from(past.minusSeconds(60)))
+                .expiration(Date.from(past))
+                .claim(JwtService.CLAIM_USER_ID, userId.toString())
+                .claim(JwtService.CLAIM_ORGANIZATION_ID, organizationId.toString())
+                .claim(JwtService.CLAIM_ROLES, List.of("ORG_MEMBER"))
+                .claim(JwtService.CLAIM_PERMISSIONS, List.of("AGENT_READ"))
+                .signWith(key)
+                .compact();
+
+        assertThatThrownBy(() -> jwtService.parseAccessToken(expired)).isInstanceOf(RuntimeException.class);
     }
 }

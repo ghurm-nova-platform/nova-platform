@@ -25,8 +25,8 @@ Enterprise Identity sits above the Sprint 1 password/JWT stack:
 2. **Provider registry** — org-scoped identity providers with metadata and status; no provider secrets in portal responses
 3. **Session registry** — tracks active refresh-token sessions with IP, user agent, auth method, and revoke support
 4. **Login history** — append-only audit of success/failure/MFA-required outcomes
-5. **MFA** — TOTP and WebAuthn enrollment; SMS OTP deferred if needed
-6. **SCIM 2.0** — optional read-only user listing for provisioned identities (`SCIM_PROVISION`)
+5. **MFA** — TOTP enrollment with recovery codes; SMS OTP, WebAuthn, and passkeys deferred to future phases
+6. **SCIM 2.0** — optional user/group create and list for provisioned identities (`SCIM_PROVISION`)
 
 Identity is the **sole auth entry** for new enterprise flows; existing `/api/auth/*` endpoints remain for backward compatibility during migration (see ADR-0035).
 
@@ -35,19 +35,21 @@ Identity is the **sole auth entry** for new enterprise flows; existing `/api/aut
 | Method | Description |
 |--------|-------------|
 | `LOCAL` | Email/password via BCrypt; existing demo seed user |
-| `SAML` | Enterprise SAML 2.0 IdP federation (metadata-driven) |
+| `SAML` | Enterprise SAML 2.0 IdP federation (metadata-driven; production crypto phased) |
 | `OIDC` | OpenID Connect authorization code flow |
+| `OAUTH2` | OAuth 2.0 authorization code / client credentials adapters |
 | `LDAP` | Directory bind against configured LDAP server |
+| `ACTIVE_DIRECTORY` | Active Directory bind/sync adapter |
 
-Provider type values: `LOCAL`, `SAML`, `OIDC`, `LDAP`.
+Provider type values include `LOCAL`, `SAML`, `OIDC`, `OAUTH2`, `LDAP`, `ACTIVE_DIRECTORY`.
 
 ## MFA
 
 | Method | Status |
 |--------|--------|
-| `TOTP` | Supported — authenticator app enrollment with QR URI |
-| `WEBAUTHN` | Supported — security key / platform authenticator |
+| `TOTP` | Supported — authenticator app enrollment with QR URI and recovery codes |
 | `SMS` | Deferred — optional future phase if carrier integration required |
+| `WEBAUTHN` / passkeys / FIDO2 | Explicitly out of scope for this phase |
 
 Enrollment status values: `NOT_ENROLLED`, `PENDING`, `ENROLLED`, `DISABLED`.
 
@@ -55,13 +57,14 @@ Org-level `mfaRequired` flag in config forces MFA before token issuance when ena
 
 ## SCIM
 
-Minimal SCIM 2.0 surface for provisioned user visibility:
+Minimal SCIM 2.0 surface for provisioned identities:
 
 | Method | Path | Permission |
 |--------|------|------------|
-| GET | `/api/scim/v2/Users` | `SCIM_PROVISION` |
+| GET/POST | `/api/scim/v2/Users` | `SCIM_PROVISION` |
+| GET/POST | `/api/scim/v2/Groups` | `SCIM_PROVISION` |
 
-Full SCIM write (POST/PATCH/DELETE) and group provisioning are out of scope for this phase. Portal shows SCIM users only when `SCIM_PROVISION` is granted and the API returns data.
+Full SCIM PATCH/DELETE and rich filter semantics remain phased. Portal shows SCIM resources when `SCIM_PROVISION` is granted.
 
 ## Sessions
 
@@ -169,7 +172,10 @@ Full CRUD at `/groups`, `/roles`, `/permissions` with `IDENTITY_GROUP_ADMIN`, `I
 
 | Method | Path | Permission |
 |--------|------|------------|
-| GET | `/api/scim/v2/Users` | `SCIM_PROVISION` |
+| GET/POST | `/api/scim/v2/Users` | `SCIM_PROVISION` |
+| GET/POST | `/api/scim/v2/Groups` | `SCIM_PROVISION` |
+
+OpenAPI contract: [identity-openapi.yaml](openapi/identity-openapi.yaml).
 
 ## Permissions
 
@@ -272,14 +278,35 @@ nova:
 
 Identity lifecycle events (login, logout, session revoke, MFA enroll/verify, provider changes) publish to Audit Center with `AuditSource.IDENTITY` and `AuditEntityType.IDENTITY`.
 
+## Metrics
+
+Micrometer meters (`IdentityMetrics`):
+
+| Meter | Description |
+|-------|-------------|
+| `nova.identity.logins.success` | Successful logins |
+| `nova.identity.logins.failure` | Failed logins |
+| `nova.identity.login.latency` | Authentication latency timer |
+| `nova.identity.sessions.active` | Approximate active session gauge |
+| `nova.identity.jwt.issued` | Access tokens issued |
+| `nova.identity.refresh.issued` | Refresh tokens issued |
+| `nova.identity.mfa.usage` | MFA enroll/verify operations |
+| `nova.identity.sync.jobs` | Synchronization jobs |
+| `nova.identity.provider.availability` | Provider connectivity checks |
+
+## Logging
+
+Reuses platform structured logging. Key events: authentication success/failure, authorization failure, provider login/sync, password reset/change, MFA enrollment, session/token revocation.
+
 ## Constraints and non-goals
 
 - **Wrap existing JWT** — no new token format; same portal interceptor contract (ADR-0002)
 - **Identity as sole auth entry** — new enterprise flows route through Identity; legacy `/api/auth/*` retained during migration
 - **No Agent Runtime auth changes** — browser never talks to Agent Runtime directly
-- **Full production SAML crypto optional** — metadata-driven configuration first; full XML signature validation may be phased
-- **SMS OTP deferred** — TOTP and WebAuthn prioritized; SMS added only if required
-- **SCIM read-only in portal** — no SCIM write UI in this phase
+- **Federation adapters config-gated** — LDAP/AD/OIDC/OAuth2/SAML adapters are present and tested; live directory/IdP crypto requires environment configuration
+- **SMS OTP deferred** — TOTP prioritized
+- **No WebAuthn / passkeys / FIDO2 / biometrics** — deferred to future phases
+- **No risk-based / adaptive auth, IGA campaigns, or cloud IAM connectors** — deferred
 - **No WebSockets, Kafka, RabbitMQ, or Redis**
 - Provider secrets stored hashed/encrypted server-side; never returned in API responses
 
@@ -287,8 +314,32 @@ Identity lifecycle events (login, logout, session revoke, MFA enroll/verify, pro
 
 | Concern | Enterprise Identity (046) | Auth API (009) |
 |---------|---------------------------|----------------|
-| Scope | Providers, sessions, MFA, SCIM, policies | Login, refresh, logout, `/me` |
+| Scope | Providers, sessions, MFA, SCIM, policies, RBAC admin | Login, refresh, logout, `/me` |
 | Token format | Wraps same JWT claims | Issues JWT access tokens |
 | Portal | `/identity` admin UI | `/login` sign-in page |
 
-See [ADR-0035](adr/ADR-0035-enterprise-identity.md) and [Authentication API](009_AUTH_API.md).
+See [ADR-0035](adr/ADR-0035-enterprise-identity.md), [Authentication API](009_AUTH_API.md), and [OpenAPI](openapi/identity-openapi.yaml).
+
+## Administration notes
+
+- Grant granular `IDENTITY_*` permissions rather than blanket `ORG_ADMIN` where possible
+- Rotate JWT signing secrets via existing `nova.security.jwt` configuration; schedule access TTL ≤ 15m in production
+- Keep concurrent session limits low (`nova.identity.max-concurrent-sessions`)
+- Enable MFA (`nova.identity.mfa.enabled`) and password policy for local accounts
+- Prefer HA by running multiple Platform API replicas against shared PostgreSQL; sessions and refresh tokens are DB-backed
+
+## Security notes
+
+- Refresh tokens are hashed at rest and rotated on use
+- Failed logins increment lockout counters on identity users
+- Cross-tenant isolation is enforced by organization-scoped repositories and authorization checks
+- CSRF is mitigated by Bearer-token SPA usage (no cookie session auth for API)
+- Brute-force protection relies on account lockout + password policy; rate limiting at the edge is recommended in production
+
+## Deployment notes
+
+1. Apply Flyway `V58__enterprise_identity.sql`
+2. Set `nova.identity.enabled=true` (default)
+3. Configure provider feature flags (`nova.identity.ldap|ad|oidc|oauth|saml|scim|sync.enabled`) only when backends are ready
+4. Expose Micrometer metrics via existing actuator/metrics pipeline
+5. Point operators to portal `/identity` after granting `IDENTITY_READ`

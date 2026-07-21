@@ -24,14 +24,17 @@ public class SessionService {
     private final IdentityProperties properties;
     private final IdentitySessionRepository sessionRepository;
     private final IdentityRefreshTokenRepository refreshTokenRepository;
+    private final IdentityMetrics identityMetrics;
 
     public SessionService(
             IdentityProperties properties,
             IdentitySessionRepository sessionRepository,
-            IdentityRefreshTokenRepository refreshTokenRepository) {
+            IdentityRefreshTokenRepository refreshTokenRepository,
+            IdentityMetrics identityMetrics) {
         this.properties = properties;
         this.sessionRepository = sessionRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.identityMetrics = identityMetrics;
     }
 
     @Transactional
@@ -52,7 +55,9 @@ public class SessionService {
                 userAgent,
                 now,
                 now.plus(properties.getSessionAbsoluteTimeout()));
-        return sessionRepository.save(session);
+        IdentitySessionEntity saved = sessionRepository.save(session);
+        identityMetrics.sessionCreated();
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -94,6 +99,7 @@ public class SessionService {
                         HttpStatus.NOT_FOUND, IdentityErrorCodes.SESSION_NOT_FOUND, "Session not found"));
         session.revoke(Instant.now());
         sessionRepository.save(session);
+        identityMetrics.sessionEnded();
     }
 
     @Transactional

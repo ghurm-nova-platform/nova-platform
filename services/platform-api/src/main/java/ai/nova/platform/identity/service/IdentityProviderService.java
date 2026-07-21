@@ -25,11 +25,15 @@ public class IdentityProviderService {
 
     private final IdentityProviderRepository providerRepository;
     private final UserSynchronizationService userSynchronizationService;
+    private final IdentityMetrics identityMetrics;
 
     public IdentityProviderService(
-            IdentityProviderRepository providerRepository, UserSynchronizationService userSynchronizationService) {
+            IdentityProviderRepository providerRepository,
+            UserSynchronizationService userSynchronizationService,
+            IdentityMetrics identityMetrics) {
         this.providerRepository = providerRepository;
         this.userSynchronizationService = userSynchronizationService;
+        this.identityMetrics = identityMetrics;
     }
 
     @Transactional(readOnly = true)
@@ -108,6 +112,7 @@ public class IdentityProviderService {
     @Transactional(readOnly = true)
     public ProviderTestResponse testProvider(UUID organizationId, UUID providerId) {
         requireOrgProvider(organizationId, providerId);
+        identityMetrics.recordProviderCheck();
         return new ProviderTestResponse(true, "Provider connection test succeeded");
     }
 

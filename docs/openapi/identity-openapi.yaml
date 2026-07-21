@@ -1,0 +1,676 @@
+openapi: 3.0.3
+info:
+  title: Nova Platform Enterprise Identity API
+  version: 0.1.0
+  description: |
+    Enterprise Identity REST surface under `/api/identity` and optional SCIM under `/api/scim/v2`.
+    Authentication wraps the existing JWT foundation (ADR-0002). Legacy `/api/auth/*` remains for portal compatibility.
+servers:
+  - url: /
+tags:
+  - name: Authentication
+  - name: Providers
+  - name: Users
+  - name: Groups
+  - name: Roles
+  - name: Permissions
+  - name: Sessions
+  - name: ApiTokens
+  - name: ServiceAccounts
+  - name: Dashboard
+  - name: Scim
+paths:
+  /api/identity/login:
+    post:
+      tags: [Authentication]
+      summary: Local login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Token pair issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/identity/logout:
+    post:
+      tags: [Authentication]
+      summary: Logout current refresh session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Session revoked
+  /api/identity/logout-all:
+    post:
+      tags: [Authentication]
+      summary: Revoke all sessions for current user
+      responses:
+        '200':
+          description: All sessions revoked
+  /api/identity/refresh-token:
+    post:
+      tags: [Authentication]
+      summary: Rotate refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: New token pair
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+  /api/identity/validate-token:
+    post:
+      tags: [Authentication]
+      summary: Validate access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateTokenRequest'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateTokenResponse'
+  /api/identity/change-password:
+    post:
+      tags: [Authentication]
+      summary: Change password for current identity user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Password changed
+  /api/identity/forgot-password:
+    post:
+      tags: [Authentication]
+      summary: Request password reset
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '200':
+          description: Generic success message
+  /api/identity/reset-password:
+    post:
+      tags: [Authentication]
+      summary: Reset password with token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Password reset
+  /api/identity/enroll-mfa:
+    post:
+      tags: [Authentication]
+      summary: Enroll TOTP MFA
+      responses:
+        '200':
+          description: Secret and recovery codes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaEnrollResponse'
+  /api/identity/verify-mfa:
+    post:
+      tags: [Authentication]
+      summary: Confirm MFA enrollment or verify code
+      responses:
+        '200':
+          description: MFA verified
+  /api/identity/disable-mfa:
+    post:
+      tags: [Authentication]
+      summary: Disable MFA for current user
+      responses:
+        '200':
+          description: MFA disabled
+  /api/identity/providers:
+    get:
+      tags: [Providers]
+      summary: List identity providers
+      responses:
+        '200':
+          description: Provider list
+    post:
+      tags: [Providers]
+      summary: Create identity provider
+      responses:
+        '201':
+          description: Created
+  /api/identity/providers/{id}:
+    get:
+      tags: [Providers]
+      summary: Get provider
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Provider
+    put:
+      tags: [Providers]
+      summary: Update provider
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Providers]
+      summary: Delete provider
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '204':
+          description: Deleted
+  /api/identity/providers/{id}/test:
+    post:
+      tags: [Providers]
+      summary: Test provider connectivity
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Test result
+  /api/identity/providers/{id}/sync:
+    post:
+      tags: [Providers]
+      summary: Synchronize provider directory
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Sync accepted
+  /api/identity/users:
+    get:
+      tags: [Users]
+      summary: List identity users
+      responses:
+        '200':
+          description: Users
+    post:
+      tags: [Users]
+      summary: Create identity user
+      responses:
+        '201':
+          description: Created
+  /api/identity/users/{id}:
+    get:
+      tags: [Users]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: User
+    put:
+      tags: [Users]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Users]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '204':
+          description: Deleted
+  /api/identity/users/{id}/enable:
+    post:
+      tags: [Users]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Enabled
+  /api/identity/users/{id}/disable:
+    post:
+      tags: [Users]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Disabled
+  /api/identity/users/{id}/unlock:
+    post:
+      tags: [Users]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Unlocked
+  /api/identity/users/{id}/reset-password:
+    post:
+      tags: [Users]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Password reset by admin
+  /api/identity/groups:
+    get:
+      tags: [Groups]
+      responses:
+        '200':
+          description: Groups
+    post:
+      tags: [Groups]
+      responses:
+        '201':
+          description: Created
+  /api/identity/groups/{id}:
+    get:
+      tags: [Groups]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Group
+    put:
+      tags: [Groups]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Groups]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '204':
+          description: Deleted
+  /api/identity/groups/{id}/sync:
+    post:
+      tags: [Groups]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Sync accepted
+  /api/identity/roles:
+    get:
+      tags: [Roles]
+      responses:
+        '200':
+          description: Roles
+    post:
+      tags: [Roles]
+      responses:
+        '201':
+          description: Created
+  /api/identity/roles/{id}:
+    get:
+      tags: [Roles]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Role
+    put:
+      tags: [Roles]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Roles]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '204':
+          description: Deleted
+  /api/identity/permissions:
+    get:
+      tags: [Permissions]
+      responses:
+        '200':
+          description: Permissions
+    post:
+      tags: [Permissions]
+      responses:
+        '201':
+          description: Created
+  /api/identity/permissions/{id}:
+    put:
+      tags: [Permissions]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Permissions]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '204':
+          description: Deleted
+  /api/identity/sessions:
+    get:
+      tags: [Sessions]
+      responses:
+        '200':
+          description: Sessions
+  /api/identity/sessions/{id}:
+    get:
+      tags: [Sessions]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Session
+    delete:
+      tags: [Sessions]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '204':
+          description: Revoked
+  /api/identity/sessions/revoke-all:
+    delete:
+      tags: [Sessions]
+      responses:
+        '204':
+          description: All sessions revoked
+  /api/identity/api-tokens:
+    get:
+      tags: [ApiTokens]
+      responses:
+        '200':
+          description: Tokens
+    post:
+      tags: [ApiTokens]
+      responses:
+        '201':
+          description: Created (includes secret once)
+  /api/identity/api-tokens/{id}:
+    delete:
+      tags: [ApiTokens]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '204':
+          description: Deleted
+  /api/identity/api-tokens/{id}/revoke:
+    post:
+      tags: [ApiTokens]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Revoked
+  /api/identity/service-accounts:
+    get:
+      tags: [ServiceAccounts]
+      responses:
+        '200':
+          description: Service accounts
+    post:
+      tags: [ServiceAccounts]
+      responses:
+        '201':
+          description: Created
+  /api/identity/service-accounts/{id}:
+    put:
+      tags: [ServiceAccounts]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [ServiceAccounts]
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '204':
+          description: Deleted
+  /api/identity/config:
+    get:
+      tags: [Dashboard]
+      summary: Identity configuration summary
+      responses:
+        '200':
+          description: Config
+  /api/identity/summary:
+    get:
+      tags: [Dashboard]
+      responses:
+        '200':
+          description: Summary
+  /api/identity/dashboard:
+    get:
+      tags: [Dashboard]
+      responses:
+        '200':
+          description: Dashboard stats
+  /api/identity/security-events:
+    get:
+      tags: [Dashboard]
+      responses:
+        '200':
+          description: Security events
+  /api/identity/login-history:
+    get:
+      tags: [Dashboard]
+      responses:
+        '200':
+          description: Login history
+  /api/identity/export/{resource}:
+    get:
+      tags: [Dashboard]
+      summary: Export users, groups, roles, permissions, or login-history
+      parameters:
+        - name: resource
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [users, groups, roles, permissions, login-history]
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [csv, json, xlsx]
+            default: json
+      responses:
+        '200':
+          description: Export payload
+    post:
+      tags: [Dashboard]
+      summary: Export with body options
+      parameters:
+        - name: resource
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Export payload
+  /api/scim/v2/Users:
+    get:
+      tags: [Scim]
+      summary: List SCIM users
+      responses:
+        '200':
+          description: SCIM ListResponse
+    post:
+      tags: [Scim]
+      summary: Create SCIM user
+      responses:
+        '201':
+          description: Created
+  /api/scim/v2/Groups:
+    get:
+      tags: [Scim]
+      responses:
+        '200':
+          description: SCIM ListResponse
+    post:
+      tags: [Scim]
+      responses:
+        '201':
+          description: Created
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Unauthorized:
+      description: Invalid credentials or MFA required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        mfaCode:
+          type: string
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+    ValidateTokenRequest:
+      type: object
+      required: [accessToken]
+      properties:
+        accessToken:
+          type: string
+    ValidateTokenResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        userId:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        email:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+    ResetPasswordRequest:
+      type: object
+      required: [token, newPassword]
+      properties:
+        token:
+          type: string
+        newPassword:
+          type: string
+    MfaEnrollResponse:
+      type: object
+      properties:
+        secret:
+          type: string
+        otpAuthUri:
+          type: string
+        recoveryCodes:
+          type: array
+          items:
+            type: string
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        tokenType:
+          type: string
+          example: Bearer
+        expiresInSeconds:
+          type: integer
+          format: int64
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: INVALID_CREDENTIALS
+        message:
+          type: string
+        correlationId:
+          type: string
+security:
+  - bearerAuth: []

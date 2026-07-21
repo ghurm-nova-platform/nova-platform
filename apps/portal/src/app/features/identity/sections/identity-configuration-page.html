@@ -39,7 +39,6 @@
         <mat-label>Method</mat-label>
         <select matNativeControl [(ngModel)]="selectedMfaMethod">
           <option value="TOTP">TOTP (authenticator app)</option>
-          <option value="WEBAUTHN">WebAuthn (security key)</option>
         </select>
       </mat-form-field>
       <button mat-flat-button color="primary" type="button" (click)="startMfaEnrollment()">

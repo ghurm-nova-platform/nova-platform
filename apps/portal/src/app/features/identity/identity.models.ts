@@ -6,7 +6,7 @@ export type SessionStatus = 'ACTIVE' | 'REVOKED' | 'EXPIRED';
 
 export type LoginOutcome = 'SUCCESS' | 'FAILURE' | 'MFA_REQUIRED' | 'LOCKED';
 
-export type MfaMethod = 'TOTP' | 'WEBAUTHN' | 'SMS';
+export type MfaMethod = 'TOTP' | 'SMS';
 
 export type MfaEnrollmentStatus = 'NOT_ENROLLED' | 'PENDING' | 'ENROLLED' | 'DISABLED';
 

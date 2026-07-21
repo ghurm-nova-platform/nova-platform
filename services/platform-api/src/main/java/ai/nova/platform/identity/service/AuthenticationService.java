@@ -60,6 +60,7 @@ public class AuthenticationService {
     private final PasswordPolicyService passwordPolicyService;
     private final AuditProperties auditProperties;
     private final AuditRecordingSupport auditRecordingSupport;
+    private final IdentityMetrics identityMetrics;
 
     public AuthenticationService(
             IdentityProviderService identityProviderService,
@@ -75,7 +76,8 @@ public class AuthenticationService {
             IdentityUserService identityUserService,
             PasswordPolicyService passwordPolicyService,
             AuditProperties auditProperties,
-            AuditRecordingSupport auditRecordingSupport) {
+            AuditRecordingSupport auditRecordingSupport,
+            IdentityMetrics identityMetrics) {
         this.identityProviderService = identityProviderService;
         this.providerRegistry = providerRegistry;
         this.identityUserRepository = identityUserRepository;
@@ -90,10 +92,12 @@ public class AuthenticationService {
         this.passwordPolicyService = passwordPolicyService;
         this.auditProperties = auditProperties;
         this.auditRecordingSupport = auditRecordingSupport;
+        this.identityMetrics = identityMetrics;
     }
 
     @Transactional
     public TokenResponse login(String email, String password, String mfaCode, String ipAddress, String userAgent) {
+        long started = System.currentTimeMillis();
         Instant now = Instant.now();
         UserAccount platformUser = userAccountRepository.findByEmailIgnoreCase(email.trim()).orElse(null);
         UUID organizationId = platformUser != null ? platformUser.getOrganization().getId() : null;
@@ -128,6 +132,7 @@ public class AuthenticationService {
                 identityUser.recordFailedLogin(now);
                 identityUserRepository.save(identityUser);
             }
+            identityMetrics.recordLoginFailure();
             recordLoginFailure(organizationId, identityUser != null ? identityUser.getId() : null, provider, ipAddress, userAgent, authResult.failureReason());
             throw new ApiException(HttpStatus.UNAUTHORIZED, IdentityErrorCodes.INVALID_CREDENTIALS, "Invalid email or password");
         }
@@ -170,6 +175,8 @@ public class AuthenticationService {
                 organizationId, identityUser.getId(), platformUser.getId(), ipAddress, userAgent);
         recordLogin(organizationId, identityUser.getId(), provider.getId(), LoginResult.SUCCESS, ipAddress, userAgent, null);
         publishSecurityAudit(platformUser, session.getId(), AuditAction.LOGIN, AuditResult.SUCCESS, ipAddress, userAgent);
+        identityMetrics.recordLoginSuccess(System.currentTimeMillis() - started);
+        log.info("Authentication success for userId={} organizationId={}", platformUser.getId(), organizationId);
         return issueTokens(platformUser, identityUser, session);
     }
 
@@ -295,6 +302,8 @@ public class AuthenticationService {
         AuthenticatedUser principal = toPrincipal(platformUser);
         String accessToken = identityJwtService.createAccessToken(principal);
         String refreshTokenValue = refreshTokenService.issueRefreshTokens(session, identityUser.getId(), platformUser);
+        identityMetrics.recordJwtIssued();
+        identityMetrics.recordRefreshIssued();
         return new TokenResponse(
                 accessToken,
                 refreshTokenValue,

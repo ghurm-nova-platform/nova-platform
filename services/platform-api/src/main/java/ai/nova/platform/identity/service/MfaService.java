@@ -30,18 +30,21 @@ public class MfaService {
     private final IdentityMfaFactorRepository mfaFactorRepository;
     private final IdentityRecoveryCodeRepository recoveryCodeRepository;
     private final PasswordPolicyService passwordPolicyService;
+    private final IdentityMetrics identityMetrics;
 
     public MfaService(
             IdentityProperties properties,
             IdentityUserRepository identityUserRepository,
             IdentityMfaFactorRepository mfaFactorRepository,
             IdentityRecoveryCodeRepository recoveryCodeRepository,
-            PasswordPolicyService passwordPolicyService) {
+            PasswordPolicyService passwordPolicyService,
+            IdentityMetrics identityMetrics) {
         this.properties = properties;
         this.identityUserRepository = identityUserRepository;
         this.mfaFactorRepository = mfaFactorRepository;
         this.recoveryCodeRepository = recoveryCodeRepository;
         this.passwordPolicyService = passwordPolicyService;
+        this.identityMetrics = identityMetrics;
     }
 
     @Transactional
@@ -70,6 +73,7 @@ public class MfaService {
 
         String otpAuthUri = TotpUtils.buildOtpAuthUri(
                 properties.getMfa().getIssuer(), user.getEmail(), secret);
+        identityMetrics.recordMfaUsage();
         return new MfaEnrollResponse(secret, otpAuthUri, recoveryCodes);
     }
 
