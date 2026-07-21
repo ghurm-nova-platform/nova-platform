@@ -278,3 +278,41 @@ nova:
   secrets:
     # Test-only 32-byte AES key (all zeros). Never use in production.
     master-key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  identity:
+    enabled: true
+    session-idle-timeout: PT30M
+    session-absolute-timeout: P1D
+    max-concurrent-sessions: 5
+    jwt:
+      enabled: true
+      expiration: PT15M
+    refresh:
+      expiration: P7D
+    password:
+      enabled: true
+      min-length: 12
+      require-uppercase: true
+      require-lowercase: true
+      require-digit: true
+      require-special: true
+      history-count: 5
+    mfa:
+      enabled: true
+      issuer: Nova
+    ldap:
+      enabled: false
+    ad:
+      enabled: false
+    oidc:
+      enabled: false
+      skip-jwks-verify: true
+    oauth:
+      enabled: false
+    saml:
+      enabled: false
+    scim:
+      enabled: false
+    sync:
+      enabled: false
+    session:
+      timeout: PT30M

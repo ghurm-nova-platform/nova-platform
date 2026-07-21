@@ -1,0 +1,91 @@
+<div class="identity__section-header">
+  <div>
+    <h2>Groups</h2>
+    <p class="identity__muted">Organize users into groups and sync from external directories.</p>
+  </div>
+  <div class="identity__section-actions">
+    <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+    @if (permissions.canManageGroups()) {
+      <button mat-flat-button color="primary" type="button" (click)="startCreate()">
+        <mat-icon>group_add</mat-icon>
+        Create Group
+      </button>
+    }
+  </div>
+</div>
+
+@if (error()) {
+  <p class="identity__error">{{ error() }}</p>
+}
+@if (message()) {
+  <p class="identity__success">{{ message() }}</p>
+}
+
+@if (showCreate()) {
+  <mat-card class="identity__form">
+    <h3>New group</h3>
+    <mat-form-field appearance="outline">
+      <mat-label>Name</mat-label>
+      <input matInput [(ngModel)]="newName" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Description</mat-label>
+      <input matInput [(ngModel)]="newDescription" />
+    </mat-form-field>
+    <div class="identity__form-row">
+      <button mat-flat-button color="primary" type="button" (click)="createGroup()">Save</button>
+      <button mat-stroked-button type="button" (click)="showCreate.set(false)">Cancel</button>
+    </div>
+  </mat-card>
+}
+
+@if (loading() && groups().length === 0) {
+  <div class="identity__loading"><mat-spinner diameter="36"></mat-spinner></div>
+} @else {
+  <mat-card class="identity__tab-body">
+    @for (group of groups(); track group.id) {
+      <article class="identity__row">
+        <div class="identity__row-main">
+          <mat-icon>groups</mat-icon>
+          <div>
+            @if (editId === group.id) {
+              <mat-form-field appearance="outline">
+                <mat-label>Name</mat-label>
+                <input matInput [(ngModel)]="editName" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Description</mat-label>
+                <input matInput [(ngModel)]="editDescription" />
+              </mat-form-field>
+              <div class="identity__form-row">
+                <button mat-stroked-button type="button" (click)="saveEdit()">Save</button>
+                <button mat-button type="button" (click)="editId = null">Cancel</button>
+              </div>
+            } @else {
+              <h4>{{ group.name }}</h4>
+              <p>{{ group.memberCount }} member(s)</p>
+              @if (group.description) {
+                <p class="identity__muted">{{ group.description }}</p>
+              }
+            }
+          </div>
+        </div>
+        <div class="identity__section-actions">
+          @if (permissions.canManageGroups() && editId !== group.id) {
+            <button mat-stroked-button type="button" (click)="startEdit(group)">Edit</button>
+            <button mat-stroked-button type="button" (click)="syncGroup(group.id)">Sync</button>
+            <button mat-stroked-button color="warn" type="button" (click)="deleteGroup(group.id)">
+              Delete
+            </button>
+          }
+          <span class="identity__timestamp">{{ group.updatedAt | date: 'medium' }}</span>
+        </div>
+      </article>
+    } @empty {
+      <p class="identity__empty">No groups found.</p>
+    }
+  </mat-card>
+}

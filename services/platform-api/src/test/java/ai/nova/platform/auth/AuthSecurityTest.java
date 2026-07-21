@@ -73,7 +73,7 @@ class AuthSecurityTest {
                                 {"email":"admin@nova.local","password":"wrong-password"}
                                 """))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("AUTHENTICATION_FAILED"));
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
     }
 
     @Test

@@ -1,0 +1,70 @@
+<div class="identity__section-header">
+  <div>
+    <h2>API Tokens</h2>
+    <p class="identity__muted">Create and revoke programmatic access tokens.</p>
+  </div>
+  <div class="identity__section-actions">
+    <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+    @if (permissions.canManageApiTokens()) {
+      <button mat-flat-button color="primary" type="button" (click)="startCreate()">
+        <mat-icon>add</mat-icon>
+        Create Token
+      </button>
+    }
+  </div>
+</div>
+
+@if (error()) {
+  <p class="identity__error">{{ error() }}</p>
+}
+@if (message()) {
+  <p class="identity__success">{{ message() }}</p>
+}
+@if (createdSecret()) {
+  <p class="identity__notice">Secret: <code>{{ createdSecret() }}</code></p>
+}
+
+@if (showCreate()) {
+  <mat-card class="identity__form">
+    <h3>New API token</h3>
+    <mat-form-field appearance="outline">
+      <mat-label>Name</mat-label>
+      <input matInput [(ngModel)]="newName" />
+    </mat-form-field>
+    <div class="identity__form-row">
+      <button mat-flat-button color="primary" type="button" (click)="createToken()">Create</button>
+      <button mat-stroked-button type="button" (click)="showCreate.set(false)">Cancel</button>
+    </div>
+  </mat-card>
+}
+
+@if (loading() && tokens().length === 0) {
+  <div class="identity__loading"><mat-spinner diameter="36"></mat-spinner></div>
+} @else {
+  <mat-card class="identity__tab-body">
+    @for (token of tokens(); track token.id) {
+      <article class="identity__row">
+        <div class="identity__row-main">
+          <mat-icon>token</mat-icon>
+          <div>
+            <h4>{{ token.name }}</h4>
+            <p>{{ token.prefix }}*** · {{ token.status }}</p>
+            @if (token.lastUsedAt) {
+              <p class="identity__muted">Last used {{ token.lastUsedAt | date: 'medium' }}</p>
+            }
+          </div>
+        </div>
+        @if (permissions.canManageApiTokens() && token.status === 'ACTIVE') {
+          <button mat-stroked-button color="warn" type="button" (click)="revokeToken(token.id)">
+            Revoke
+          </button>
+        }
+      </article>
+    } @empty {
+      <p class="identity__empty">No API tokens found.</p>
+    }
+  </mat-card>
+}

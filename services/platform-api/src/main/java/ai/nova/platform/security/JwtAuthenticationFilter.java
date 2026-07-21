@@ -31,7 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (header != null && header.startsWith("Bearer ") && SecurityContextHolder.getContext().getAuthentication() == null) {
             String token = header.substring(7).trim();
-            if (!token.isEmpty()) {
+            if (!token.isEmpty() && !token.startsWith("nova_pat_")) {
                 try {
                     AuthenticatedUser user = jwtService.parseAccessToken(token);
                     UsernamePasswordAuthenticationToken authentication =

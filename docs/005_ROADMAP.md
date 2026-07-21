@@ -110,10 +110,22 @@
 
 **Exit criteria:** Operators can run a PR review from supplied diff/metadata, inspect findings/risk/knowledge links, and export reports without any Git write actions.
 
+### Sprint 6 — Enterprise Identity (Phase 4)
+
+- Enterprise identity layer as sole auth entry wrapping existing JWT (ADR-0002)
+- Provider registry: `LOCAL`, `SAML`, `OIDC`, `LDAP`; session management and admin revoke
+- Login history audit trail; MFA enrollment (TOTP); SMS OTP / WebAuthn deferred
+- Optional SCIM 2.0 user listing (`GET /api/scim/v2/Users`)
+- Flyway V58 tables: `identity_providers`, `identity_sessions`, `identity_login_events`, `identity_mfa_enrollments`, `identity_password_policies`
+- Permissions `IDENTITY_READ`, `IDENTITY_ADMIN`, `IDENTITY_PROVIDER_MANAGE`, `IDENTITY_MFA_MANAGE`, `SCIM_PROVISION`; audit via `AuditSource.IDENTITY`
+- Portal `/identity`; REST `/api/identity`
+
+**Exit criteria:** Operators can view providers, sessions, login history, and MFA status; admins can revoke sessions and enroll MFA without changing the JWT portal contract.
+
 ## After Beta
 
 - LLM-assisted PR review (optional)
-- Enterprise SSO and LDAP
+- SMS OTP for MFA (if required)
 - Self-hosted deployment
 - Local model support
 - Marketplace foundations

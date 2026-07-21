@@ -1,0 +1,43 @@
+<div class="identity__section-header">
+  <div>
+    <h2>Security Events</h2>
+    <p class="identity__muted">Failed logins, lockouts, and other security signals.</p>
+  </div>
+  <div class="identity__section-actions">
+    <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </div>
+</div>
+
+@if (error()) {
+  <p class="identity__error">{{ error() }}</p>
+}
+@if (fallbackNotice()) {
+  <p class="identity__notice">{{ fallbackNotice() }}</p>
+}
+
+@if (loading() && events().length === 0) {
+  <div class="identity__loading"><mat-spinner diameter="36"></mat-spinner></div>
+} @else {
+  <mat-card class="identity__tab-body">
+    @for (event of events(); track event.id) {
+      <article class="identity__row">
+        <div class="identity__row-main">
+          <mat-icon>shield</mat-icon>
+          <div>
+            <h4>{{ event.type }} · {{ event.userEmail || 'Unknown user' }}</h4>
+            <p>{{ event.message }}</p>
+            <p class="identity__muted">
+              {{ event.severity }} · {{ event.ipAddress || 'Unknown IP' }} ·
+              {{ event.occurredAt | date: 'medium' }}
+            </p>
+          </div>
+        </div>
+      </article>
+    } @empty {
+      <p class="identity__empty">No security events found.</p>
+    }
+  </mat-card>
+}

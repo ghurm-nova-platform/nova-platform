@@ -1,0 +1,100 @@
+<div class="identity__section-header">
+  <div>
+    <h2>Identity Providers</h2>
+    <p class="identity__muted">Configure SAML, OIDC, LDAP, and local authentication providers.</p>
+  </div>
+  <div class="identity__section-actions">
+    <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+    @if (permissions.canManageProviders()) {
+      <button mat-flat-button color="primary" type="button" (click)="startCreate()">
+        <mat-icon>add</mat-icon>
+        Create Provider
+      </button>
+    }
+  </div>
+</div>
+
+@if (error()) {
+  <p class="identity__error">{{ error() }}</p>
+}
+@if (message()) {
+  <p class="identity__success">{{ message() }}</p>
+}
+
+@if (showCreate()) {
+  <mat-card class="identity__form">
+    <h3>New provider</h3>
+    <mat-form-field appearance="outline">
+      <mat-label>Name</mat-label>
+      <input matInput [(ngModel)]="newName" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Display name</mat-label>
+      <input matInput [(ngModel)]="newDisplayName" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Type</mat-label>
+      <select matNativeControl [(ngModel)]="newType">
+        <option value="LOCAL">LOCAL</option>
+        <option value="SAML">SAML</option>
+        <option value="OIDC">OIDC</option>
+        <option value="LDAP">LDAP</option>
+      </select>
+    </mat-form-field>
+    <div class="identity__form-row">
+      <button mat-flat-button color="primary" type="button" (click)="createProvider()">Save</button>
+      <button mat-stroked-button type="button" (click)="showCreate.set(false)">Cancel</button>
+    </div>
+  </mat-card>
+}
+
+@if (loading() && providers().length === 0) {
+  <div class="identity__loading"><mat-spinner diameter="36"></mat-spinner></div>
+} @else {
+  <mat-card class="identity__tab-body">
+    <p class="identity__summary">{{ activeProviders().length }} active · {{ providers().length }} total</p>
+    @for (provider of providers(); track provider.id) {
+      <article class="identity__row">
+        <div class="identity__row-main">
+          <mat-icon>{{ providerTypeIcon(provider.type) }}</mat-icon>
+          <div>
+            @if (editId === provider.id) {
+              <mat-form-field appearance="outline">
+                <mat-label>Display name</mat-label>
+                <input matInput [(ngModel)]="editDisplayName" />
+              </mat-form-field>
+              <div class="identity__form-row">
+                <button mat-stroked-button type="button" (click)="saveEdit()">Save</button>
+                <button mat-button type="button" (click)="editId = null">Cancel</button>
+              </div>
+            } @else {
+              <h4>
+                {{ provider.displayName || provider.name }}
+                @if (provider.defaultProvider) {
+                  <span class="identity__badge">Default</span>
+                }
+              </h4>
+              <p>{{ provider.type }} · {{ provider.status }}</p>
+              @if (provider.issuerUrl) {
+                <p class="identity__muted">{{ provider.issuerUrl }}</p>
+              }
+            }
+          </div>
+        </div>
+        <div class="identity__section-actions">
+          @if (permissions.canManageProviders() && editId !== provider.id) {
+            <button mat-stroked-button type="button" (click)="startEdit(provider)">Edit</button>
+            <button mat-stroked-button type="button" (click)="testProvider(provider.id)">Test</button>
+            <button mat-stroked-button type="button" (click)="syncProvider(provider.id)">Sync</button>
+          }
+          <span class="identity__timestamp">{{ provider.updatedAt | date: 'medium' }}</span>
+        </div>
+      </article>
+    } @empty {
+      <p class="identity__empty">No identity providers configured.</p>
+    }
+  </mat-card>
+}

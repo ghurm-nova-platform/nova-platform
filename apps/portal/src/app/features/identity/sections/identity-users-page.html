@@ -1,0 +1,133 @@
+<div class="identity__section-header">
+  <div>
+    <h2>Users</h2>
+    <p class="identity__muted">Create, manage, and audit organization users.</p>
+  </div>
+  <div class="identity__section-actions">
+    <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+    @if (permissions.canManageUsers()) {
+      <button mat-flat-button color="primary" type="button" (click)="startCreate()">
+        <mat-icon>person_add</mat-icon>
+        Create User
+      </button>
+    }
+  </div>
+</div>
+
+@if (error()) {
+  <p class="identity__error">{{ error() }}</p>
+}
+@if (message()) {
+  <p class="identity__success">{{ message() }}</p>
+}
+
+@if (showCreate()) {
+  <mat-card class="identity__form">
+    <h3>New user</h3>
+    <mat-form-field appearance="outline">
+      <mat-label>Email</mat-label>
+      <input matInput [(ngModel)]="newEmail" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Display name</mat-label>
+      <input matInput [(ngModel)]="newDisplayName" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Password</mat-label>
+      <input matInput type="password" [(ngModel)]="newPassword" />
+    </mat-form-field>
+    <div class="identity__form-row">
+      <button mat-flat-button color="primary" type="button" (click)="createUser()">Save</button>
+      <button mat-stroked-button type="button" (click)="showCreate.set(false)">Cancel</button>
+    </div>
+  </mat-card>
+}
+
+@if (loading() && users().length === 0) {
+  <div class="identity__loading"><mat-spinner diameter="36"></mat-spinner></div>
+} @else {
+  <mat-card class="identity__tab-body">
+    @for (user of users(); track user.id) {
+      <article class="identity__row">
+        <div class="identity__row-main">
+          <mat-icon>person</mat-icon>
+          <div>
+            <h4>
+              {{ user.displayName || user.email }}
+              @if (user.locked || user.status === 'LOCKED') {
+                <span class="identity__badge identity__badge--danger">Locked</span>
+              }
+              @if (user.status === 'DISABLED') {
+                <span class="identity__badge identity__badge--warn">Disabled</span>
+              }
+            </h4>
+            <p>{{ user.email }} · {{ user.status }}</p>
+            @if (user.roles.length > 0) {
+              <p>
+                Roles:
+                @for (role of user.roles; track role) {
+                  <mat-chip>{{ role }}</mat-chip>
+                }
+              </p>
+            }
+            @if (user.lastLoginAt) {
+              <p class="identity__muted">Last login {{ user.lastLoginAt | date: 'medium' }}</p>
+            }
+          </div>
+        </div>
+        <div class="identity__section-actions">
+          <button mat-stroked-button type="button" (click)="viewLoginHistory(user)">Login history</button>
+          @if (permissions.canManageUsers()) {
+            @if (user.status === 'DISABLED') {
+              <button mat-stroked-button type="button" (click)="enableUser(user.id)">Enable</button>
+            } @else {
+              <button mat-stroked-button type="button" (click)="disableUser(user.id)">Disable</button>
+            }
+            @if (user.locked || user.status === 'LOCKED') {
+              <button mat-stroked-button type="button" (click)="unlockUser(user.id)">Unlock</button>
+            }
+          }
+        </div>
+      </article>
+    } @empty {
+      <p class="identity__empty">No users found.</p>
+    }
+  </mat-card>
+
+  @if (permissions.canManageUsers()) {
+    <mat-card class="identity__form">
+      <h3>Reset password</h3>
+      <p class="identity__hint">Select a user above, then enter a new password.</p>
+      <mat-form-field appearance="outline">
+        <mat-label>New password</mat-label>
+        <input matInput type="password" [(ngModel)]="resetPasswordValue" />
+      </mat-form-field>
+      @if (selectedUserId(); as userId) {
+        <button mat-stroked-button type="button" (click)="resetPassword(userId)">Reset password</button>
+      }
+    </mat-card>
+  }
+
+  @if (selectedHistory().length > 0) {
+    <mat-card class="identity__tab-body">
+      <h3>Login history</h3>
+      @for (entry of selectedHistory(); track entry.id) {
+        <article class="identity__row">
+          <div class="identity__row-main">
+            <mat-icon>history</mat-icon>
+            <div>
+              <h4>
+                <span [class]="outcomeClass(entry.outcome)">{{ entry.outcome }}</span>
+                · {{ entry.userEmail }}
+              </h4>
+              <p>{{ entry.occurredAt | date: 'medium' }}</p>
+            </div>
+          </div>
+        </article>
+      }
+    </mat-card>
+  }
+}

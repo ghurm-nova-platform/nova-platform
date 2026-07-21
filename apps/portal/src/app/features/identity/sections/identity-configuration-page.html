@@ -1,0 +1,71 @@
+<div class="identity__section-header">
+  <div>
+    <h2>Configuration</h2>
+    <p class="identity__muted">Nova identity settings from GET /api/identity/config.</p>
+  </div>
+  <div class="identity__section-actions">
+    <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </div>
+</div>
+
+@if (loading() && !config()) {
+  <div class="identity__loading"><mat-spinner diameter="36"></mat-spinner></div>
+} @else if (error() && !config()) {
+  <p class="identity__error">{{ error() }}</p>
+} @else if (config(); as cfg) {
+  <mat-card class="identity__tab-body">
+    <h3>Identity configuration</h3>
+    <div class="identity__meta">
+      <span>Enabled: <strong>{{ cfg.enabled ? 'Yes' : 'No' }}</strong></span>
+      <span>JWT access TTL: <strong>{{ cfg.jwtAccessTtlSeconds }}s</strong></span>
+      <span>JWT refresh TTL: <strong>{{ cfg.jwtRefreshTtlSeconds }}s</strong></span>
+      <span>Max concurrent sessions: <strong>{{ cfg.sessionMaxConcurrent }}</strong></span>
+      <span>MFA required: <strong>{{ cfg.mfaRequired ? 'Yes' : 'No' }}</strong></span>
+      <span>SCIM: <strong>{{ cfg.scimEnabled ? 'Enabled' : 'Disabled' }}</strong></span>
+      <span>SAML: <strong>{{ cfg.samlEnabled ? 'Enabled' : 'Disabled' }}</strong></span>
+      <span>OIDC: <strong>{{ cfg.oidcEnabled ? 'Enabled' : 'Disabled' }}</strong></span>
+      <span>LDAP: <strong>{{ cfg.ldapEnabled ? 'Enabled' : 'Disabled' }}</strong></span>
+    </div>
+    <p class="identity__policy">Password policy: {{ describePasswordPolicy(cfg) }}</p>
+  </mat-card>
+
+  @if (permissions.canManageMfa()) {
+    <mat-card class="identity__tab-body">
+      <h3>MFA enrollment</h3>
+      <mat-form-field appearance="outline">
+        <mat-label>Method</mat-label>
+        <select matNativeControl [(ngModel)]="selectedMfaMethod">
+          <option value="TOTP">TOTP (authenticator app)</option>
+        </select>
+      </mat-form-field>
+      <button mat-flat-button color="primary" type="button" (click)="startMfaEnrollment()">
+        Start enrollment
+      </button>
+      @if (enrollment(); as enroll) {
+        <div class="identity__form">
+          @if (enroll.qrCodeUri) {
+            <p>QR URI: <code>{{ enroll.qrCodeUri }}</code></p>
+          }
+          @if (enroll.secret) {
+            <p>Secret: <code>{{ enroll.secret }}</code></p>
+          }
+          <mat-form-field appearance="outline">
+            <mat-label>Verification code</mat-label>
+            <input matInput [(ngModel)]="mfaVerifyCode" />
+          </mat-form-field>
+          <button mat-stroked-button type="button" (click)="verifyMfaEnrollment()" [disabled]="!mfaVerifyCode.trim()">
+            Verify enrollment
+          </button>
+        </div>
+      }
+      @if (verifyMessage()) {
+        <p class="identity__success">{{ verifyMessage() }}</p>
+      }
+    </mat-card>
+  } @else {
+    <p class="identity__hint">MFA enrollment requires IDENTITY_MFA_MANAGE or IDENTITY_ADMIN.</p>
+  }
+}

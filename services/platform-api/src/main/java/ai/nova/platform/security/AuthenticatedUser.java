@@ -45,6 +45,10 @@ public class AuthenticatedUser implements UserDetails {
         return organizationId;
     }
 
+    public String getEmail() {
+        return email;
+    }
+
     public String getDisplayName() {
         return displayName;
     }

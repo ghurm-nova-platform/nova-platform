@@ -25,5 +25,6 @@ public enum AuditSource {
     DEPLOYMENT_EXECUTION,
     COLLABORATION,
     KNOWLEDGE,
-    PR_REVIEW
+    PR_REVIEW,
+    IDENTITY
 }

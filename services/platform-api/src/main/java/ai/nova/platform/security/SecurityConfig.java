@@ -19,6 +19,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import ai.nova.platform.audit.filter.AuditRestCaptureFilter;
+import ai.nova.platform.identity.security.SessionAuthenticationFilter;
+import ai.nova.platform.identity.security.TokenAuthenticationFilter;
 import ai.nova.platform.security.JwtAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -38,6 +40,8 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             JwtAuthenticationFilter jwtAuthenticationFilter,
+            TokenAuthenticationFilter tokenAuthenticationFilter,
+            SessionAuthenticationFilter sessionAuthenticationFilter,
             AuditRestCaptureFilter auditRestCaptureFilter)
             throws Exception {
         http
@@ -45,7 +49,22 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login", "/api/auth/refresh", "/api/auth/logout").permitAll()
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/auth/refresh",
+                                "/api/auth/logout",
+                                "/api/identity/login",
+                                "/api/identity/logout",
+                                "/api/identity/refresh-token",
+                                "/api/identity/forgot-password",
+                                "/api/identity/reset-password",
+                                "/api/identity/verify-mfa",
+                                "/api/identity/oidc/callback",
+                                "/api/identity/oauth2/callback",
+                                "/api/identity/saml/acs")
+                        .permitAll()
+                        .requestMatchers("/api/identity/providers/*/authorize")
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/health", "/actuator/health", "/actuator/health/**")
                         .permitAll()
                         .anyRequest().authenticated())
@@ -57,6 +76,8 @@ public class SecurityConfig {
                 }))
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
+                .addFilterBefore(tokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(sessionAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(auditRestCaptureFilter, JwtAuthenticationFilter.class);
 

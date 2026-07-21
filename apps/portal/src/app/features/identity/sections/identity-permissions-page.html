@@ -1,0 +1,101 @@
+<div class="identity__section-header">
+  <div>
+    <h2>Permissions</h2>
+    <p class="identity__muted">Browse and manage fine-grained permission codes.</p>
+  </div>
+  <div class="identity__section-actions">
+    <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+    @if (permissions.canManagePermissions()) {
+      <button mat-flat-button color="primary" type="button" (click)="startCreate()">
+        <mat-icon>add</mat-icon>
+        Create Permission
+      </button>
+    }
+  </div>
+</div>
+
+@if (error()) {
+  <p class="identity__error">{{ error() }}</p>
+}
+@if (message()) {
+  <p class="identity__success">{{ message() }}</p>
+}
+
+<mat-card class="identity__form">
+  <div class="identity__form-row">
+    <mat-form-field appearance="outline">
+      <mat-label>Search</mat-label>
+      <input matInput [(ngModel)]="searchQuery" (keyup.enter)="search()" />
+    </mat-form-field>
+    <button mat-stroked-button type="button" (click)="search()">Search</button>
+  </div>
+</mat-card>
+
+@if (showCreate()) {
+  <mat-card class="identity__form">
+    <h3>New permission</h3>
+    <mat-form-field appearance="outline">
+      <mat-label>Code</mat-label>
+      <input matInput [(ngModel)]="newCode" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Name</mat-label>
+      <input matInput [(ngModel)]="newName" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Category</mat-label>
+      <input matInput [(ngModel)]="newCategory" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Description</mat-label>
+      <input matInput [(ngModel)]="newDescription" />
+    </mat-form-field>
+    <div class="identity__form-row">
+      <button mat-flat-button color="primary" type="button" (click)="createPermission()">Save</button>
+      <button mat-stroked-button type="button" (click)="showCreate.set(false)">Cancel</button>
+    </div>
+  </mat-card>
+}
+
+@if (loading() && items().length === 0) {
+  <div class="identity__loading"><mat-spinner diameter="36"></mat-spinner></div>
+} @else {
+  <mat-card class="identity__tab-body">
+    <p class="identity__summary">{{ filtered().length }} permission(s)</p>
+    @for (item of filtered(); track item.id) {
+      <article class="identity__row">
+        <div class="identity__row-main">
+          <mat-icon>lock</mat-icon>
+          <div>
+            <h4>
+              {{ item.code }}
+              @if (item.systemPermission) {
+                <span class="identity__badge">System</span>
+              }
+            </h4>
+            <p>{{ item.name }}</p>
+            @if (item.category) {
+              <p class="identity__muted">Category: {{ item.category }}</p>
+            }
+            @if (item.description) {
+              <p class="identity__muted">{{ item.description }}</p>
+            }
+          </div>
+        </div>
+        <div class="identity__section-actions">
+          @if (permissions.canManagePermissions() && !item.systemPermission) {
+            <button mat-stroked-button color="warn" type="button" (click)="deletePermission(item.id)">
+              Delete
+            </button>
+          }
+          <span class="identity__timestamp">{{ item.createdAt | date: 'medium' }}</span>
+        </div>
+      </article>
+    } @empty {
+      <p class="identity__empty">No permissions match your search.</p>
+    }
+  </mat-card>
+}

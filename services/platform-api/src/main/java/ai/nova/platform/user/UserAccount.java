@@ -92,4 +92,14 @@ public class UserAccount {
     public Set<Role> getRoles() {
         return roles;
     }
+
+    public void updatePassword(String passwordHash, Instant now) {
+        this.passwordHash = passwordHash;
+        this.updatedAt = now;
+    }
+
+    public void setEnabled(boolean enabled, Instant now) {
+        this.enabled = enabled;
+        this.updatedAt = now;
+    }
 }

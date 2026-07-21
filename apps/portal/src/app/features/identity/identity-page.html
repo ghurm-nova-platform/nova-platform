@@ -1,0 +1,34 @@
+<section class="identity">
+  <header class="identity__header">
+    <div>
+      <h1>Enterprise Identity</h1>
+      <p class="identity__subtitle">
+        Manage users, providers, roles, sessions, and security across your organization.
+      </p>
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="identity__error">You need IDENTITY_READ permission to view this page.</p>
+  } @else {
+    <div class="identity__layout">
+      <nav class="identity__nav" aria-label="Identity sections">
+        <mat-nav-list>
+          @for (item of navItems; track item.path) {
+            <a
+              mat-list-item
+              [routerLink]="item.path"
+              routerLinkActive="identity__nav-link--active"
+            >
+              <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+              <span matListItemTitle>{{ item.label }}</span>
+            </a>
+          }
+        </mat-nav-list>
+      </nav>
+      <div class="identity__content">
+        <router-outlet />
+      </div>
+    </div>
+  }
+</section>

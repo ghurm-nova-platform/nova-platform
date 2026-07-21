@@ -59,3 +59,7 @@ Seeded by Flyway for local development only:
 - Role: `ORG_ADMIN`
 
 Change the password before any shared environment. Do not reuse the seed password outside local demos.
+
+## Relationship to Enterprise Identity
+
+When `nova.identity.enabled=true` (default), `/api/auth/login`, `/api/auth/refresh`, and `/api/auth/logout` delegate to the Enterprise Identity `AuthenticationService`. Prefer `/api/identity/*` for new enterprise flows (MFA, providers, sessions, RBAC admin). See [Enterprise Identity](046_ENTERPRISE_IDENTITY.md) and [OpenAPI](openapi/identity-openapi.yaml).

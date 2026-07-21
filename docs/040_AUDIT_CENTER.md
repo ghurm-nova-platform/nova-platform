@@ -4,7 +4,7 @@ Sprint 4 Phase 6 — Enterprise Audit Center provides an authoritative append-on
 
 ## Purpose
 
-1. Capture immutable audit events across releases, deployments, rollbacks, environments, policies, security, and REST API access
+1. Capture immutable audit events across releases, deployments, rollbacks, environments, policies, security, REST API access, and Enterprise Identity (`AuditSource.IDENTITY`)
 2. Support search, entity history, and correlation by `correlationId`, `requestId`, and `sessionId`
 3. Remain separate from domain `*_audit_log` and `*_events` tables
 

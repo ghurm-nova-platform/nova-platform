@@ -37,6 +37,13 @@ export const routes: Routes = [
           import('./features/pr-review/pr-review-page').then((m) => m.PrReviewPage),
       },
       {
+        path: 'identity',
+        loadComponent: () =>
+          import('./features/identity/identity-page').then((m) => m.IdentityPage),
+        loadChildren: () =>
+          import('./features/identity/identity.routes').then((m) => m.identityRoutes),
+      },
+      {
         path: 'organizations',
         loadComponent: () =>
           import('./features/organizations/organizations-page').then((m) => m.OrganizationsPage),

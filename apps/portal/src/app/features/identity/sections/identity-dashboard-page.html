@@ -1,0 +1,90 @@
+<div class="identity__section-header">
+  <div>
+    <h2>Dashboard</h2>
+    <p class="identity__muted">Overview of users, sessions, and security activity.</p>
+  </div>
+  <div class="identity__section-actions">
+    <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </div>
+</div>
+
+@if (loading() && !stats()) {
+  <div class="identity__loading"><mat-spinner diameter="36"></mat-spinner></div>
+} @else if (error() && !stats()) {
+  <p class="identity__error">{{ error() }}</p>
+} @else if (stats(); as s) {
+  @if (fallbackNotice()) {
+    <p class="identity__notice">{{ fallbackNotice() }}</p>
+  }
+
+  <div class="identity__stats">
+    <div class="identity__stat">
+      <span class="identity__stat-label">Active Users</span>
+      <span class="identity__stat-value">{{ s.activeUsers }}</span>
+    </div>
+    <div class="identity__stat">
+      <span class="identity__stat-label">Online Sessions</span>
+      <span class="identity__stat-value">{{ s.onlineSessions }}</span>
+    </div>
+    <div class="identity__stat">
+      <span class="identity__stat-label">Failed Logins</span>
+      <span class="identity__stat-value">{{ s.failedLogins24h }}</span>
+    </div>
+    <div class="identity__stat">
+      <span class="identity__stat-label">Locked Accounts</span>
+      <span class="identity__stat-value">{{ s.lockedAccounts }}</span>
+    </div>
+    <div class="identity__stat">
+      <span class="identity__stat-label">MFA Adoption</span>
+      <span class="identity__stat-value">{{ s.mfaAdoptionPercent }}%</span>
+    </div>
+    <div class="identity__stat">
+      <span class="identity__stat-label">Providers</span>
+      <span class="identity__stat-value">{{ s.providerCount }}</span>
+    </div>
+  </div>
+
+  <mat-card class="identity__tab-body">
+    <h3>Recent Logins</h3>
+    @for (entry of recentLogins(); track entry.id) {
+      <article class="identity__row">
+        <div class="identity__row-main">
+          <mat-icon>history</mat-icon>
+          <div>
+            <h4>
+              <span [class]="outcomeClass(entry.outcome)">{{ entry.outcome }}</span>
+              · {{ entry.userEmail }}
+            </h4>
+            <p>{{ entry.authMethod }} · {{ entry.occurredAt | date: 'medium' }}</p>
+            <p class="identity__muted">{{ entry.ipAddress || 'Unknown IP' }}</p>
+          </div>
+        </div>
+      </article>
+    } @empty {
+      <p class="identity__empty">No recent login activity.</p>
+    }
+  </mat-card>
+
+  <mat-card class="identity__tab-body">
+    <h3>Security Alerts</h3>
+    @for (alert of securityAlerts(); track alert.id) {
+      <article class="identity__row">
+        <div class="identity__row-main">
+          <mat-icon>warning</mat-icon>
+          <div>
+            <h4>{{ alert.type }} · {{ alert.userEmail || 'Unknown user' }}</h4>
+            <p>{{ alert.message }}</p>
+            <p class="identity__muted">
+              {{ alert.severity }} · {{ alert.occurredAt | date: 'medium' }}
+            </p>
+          </div>
+        </div>
+      </article>
+    } @empty {
+      <p class="identity__empty">No security alerts.</p>
+    }
+  </mat-card>
+}
