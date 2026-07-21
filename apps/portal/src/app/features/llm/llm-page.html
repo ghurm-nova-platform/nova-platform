@@ -1,0 +1,373 @@
+<section class="llm">
+  <header class="llm__header">
+    <div>
+      <h1>Local LLM Runtime</h1>
+      <p class="llm__subtitle">
+        Manage local providers, models, chats, and prompts through the Platform API gateway only.
+      </p>
+    </div>
+    <div class="llm__actions">
+      <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+      @if (permissions.canRead()) {
+        <button mat-stroked-button type="button" (click)="refreshProviders()" [disabled]="loading()">
+          <mat-icon>monitor_heart</mat-icon>
+          Check providers
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="llm__error">You need LLM_READ permission to view this page.</p>
+  } @else if (loading() && !config()) {
+    <div class="llm__loading"><mat-spinner diameter="36"></mat-spinner></div>
+  } @else {
+    @if (error()) {
+      <p class="llm__error">{{ error() }}</p>
+    }
+
+    <mat-tab-group dynamicHeight>
+      <mat-tab label="Dashboard">
+        <div class="llm__tab-body">
+          <div class="llm__dashboard">
+            <mat-card>
+              <mat-card-header>
+                <mat-card-title>Provider health</mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                @if (providers().length === 0) {
+                  <p class="llm__empty">No provider status available.</p>
+                } @else {
+                  <ul class="llm__list">
+                    @for (provider of providers(); track provider.providerType) {
+                      <li class="llm__list-row">
+                        <div>
+                          <strong>{{ provider.providerType }}</strong>
+                          <span [class]="providerStatusClass(provider.status)">{{ provider.status }}</span>
+                        </div>
+                        <div class="llm__meta">
+                          <span>{{ provider.endpointUrl || 'No endpoint' }}</span>
+                          @if (provider.lastHealthCheckAt) {
+                            <span>{{ provider.lastHealthCheckAt | date: 'medium' }}</span>
+                          }
+                        </div>
+                        @if (provider.lastError) {
+                          <p class="llm__error">{{ provider.lastError }}</p>
+                        }
+                      </li>
+                    }
+                  </ul>
+                }
+              </mat-card-content>
+            </mat-card>
+
+            <mat-card>
+              <mat-card-header>
+                <mat-card-title>Runtime metrics</mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                @if ((metrics() | keyvalue).length === 0) {
+                  <p class="llm__empty">No metrics yet.</p>
+                } @else {
+                  <ul class="llm__scores-list">
+                    @for (entry of metrics() | keyvalue; track entry.key) {
+                      <li>
+                        <span>{{ entry.key }}</span>
+                        <strong>{{ entry.value }}</strong>
+                      </li>
+                    }
+                  </ul>
+                }
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Models">
+        <div class="llm__tab-body">
+          <mat-card>
+            <mat-card-header>
+              <mat-card-title>Registered models</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              @if (models().length === 0) {
+                <p class="llm__empty">No models registered.</p>
+              } @else {
+                <ul class="llm__list">
+                  @for (model of models(); track model.id) {
+                    <li class="llm__list-row">
+                      <div class="llm__model-head">
+                        <div>
+                          <strong>{{ model.displayName }}</strong>
+                          <span class="llm__code">{{ model.code }}</span>
+                        </div>
+                        <span [class]="providerStatusClass(model.status)">{{ model.status }}</span>
+                      </div>
+                      <div class="llm__meta">
+                        <span>{{ model.family }}</span>
+                        <span>{{ model.providerType }}</span>
+                        <span>context {{ model.contextLength }}</span>
+                        <span>{{ model.enabled ? 'Enabled' : 'Disabled' }}</span>
+                      </div>
+                      @if (permissions.canManageModels()) {
+                        <div class="llm__lifecycle">
+                          <button
+                            mat-stroked-button
+                            type="button"
+                            [disabled]="lifecycleBusyId() === model.id"
+                            (click)="runLifecycle(model.id, 'download')"
+                          >
+                            Download
+                          </button>
+                          <button
+                            mat-stroked-button
+                            type="button"
+                            [disabled]="lifecycleBusyId() === model.id"
+                            (click)="runLifecycle(model.id, 'install')"
+                          >
+                            Install
+                          </button>
+                          <button
+                            mat-stroked-button
+                            type="button"
+                            [disabled]="lifecycleBusyId() === model.id"
+                            (click)="runLifecycle(model.id, 'load')"
+                          >
+                            Load
+                          </button>
+                          <button
+                            mat-stroked-button
+                            type="button"
+                            [disabled]="lifecycleBusyId() === model.id"
+                            (click)="runLifecycle(model.id, 'start')"
+                          >
+                            Start
+                          </button>
+                          <button
+                            mat-stroked-button
+                            type="button"
+                            [disabled]="lifecycleBusyId() === model.id"
+                            (click)="runLifecycle(model.id, 'warmup')"
+                          >
+                            Warmup
+                          </button>
+                          <button
+                            mat-stroked-button
+                            type="button"
+                            [disabled]="lifecycleBusyId() === model.id"
+                            (click)="runLifecycle(model.id, 'stop')"
+                          >
+                            Stop
+                          </button>
+                          <button
+                            mat-stroked-button
+                            type="button"
+                            [disabled]="lifecycleBusyId() === model.id"
+                            (click)="runLifecycle(model.id, 'unload')"
+                          >
+                            Unload
+                          </button>
+                          <button
+                            mat-stroked-button
+                            type="button"
+                            [disabled]="lifecycleBusyId() === model.id"
+                            (click)="runLifecycle(model.id, 'restart')"
+                          >
+                            Restart
+                          </button>
+                          @if (model.enabled) {
+                            <button
+                              mat-stroked-button
+                              type="button"
+                              [disabled]="lifecycleBusyId() === model.id"
+                              (click)="runLifecycle(model.id, 'disable')"
+                            >
+                              Disable
+                            </button>
+                          } @else {
+                            <button
+                              mat-flat-button
+                              color="primary"
+                              type="button"
+                              [disabled]="lifecycleBusyId() === model.id"
+                              (click)="runLifecycle(model.id, 'enable')"
+                            >
+                              Enable
+                            </button>
+                          }
+                        </div>
+                      }
+                    </li>
+                  }
+                </ul>
+              }
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Chat">
+        <div class="llm__tab-body llm__chat-layout">
+          <mat-card class="llm__conversations">
+            <mat-card-header>
+              <mat-card-title>Conversations</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              @if (permissions.canInfer()) {
+                <div class="llm__form">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Model</mat-label>
+                    <mat-select [(ngModel)]="selectedModelId">
+                      @for (model of models(); track model.id) {
+                        <mat-option [value]="model.id">{{ model.displayName }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Title</mat-label>
+                    <input matInput [(ngModel)]="chatTitle" />
+                  </mat-form-field>
+                  <button mat-stroked-button type="button" (click)="startConversation()">
+                    New conversation
+                  </button>
+                </div>
+              }
+              <ul class="llm__list">
+                @for (conversation of conversations(); track conversation.id) {
+                  <li>
+                    <button
+                      type="button"
+                      class="llm__list-item"
+                      [class.llm__list-item--active]="selectedConversationId() === conversation.id"
+                      (click)="selectConversation(conversation.id)"
+                    >
+                      <strong>{{ conversation.title || conversation.id }}</strong>
+                      <span>{{ conversation.status }} · in {{ conversation.tokenUsageInput }} / out {{ conversation.tokenUsageOutput }}</span>
+                    </button>
+                  </li>
+                } @empty {
+                  <li class="llm__empty">No conversations yet.</li>
+                }
+              </ul>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card class="llm__chat">
+            <mat-card-header>
+              <mat-card-title>Messages</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="llm__messages">
+                @for (message of messages(); track message.id) {
+                  <article class="llm__message">
+                    <header>
+                      <strong>{{ message.role }}</strong>
+                      <span>{{ message.createdAt | date: 'short' }}</span>
+                    </header>
+                    <p>{{ message.content }}</p>
+                  </article>
+                } @empty {
+                  <p class="llm__empty">Select or start a conversation to chat.</p>
+                }
+              </div>
+
+              @if (lastReply(); as reply) {
+                <div class="llm__meta">
+                  <span>Last reply · {{ reply.providerType }} · {{ reply.latencyMs }} ms</span>
+                  <span>tokens {{ reply.inputTokens }}/{{ reply.outputTokens }}</span>
+                </div>
+              }
+
+              @if (permissions.canInfer()) {
+                <div class="llm__composer">
+                  <mat-form-field appearance="outline" class="llm__full">
+                    <mat-label>Message</mat-label>
+                    <textarea matInput rows="3" [(ngModel)]="chatInput"></textarea>
+                  </mat-form-field>
+                  <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    [disabled]="loading() || !chatInput.trim()"
+                    (click)="sendChat()"
+                  >
+                    Send
+                  </button>
+                </div>
+              } @else {
+                <p class="llm__empty">You need LLM_INFER permission to send chat messages.</p>
+              }
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Prompts">
+        <div class="llm__tab-body">
+          <mat-card>
+            <mat-card-header>
+              <mat-card-title>Prompt templates</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              @if (prompts().length === 0) {
+                <p class="llm__empty">No prompt templates registered.</p>
+              } @else {
+                <ul class="llm__list">
+                  @for (prompt of prompts(); track prompt.id) {
+                    <li class="llm__list-row">
+                      <div class="llm__model-head">
+                        <div>
+                          <strong>{{ prompt.name }}</strong>
+                          <span class="llm__code">{{ prompt.code }}</span>
+                        </div>
+                        <span>{{ prompt.category }}</span>
+                      </div>
+                      <div class="llm__meta">
+                        <span>v{{ prompt.templateVersion }}</span>
+                        <span>{{ prompt.enabled ? 'Enabled' : 'Disabled' }}</span>
+                        <span>{{ prompt.updatedAt | date: 'medium' }}</span>
+                      </div>
+                      <p class="llm__prompt-preview">{{ prompt.userPromptTemplate }}</p>
+                    </li>
+                  }
+                </ul>
+              }
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Configuration">
+        <div class="llm__tab-body">
+          <mat-card>
+            <mat-card-header>
+              <mat-card-title>Enabled flags</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              @if (config(); as cfg) {
+                <ul class="llm__scores-list">
+                  <li><span>Runtime enabled</span><strong>{{ cfg.enabled ? 'Yes' : 'No' }}</strong></li>
+                  <li><span>Default provider</span><strong>{{ cfg.defaultProvider }}</strong></li>
+                  <li>
+                    <span>Fallback to deterministic</span>
+                    <strong>{{ cfg.fallbackToDeterministic ? 'Yes' : 'No' }}</strong>
+                  </li>
+                  <li><span>Timeout (seconds)</span><strong>{{ cfg.timeoutSeconds }}</strong></li>
+                  <li><span>Ollama</span><strong>{{ cfg.ollamaEnabled ? 'Enabled' : 'Disabled' }}</strong></li>
+                  <li><span>llama.cpp</span><strong>{{ cfg.llamacppEnabled ? 'Enabled' : 'Disabled' }}</strong></li>
+                  <li><span>vLLM</span><strong>{{ cfg.vllmEnabled ? 'Enabled' : 'Disabled' }}</strong></li>
+                </ul>
+              } @else {
+                <p class="llm__empty">Configuration not loaded.</p>
+              }
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  }
+</section>

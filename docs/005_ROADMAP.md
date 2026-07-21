@@ -122,11 +122,21 @@
 
 **Exit criteria:** Operators can view providers, sessions, login history, and MFA status; admins can revoke sessions and enroll MFA without changing the JWT portal contract.
 
+### Sprint 6 — Local LLM Runtime (Phase 5)
+
+- Gateway-only local inference via `LLMGateway` (`ai.nova.platform.llm`); no direct Ollama/llama.cpp/vLLM from other modules
+- Providers: `DETERMINISTIC` (default/fallback), `OLLAMA`, `LLAMA_CPP`, `VLLM`
+- Model registry and lifecycle (download/install/load/start/stop/warmup); chat, completions, stream, conversations, prompt templates
+- Flyway V59 tables: `llm_models`, `llm_conversations`, `llm_messages`, `llm_prompt_templates`, `llm_provider_status`, …
+- Permissions `LLM_READ`, `LLM_ADMIN`, `LLM_INFER`, `LLM_MODEL_ADMIN`, `LLM_PROMPT_ADMIN`; audit via `AuditSource.LLM_RUNTIME`
+- Portal `/llm`; REST `/api/llm`; metrics `nova.llm.*`
+
+**Exit criteria:** Operators can inspect provider health, manage model lifecycle, chat through `/api/llm/chat`, and confirm other modules never bypass the gateway.
+
 ## After Beta
 
 - LLM-assisted PR review (optional)
 - SMS OTP for MFA (if required)
 - Self-hosted deployment
-- Local model support
 - Marketplace foundations
 - Desktop client

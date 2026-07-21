@@ -26,5 +26,6 @@ public enum AuditSource {
     COLLABORATION,
     KNOWLEDGE,
     PR_REVIEW,
-    IDENTITY
+    IDENTITY,
+    LLM_RUNTIME
 }

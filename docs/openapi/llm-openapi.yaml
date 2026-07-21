@@ -1,0 +1,1020 @@
+openapi: 3.0.3
+info:
+  title: Nova Platform Local LLM Runtime API
+  version: 0.1.0
+  description: |
+    Local LLM Runtime REST surface under `/api/llm`.
+    All inference goes through the Platform API gateway. Clients must not call Ollama, llama.cpp, or vLLM directly.
+servers:
+  - url: /
+tags:
+  - name: Config
+  - name: Providers
+  - name: Models
+  - name: Inference
+  - name: Conversations
+  - name: Prompts
+security:
+  - bearerAuth: []
+paths:
+  /api/llm/config:
+    get:
+      tags: [Config]
+      summary: Runtime feature flags
+      responses:
+        '200':
+          description: Config summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResponse'
+  /api/llm/runtime-config:
+    get:
+      tags: [Config]
+      summary: List runtime config entries
+      responses:
+        '200':
+          description: Config entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConfigEntryView'
+    post:
+      tags: [Config]
+      summary: Set runtime config entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetConfigRequest'
+      responses:
+        '200':
+          description: Updated entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigEntryView'
+  /api/llm/health:
+    get:
+      tags: [Providers]
+      summary: Aggregate provider health
+      responses:
+        '200':
+          description: Health response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /api/llm/metrics:
+    get:
+      tags: [Config]
+      summary: Metrics summary
+      responses:
+        '200':
+          description: Metrics map
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsSummaryResponse'
+  /api/llm/providers:
+    get:
+      tags: [Providers]
+      summary: List provider status
+      responses:
+        '200':
+          description: Provider statuses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProviderStatusView'
+  /api/llm/providers/health:
+    post:
+      tags: [Providers]
+      summary: Refresh provider health checks
+      responses:
+        '200':
+          description: Updated statuses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProviderStatusView'
+  /api/llm/models:
+    get:
+      tags: [Models]
+      summary: List models
+      responses:
+        '200':
+          description: Models
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ModelView'
+    post:
+      tags: [Models]
+      summary: Register model
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterModelRequest'
+      responses:
+        '200':
+          description: Registered model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelView'
+  /api/llm/models/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Models]
+      summary: Get model
+      responses:
+        '200':
+          description: Model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelView'
+    put:
+      tags: [Models]
+      summary: Update model
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateModelRequest'
+      responses:
+        '200':
+          description: Updated model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelView'
+    delete:
+      tags: [Models]
+      summary: Delete model
+      responses:
+        '204':
+          description: Deleted
+  /api/llm/models/{id}/enable:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Models]
+      summary: Enable model
+      responses:
+        '200':
+          description: Model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelView'
+  /api/llm/models/{id}/disable:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Models]
+      summary: Disable model
+      responses:
+        '200':
+          description: Model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelView'
+  /api/llm/models/{id}/install:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Models]
+      summary: Install model
+      responses:
+        '200':
+          description: Model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelView'
+  /api/llm/models/{id}/download:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Models]
+      summary: Download model
+      responses:
+        '200':
+          description: Model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelView'
+  /api/llm/models/{id}/load:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Models]
+      summary: Load model
+      responses:
+        '200':
+          description: Model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelView'
+  /api/llm/models/{id}/unload:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Models]
+      summary: Unload model
+      responses:
+        '200':
+          description: Model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelView'
+  /api/llm/models/{id}/start:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Models]
+      summary: Start model
+      responses:
+        '200':
+          description: Model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelView'
+  /api/llm/models/{id}/stop:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Models]
+      summary: Stop model
+      responses:
+        '200':
+          description: Model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelView'
+  /api/llm/models/{id}/restart:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Models]
+      summary: Restart model
+      responses:
+        '200':
+          description: Model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelView'
+  /api/llm/models/{id}/warmup:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Models]
+      summary: Warmup model
+      responses:
+        '200':
+          description: Model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelView'
+  /api/llm/models/{id}/health:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Models]
+      summary: Model health map
+      responses:
+        '200':
+          description: Health details
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /api/llm/chat:
+    post:
+      tags: [Inference]
+      summary: Chat completion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionRequest'
+      responses:
+        '200':
+          description: Completion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompletionResponse'
+  /api/llm/completions:
+    post:
+      tags: [Inference]
+      summary: Text completion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TextCompletionRequest'
+      responses:
+        '200':
+          description: Completion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompletionResponse'
+  /api/llm/batch:
+    post:
+      tags: [Inference]
+      summary: Batch chat completions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchCompletionRequest'
+      responses:
+        '200':
+          description: Completions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompletionResponse'
+  /api/llm/chat/stream:
+    post:
+      tags: [Inference]
+      summary: Stream chat completion (SSE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionRequest'
+      responses:
+        '200':
+          description: Server-sent events stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  /api/llm/cancel/{token}:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags: [Inference]
+      summary: Cancel in-flight completion
+      responses:
+        '200':
+          description: Cancel result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cancelled:
+                    type: boolean
+  /api/llm/conversations:
+    get:
+      tags: [Conversations]
+      summary: List conversations
+      responses:
+        '200':
+          description: Conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConversationView'
+    post:
+      tags: [Conversations]
+      summary: Create conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateConversationRequest'
+      responses:
+        '200':
+          description: Conversation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationView'
+  /api/llm/conversations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Conversations]
+      summary: Get conversation
+      responses:
+        '200':
+          description: Conversation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationView'
+  /api/llm/conversations/{id}/messages:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Conversations]
+      summary: Message history
+      responses:
+        '200':
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MessageView'
+    post:
+      tags: [Conversations]
+      summary: Append message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppendMessageRequest'
+      responses:
+        '200':
+          description: Message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageView'
+  /api/llm/conversations/{id}/summary:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Conversations]
+      summary: Summarize conversation
+      responses:
+        '200':
+          description: Conversation with summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationView'
+  /api/llm/prompts:
+    get:
+      tags: [Prompts]
+      summary: List prompt templates
+      responses:
+        '200':
+          description: Prompts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PromptView'
+    post:
+      tags: [Prompts]
+      summary: Create prompt template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePromptRequest'
+      responses:
+        '200':
+          description: Prompt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptView'
+  /api/llm/prompts/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Prompts]
+      summary: Get prompt template
+      responses:
+        '200':
+          description: Prompt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptView'
+    put:
+      tags: [Prompts]
+      summary: Update prompt template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePromptRequest'
+      responses:
+        '200':
+          description: Prompt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptView'
+    delete:
+      tags: [Prompts]
+      summary: Delete prompt template
+      responses:
+        '204':
+          description: Deleted
+  /api/llm/prompts/{id}/render:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    post:
+      tags: [Prompts]
+      summary: Render prompt with variables
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenderPromptRequest'
+      responses:
+        '200':
+          description: Rendered prompts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RenderPromptResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    ConfigResponse:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        defaultProvider:
+          type: string
+        fallbackToDeterministic:
+          type: boolean
+        timeoutSeconds:
+          type: integer
+        ollamaEnabled:
+          type: boolean
+        llamacppEnabled:
+          type: boolean
+        vllmEnabled:
+          type: boolean
+    MetricsSummaryResponse:
+      type: object
+      properties:
+        metrics:
+          type: object
+          additionalProperties: true
+    HealthResponse:
+      type: object
+      properties:
+        providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProviderStatusView'
+    ProviderStatusView:
+      type: object
+      properties:
+        providerType:
+          $ref: '#/components/schemas/LlmProviderType'
+        status:
+          $ref: '#/components/schemas/LlmProviderHealthStatus'
+        endpointUrl:
+          type: string
+          nullable: true
+        lastHealthCheckAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastError:
+          type: string
+          nullable: true
+    ModelView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        code:
+          type: string
+        displayName:
+          type: string
+        family:
+          $ref: '#/components/schemas/LlmModelFamily'
+        providerType:
+          $ref: '#/components/schemas/LlmProviderType'
+        status:
+          $ref: '#/components/schemas/LlmModelStatus'
+        enabled:
+          type: boolean
+        contextLength:
+          type: integer
+        endpointUrl:
+          type: string
+          nullable: true
+        owner:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    RegisterModelRequest:
+      type: object
+      required: [code, displayName, family, providerType]
+      properties:
+        code:
+          type: string
+        displayName:
+          type: string
+        family:
+          $ref: '#/components/schemas/LlmModelFamily'
+        providerType:
+          $ref: '#/components/schemas/LlmProviderType'
+        contextLength:
+          type: integer
+          nullable: true
+        endpointUrl:
+          type: string
+          nullable: true
+        owner:
+          type: string
+          nullable: true
+        capabilitiesJson:
+          type: string
+          nullable: true
+        tagsJson:
+          type: string
+          nullable: true
+    UpdateModelRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+          nullable: true
+        family:
+          $ref: '#/components/schemas/LlmModelFamily'
+        contextLength:
+          type: integer
+          nullable: true
+        endpointUrl:
+          type: string
+          nullable: true
+        owner:
+          type: string
+          nullable: true
+        capabilitiesJson:
+          type: string
+          nullable: true
+        tagsJson:
+          type: string
+          nullable: true
+    ChatMessageDto:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+        content:
+          type: string
+    ChatCompletionRequest:
+      type: object
+      properties:
+        modelCode:
+          type: string
+          nullable: true
+        modelId:
+          type: string
+          format: uuid
+          nullable: true
+        conversationId:
+          type: string
+          format: uuid
+          nullable: true
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessageDto'
+        maxTokens:
+          type: integer
+          nullable: true
+        temperature:
+          type: number
+          nullable: true
+        context:
+          type: string
+          nullable: true
+        knowledgeDocumentIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          nullable: true
+    TextCompletionRequest:
+      type: object
+      required: [prompt]
+      properties:
+        modelCode:
+          type: string
+          nullable: true
+        modelId:
+          type: string
+          format: uuid
+          nullable: true
+        prompt:
+          type: string
+        maxTokens:
+          type: integer
+          nullable: true
+        temperature:
+          type: number
+          nullable: true
+    BatchCompletionRequest:
+      type: object
+      required: [requests]
+      properties:
+        requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatCompletionRequest'
+    CompletionResponse:
+      type: object
+      properties:
+        content:
+          type: string
+        inputTokens:
+          type: integer
+        outputTokens:
+          type: integer
+        latencyMs:
+          type: integer
+          format: int64
+        providerType:
+          $ref: '#/components/schemas/LlmProviderType'
+        finishReason:
+          type: string
+          nullable: true
+        conversationId:
+          type: string
+          format: uuid
+          nullable: true
+        cancelToken:
+          type: string
+          nullable: true
+    PromptView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        category:
+          $ref: '#/components/schemas/LlmPromptCategory'
+        systemPrompt:
+          type: string
+          nullable: true
+        userPromptTemplate:
+          type: string
+        assistantPromptTemplate:
+          type: string
+          nullable: true
+        variablesJson:
+          type: string
+          nullable: true
+        templateVersion:
+          type: integer
+        enabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CreatePromptRequest:
+      type: object
+      required: [code, name, category, userPromptTemplate]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        category:
+          $ref: '#/components/schemas/LlmPromptCategory'
+        systemPrompt:
+          type: string
+          nullable: true
+        userPromptTemplate:
+          type: string
+        assistantPromptTemplate:
+          type: string
+          nullable: true
+        variablesJson:
+          type: string
+          nullable: true
+    UpdatePromptRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        category:
+          $ref: '#/components/schemas/LlmPromptCategory'
+        systemPrompt:
+          type: string
+          nullable: true
+        userPromptTemplate:
+          type: string
+          nullable: true
+        assistantPromptTemplate:
+          type: string
+          nullable: true
+        variablesJson:
+          type: string
+          nullable: true
+        enabled:
+          type: boolean
+          nullable: true
+    RenderPromptRequest:
+      type: object
+      properties:
+        variables:
+          type: object
+          additionalProperties:
+            type: string
+    RenderPromptResponse:
+      type: object
+      properties:
+        systemPrompt:
+          type: string
+          nullable: true
+        userPrompt:
+          type: string
+          nullable: true
+        assistantPrompt:
+          type: string
+          nullable: true
+    ConversationView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        modelId:
+          type: string
+          format: uuid
+          nullable: true
+        projectId:
+          type: string
+          format: uuid
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/LlmConversationStatus'
+        summary:
+          type: string
+          nullable: true
+        tokenUsageInput:
+          type: integer
+        tokenUsageOutput:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    MessageView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        role:
+          $ref: '#/components/schemas/LlmMessageRole'
+        content:
+          type: string
+        tokenCount:
+          type: integer
+          nullable: true
+        sequenceNo:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    CreateConversationRequest:
+      type: object
+      properties:
+        modelId:
+          type: string
+          format: uuid
+          nullable: true
+        projectId:
+          type: string
+          format: uuid
+          nullable: true
+        title:
+          type: string
+          nullable: true
+    AppendMessageRequest:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          $ref: '#/components/schemas/LlmMessageRole'
+        content:
+          type: string
+    ConfigEntryView:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    SetConfigRequest:
+      type: object
+      required: [key, value]
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+    LlmProviderType:
+      type: string
+      enum: [OLLAMA, LLAMA_CPP, VLLM, OPENAI, AZURE_OPENAI, ANTHROPIC, GEMINI, MISTRAL, DETERMINISTIC]
+    LlmProviderHealthStatus:
+      type: string
+      enum: [UNKNOWN, HEALTHY, DEGRADED, UNAVAILABLE, DISABLED]
+    LlmModelFamily:
+      type: string
+      enum: [LLAMA_3, LLAMA_3_1, LLAMA_3_2, QWEN, DEEPSEEK, PHI, GEMMA, MISTRAL, TINYLLAMA, CODELLAMA, CUSTOM]
+    LlmModelStatus:
+      type: string
+      enum: [REGISTERED, DOWNLOADING, INSTALLED, LOADING, READY, UNLOADING, STOPPED, ERROR, DISABLED]
+    LlmPromptCategory:
+      type: string
+      enum: [CHAT, RAG, SUMMARIZATION, CLASSIFICATION, TRANSLATION, SQL_GENERATION, CODE_GENERATION, PR_REVIEW, KNOWLEDGE_SEARCH, WORKFLOW_AUTOMATION, CUSTOM]
+    LlmMessageRole:
+      type: string
+      enum: [SYSTEM, USER, ASSISTANT, TOOL]
+    LlmConversationStatus:
+      type: string
+      enum: [ACTIVE, ARCHIVED, DELETED]
