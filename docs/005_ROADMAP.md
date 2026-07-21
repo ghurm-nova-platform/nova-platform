@@ -99,6 +99,7 @@
 **Exit criteria:** Operators can store, search, relate, and export structured project knowledge via API with full audit trail, without embedding provider dependency.
 
 ## After Beta
+
 - Pull-request review automation
 - Enterprise SSO and LDAP
 - Self-hosted deployment
