@@ -37,8 +37,7 @@ public final class PrReviewTestFixture {
                 List.of("USER"),
                 List.of(
                         PullRequestReviewAuthorizationService.PR_REVIEW_READ,
-                        PullRequestReviewAuthorizationService.PR_REVIEW_RUN,
-                        PullRequestReviewAuthorizationService.PR_REVIEW_EXPORT),
+                        PullRequestReviewAuthorizationService.PR_REVIEW_RUN),
                 true);
     }
 
@@ -52,7 +51,6 @@ public final class PrReviewTestFixture {
                 List.of(
                         PullRequestReviewAuthorizationService.PR_REVIEW_READ,
                         PullRequestReviewAuthorizationService.PR_REVIEW_RUN,
-                        PullRequestReviewAuthorizationService.PR_REVIEW_EXPORT,
                         PullRequestReviewAuthorizationService.PR_REVIEW_ADMIN),
                 true);
     }
