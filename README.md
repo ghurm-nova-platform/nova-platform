@@ -76,6 +76,7 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 - [Environment Management](docs/039_ENVIRONMENT_MANAGEMENT.md)
 - [Enterprise Audit Center](docs/040_AUDIT_CENTER.md)
 - [Enterprise Dashboard](docs/042_ENTERPRISE_DASHBOARD.md)
+- [Multi-Agent Collaboration](docs/043_MULTI_AGENT_COLLABORATION.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 ## Engineering principles
@@ -91,4 +92,4 @@ See [`infrastructure/local/README.md`](infrastructure/local/README.md) for opera
 
 ## Current status
 
-Sprint 4 Phase 6 — Enterprise Audit Center provides an append-only authoritative audit trail with read-only APIs and portal search. Domain `*_audit_log` / `*_events` tables remain unchanged.
+Sprint 6 Phase 1 — Multi-Agent Collaboration Framework coordinates existing agents in collaboration sessions with shared context, immutable messages, parallel groups, conflict detection, and append-only timeline. Sprint 5 delivered Deployment Execution and Enterprise Dashboard on `main`.

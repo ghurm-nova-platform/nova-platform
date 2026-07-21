@@ -1136,7 +1136,7 @@ Migrations: `V16__knowledge_base.sql`, `V17__knowledge_embeddings.sql`, `V18__kn
 `V22__model_gateway_permissions.sql`, `V23__provider_secret_vault.sql`,
 `V24__provider_connection_metadata.sql`, `V25__provider_secret_permissions.sql`,
 `V34__planner_templates.sql`, `V35__generated_artifacts.sql`, `V36__review_findings.sql`,
-`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`, `V40__pull_request_operations.sql`, `V41__ci_observation.sql`, `V42__repair_agent.sql`, `V43__approval_gate.sql`, `V44__merge_agent.sql`, `V45__release_manager.sql`, `V46__deployment_observation.sql`, `V47__rollback_manager.sql`, `V48__release_policies.sql`, `V49__environment_management.sql`, `V50__audit_center.sql`, `V51__audit_database_immutability` (Java migration), `V52__deployment_execution.sql`, `V54__dashboard_permissions.sql`.
+`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`, `V40__pull_request_operations.sql`, `V41__ci_observation.sql`, `V42__repair_agent.sql`, `V43__approval_gate.sql`, `V44__merge_agent.sql`, `V45__release_manager.sql`, `V46__deployment_observation.sql`, `V47__rollback_manager.sql`, `V48__release_policies.sql`, `V49__environment_management.sql`, `V50__audit_center.sql`, `V51__audit_database_immutability` (Java migration), `V52__deployment_execution.sql`, `V54__dashboard_permissions.sql`, `V55__collaboration_framework.sql`.
 See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md),
 [`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md),

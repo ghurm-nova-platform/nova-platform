@@ -45,3 +45,4 @@ Architecture Decision Records (ADRs) capture decisions that materially affect No
 | [ADR-0029](ADR-0029-audit-center.md) | Enterprise Audit Center append-only trail | Accepted |
 | [ADR-0030](ADR-0030-deployment-execution.md) | Deployment Execution Engine (provider-based) | Accepted |
 | [ADR-0031](ADR-0031-enterprise-dashboard.md) | Enterprise Dashboard read-only aggregation | Accepted |
+| [ADR-0032](ADR-0032-multi-agent-collaboration.md) | Multi-Agent Collaboration Framework | Accepted |
