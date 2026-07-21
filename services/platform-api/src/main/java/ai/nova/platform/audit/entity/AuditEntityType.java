@@ -11,5 +11,6 @@ public enum AuditEntityType {
     TASK,
     REPOSITORY,
     USER,
-    CONFIGURATION
+    CONFIGURATION,
+    KNOWLEDGE
 }

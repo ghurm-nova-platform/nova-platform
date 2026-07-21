@@ -1,0 +1,361 @@
+<section class="knowledge-engine">
+  <header class="knowledge-engine__header">
+    <div>
+      <h1>Knowledge &amp; Memory Engine</h1>
+      <p class="knowledge-engine__subtitle">
+        Browse, search, and import organizational knowledge documents.
+      </p>
+    </div>
+    <div class="knowledge-engine__actions">
+      <button mat-stroked-button type="button" (click)="refreshDocuments()" [disabled]="loading()">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+      @if (selectedDocumentId()) {
+        <button mat-stroked-button type="button" (click)="refreshSelected()" [disabled]="loading()">
+          <mat-icon>sync</mat-icon>
+          Refresh document
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="knowledge-engine__error">You need KNOWLEDGE_READ permission to view this page.</p>
+  } @else if (loading() && documents().length === 0 && !documentDetail()) {
+    <div class="knowledge-engine__loading">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  } @else if (error() && !documentDetail() && documents().length === 0) {
+    <p class="knowledge-engine__error">{{ error() }}</p>
+  } @else {
+    <mat-tab-group class="knowledge-engine__tabs" dynamicHeight>
+      <mat-tab label="Documents">
+        <div class="knowledge-engine__layout">
+          <mat-card class="knowledge-engine__sidebar">
+            <mat-card-header>
+              <mat-card-title>Documents</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              @if (documents().length === 0) {
+                <p class="knowledge-engine__empty">No documents yet.</p>
+              } @else {
+                <ul class="knowledge-engine__doc-list">
+                  @for (document of documents(); track document.id) {
+                    <li>
+                      <button
+                        type="button"
+                        class="knowledge-engine__doc-item"
+                        [class.knowledge-engine__doc-item--active]="selectedDocumentId() === document.id"
+                        (click)="selectDocument(document)"
+                      >
+                        <span class="knowledge-engine__doc-title">{{ document.title }}</span>
+                        <span [class]="statusClass(document.status)">{{ document.status }}</span>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+            </mat-card-content>
+          </mat-card>
+
+          @if (documentDetail(); as detail) {
+            <mat-card class="knowledge-engine__detail">
+              <mat-card-header>
+                <mat-card-title>{{ detail.title }}</mat-card-title>
+                <mat-card-subtitle>
+                  {{ detail.category }} · {{ detail.knowledgeType }} · Updated {{ detail.updatedAt | date: 'medium' }}
+                </mat-card-subtitle>
+              </mat-card-header>
+              <mat-card-content>
+                @if (detail.summary) {
+                  <p class="knowledge-engine__summary">{{ detail.summary }}</p>
+                }
+                <div class="knowledge-engine__meta">
+                  <span [class]="statusClass(detail.status)">{{ detail.status }}</span>
+                  <span>{{ detail.visibility }}</span>
+                  <span>v{{ detail.version }}</span>
+                  @for (tag of detail.tags; track tag) {
+                    <span class="knowledge-engine__tag">{{ tag }}</span>
+                  }
+                </div>
+              </mat-card-content>
+            </mat-card>
+          } @else if (selectedDocumentId()) {
+            <div class="knowledge-engine__loading">
+              <mat-spinner diameter="40"></mat-spinner>
+            </div>
+          } @else {
+            <p class="knowledge-engine__empty">Select a document to view details.</p>
+          }
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Search">
+        <div class="knowledge-engine__tab-content">
+          <div class="knowledge-engine__filters">
+            <mat-form-field appearance="outline">
+              <mat-label>Search</mat-label>
+              <input matInput [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Category</mat-label>
+              <mat-select
+                [ngModel]="searchCategory()"
+                (ngModelChange)="searchCategory.set($event); onSearchFiltersChanged()"
+              >
+                <mat-option value="">All</mat-option>
+                @for (category of categoryOptions; track category) {
+                  <mat-option [value]="category">{{ category }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Type</mat-label>
+              <mat-select
+                [ngModel]="searchType()"
+                (ngModelChange)="searchType.set($event); onSearchFiltersChanged()"
+              >
+                <mat-option value="">All</mat-option>
+                @for (type of typeOptions; track type) {
+                  <mat-option [value]="type">{{ type }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Tag</mat-label>
+              <input
+                matInput
+                [ngModel]="searchTag()"
+                (ngModelChange)="searchTag.set($event); onSearchFiltersChanged()"
+              />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Visibility</mat-label>
+              <mat-select
+                [ngModel]="searchVisibility()"
+                (ngModelChange)="searchVisibility.set($event); onSearchFiltersChanged()"
+              >
+                <mat-option value="">All</mat-option>
+                @for (visibility of visibilityOptions; track visibility) {
+                  <mat-option [value]="visibility">{{ visibility }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          @if (searchLoading()) {
+            <div class="knowledge-engine__loading">
+              <mat-spinner diameter="32"></mat-spinner>
+            </div>
+          } @else if (searchResults().length === 0) {
+            <p class="knowledge-engine__empty">No search results.</p>
+          } @else {
+            <div class="knowledge-engine__search-results">
+              @for (result of paginatedSearchResults(); track result.id) {
+                <mat-card>
+                  <mat-card-title>{{ result.title }}</mat-card-title>
+                  <mat-card-subtitle>
+                    {{ result.category }} · {{ result.knowledgeType }} · {{ result.updatedAt | date: 'short' }}
+                  </mat-card-subtitle>
+                  <mat-card-content>
+                    @if (result.summary) {
+                      <p>{{ result.summary }}</p>
+                    }
+                    @if (result.matchedSnippet) {
+                      <pre class="knowledge-engine__snippet">{{ result.matchedSnippet }}</pre>
+                    }
+                  </mat-card-content>
+                </mat-card>
+              }
+            </div>
+            <mat-paginator
+              [length]="searchTotal()"
+              [pageIndex]="searchPageIndex()"
+              [pageSize]="searchPageSize()"
+              [pageSizeOptions]="[5, 10, 25, 50]"
+              (page)="onSearchPage($event)"
+            ></mat-paginator>
+          }
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Categories">
+        <div class="knowledge-engine__tab-content">
+          @if (categories().length === 0) {
+            <p class="knowledge-engine__empty">No categories found.</p>
+          } @else {
+            <div class="knowledge-engine__chip-grid">
+              @for (category of categories(); track category) {
+                <mat-card class="knowledge-engine__chip-card">
+                  <mat-card-content>{{ category }}</mat-card-content>
+                </mat-card>
+              }
+            </div>
+          }
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Tags">
+        <div class="knowledge-engine__tab-content">
+          @if (tags().length === 0) {
+            <p class="knowledge-engine__empty">No tags found.</p>
+          } @else {
+            <div class="knowledge-engine__chip-grid">
+              @for (tag of tags(); track tag) {
+                <mat-card class="knowledge-engine__chip-card">
+                  <mat-card-content>{{ tag }}</mat-card-content>
+                </mat-card>
+              }
+            </div>
+          }
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Relations">
+        <div class="knowledge-engine__tab-content">
+          @if (!documentDetail()) {
+            <p class="knowledge-engine__empty">Select a document to view relations.</p>
+          } @else if (documentDetail()!.relations.length === 0) {
+            <p class="knowledge-engine__empty">No relations for this document.</p>
+          } @else {
+            <table class="knowledge-engine__table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Target document</th>
+                  <th>Target ref</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (relation of documentDetail()!.relations; track relation.id) {
+                  <tr>
+                    <td>{{ relation.relationType }}</td>
+                    <td>{{ relation.targetDocumentId ?? '—' }}</td>
+                    <td>
+                      @if (relation.targetRefType || relation.targetRefId) {
+                        {{ relation.targetRefType ?? 'ref' }}: {{ relation.targetRefId ?? '—' }}
+                      } @else {
+                        —
+                      }
+                    </td>
+                    <td>{{ relation.createdAt | date: 'short' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Projects">
+        <div class="knowledge-engine__tab-content">
+          <mat-form-field appearance="outline" class="knowledge-engine__project-select">
+            <mat-label>Project</mat-label>
+            <mat-select (selectionChange)="selectProject($event.value)">
+              @for (project of projects(); track project.id) {
+                <mat-option [value]="project.id">{{ project.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          @if (!selectedProjectId()) {
+            <p class="knowledge-engine__empty">Select a project to view its documents.</p>
+          } @else if (projectDocuments().length === 0) {
+            <p class="knowledge-engine__empty">No documents for this project.</p>
+          } @else {
+            <ul class="knowledge-engine__doc-list">
+              @for (document of projectDocuments(); track document.id) {
+                <li>
+                  <button
+                    type="button"
+                    class="knowledge-engine__doc-item"
+                    (click)="selectDocument(document)"
+                  >
+                    <span class="knowledge-engine__doc-title">{{ document.title }}</span>
+                    <span [class]="statusClass(document.status)">{{ document.status }}</span>
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Import">
+        <div class="knowledge-engine__tab-content">
+          @if (!permissions.canWrite()) {
+            <p class="knowledge-engine__error">You need KNOWLEDGE_WRITE permission to import documents.</p>
+          } @else {
+            @if (importSuccess()) {
+              <p class="knowledge-engine__success">{{ importSuccess() }}</p>
+            }
+            <div class="knowledge-engine__import-form">
+              <mat-form-field appearance="outline" class="knowledge-engine__import-title">
+                <mat-label>Title</mat-label>
+                <input matInput [ngModel]="importTitle()" (ngModelChange)="importTitle.set($event)" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Category</mat-label>
+                <mat-select [ngModel]="importCategory()" (ngModelChange)="importCategory.set($event)">
+                  @for (category of categoryOptions; track category) {
+                    <mat-option [value]="category">{{ category }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Type</mat-label>
+                <mat-select [ngModel]="importType()" (ngModelChange)="importType.set($event)">
+                  @for (type of typeOptions; track type) {
+                    <mat-option [value]="type">{{ type }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Visibility</mat-label>
+                <mat-select [ngModel]="importVisibility()" (ngModelChange)="importVisibility.set($event)">
+                  @for (visibility of visibilityOptions; track visibility) {
+                    <mat-option [value]="visibility">{{ visibility }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Tags (comma-separated)</mat-label>
+                <input matInput [ngModel]="importTags()" (ngModelChange)="importTags.set($event)" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="knowledge-engine__import-content">
+                <mat-label>Markdown / plain content</mat-label>
+                <textarea
+                  matInput
+                  rows="12"
+                  [ngModel]="importContent()"
+                  (ngModelChange)="importContent.set($event)"
+                ></textarea>
+              </mat-form-field>
+              <button mat-flat-button color="primary" type="button" (click)="importDocument()" [disabled]="loading()">
+                Import document
+              </button>
+            </div>
+          }
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Viewer">
+        <div class="knowledge-engine__tab-content">
+          @if (!documentDetail()) {
+            <p class="knowledge-engine__empty">Select a document to view its content.</p>
+          } @else if (viewerHtml()) {
+            <article class="knowledge-engine__viewer" [innerHTML]="viewerHtml()"></article>
+          } @else {
+            <pre class="knowledge-engine__raw-content"><code>{{ documentDetail()!.content }}</code></pre>
+          }
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+
+    @if (error()) {
+      <p class="knowledge-engine__error">{{ error() }}</p>
+    }
+  }
+</section>

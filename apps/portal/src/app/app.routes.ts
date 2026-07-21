@@ -27,6 +27,11 @@ export const routes: Routes = [
           import('./features/collaboration/collaboration-page').then((m) => m.CollaborationPage),
       },
       {
+        path: 'knowledge',
+        loadComponent: () =>
+          import('./features/knowledge-engine/knowledge-engine-page').then((m) => m.KnowledgeEnginePage),
+      },
+      {
         path: 'organizations',
         loadComponent: () =>
           import('./features/organizations/organizations-page').then((m) => m.OrganizationsPage),

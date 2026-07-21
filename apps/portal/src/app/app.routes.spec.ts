@@ -152,6 +152,7 @@ describe('App routing', () => {
     for (const path of [
       '/dashboard',
       '/collaboration',
+      '/knowledge',
       '/organizations',
       '/projects',
       '/model-providers',

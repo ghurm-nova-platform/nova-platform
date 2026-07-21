@@ -337,6 +337,78 @@ erDiagram
     int total_characters
   }
 
+  KNOWLEDGE_ENGINE_DOCUMENTS {
+    uuid id PK
+    uuid organization_id FK
+    uuid project_id FK
+    string title
+    string summary
+    text content
+    string content_format
+    string knowledge_type
+    string category
+    string status
+    string visibility
+    uuid author_id FK
+    int version
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  KNOWLEDGE_ENGINE_CHUNKS {
+    uuid id PK
+    uuid document_id FK
+    uuid organization_id FK
+    int chunk_number
+    int start_offset
+    int end_offset
+    text content
+    timestamptz created_at
+  }
+
+  KNOWLEDGE_ENGINE_TAGS {
+    uuid id PK
+    uuid organization_id FK
+    string name
+    timestamptz created_at
+  }
+
+  KNOWLEDGE_ENGINE_DOCUMENT_TAGS {
+    uuid document_id FK
+    uuid tag_id FK
+  }
+
+  KNOWLEDGE_ENGINE_RELATIONS {
+    uuid id PK
+    uuid organization_id FK
+    uuid source_document_id FK
+    uuid target_document_id FK
+    string relation_type
+    uuid target_ref_id
+    string target_ref_type
+    timestamptz created_at
+  }
+
+  KNOWLEDGE_ENGINE_ATTACHMENTS {
+    uuid id PK
+    uuid document_id FK
+    uuid organization_id FK
+    string file_name
+    string content_type
+    string storage_ref
+    bigint size_bytes
+    timestamptz created_at
+  }
+
+  KNOWLEDGE_ENGINE_ACCESS_LOGS {
+    uuid id PK
+    uuid document_id FK
+    uuid organization_id FK
+    uuid user_id FK
+    string action
+    timestamptz created_at
+  }
+
   AI_PROVIDERS {
     uuid id PK
     uuid organization_id FK
@@ -1136,7 +1208,7 @@ Migrations: `V16__knowledge_base.sql`, `V17__knowledge_embeddings.sql`, `V18__kn
 `V22__model_gateway_permissions.sql`, `V23__provider_secret_vault.sql`,
 `V24__provider_connection_metadata.sql`, `V25__provider_secret_permissions.sql`,
 `V34__planner_templates.sql`, `V35__generated_artifacts.sql`, `V36__review_findings.sql`,
-`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`, `V40__pull_request_operations.sql`, `V41__ci_observation.sql`, `V42__repair_agent.sql`, `V43__approval_gate.sql`, `V44__merge_agent.sql`, `V45__release_manager.sql`, `V46__deployment_observation.sql`, `V47__rollback_manager.sql`, `V48__release_policies.sql`, `V49__environment_management.sql`, `V50__audit_center.sql`, `V51__audit_database_immutability` (Java migration), `V52__deployment_execution.sql`, `V54__dashboard_permissions.sql`, `V55__collaboration_framework.sql`.
+`V37__testing_results.sql`, `V38__patch_results.sql`, `V39__git_operations.sql`, `V40__pull_request_operations.sql`, `V41__ci_observation.sql`, `V42__repair_agent.sql`, `V43__approval_gate.sql`, `V44__merge_agent.sql`, `V45__release_manager.sql`, `V46__deployment_observation.sql`, `V47__rollback_manager.sql`, `V48__release_policies.sql`, `V49__environment_management.sql`, `V50__audit_center.sql`, `V51__audit_database_immutability` (Java migration), `V52__deployment_execution.sql`, `V54__dashboard_permissions.sql`, `V55__collaboration_framework.sql`, `V56__knowledge_engine.sql`.
 See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`019_AI_MODEL_GATEWAY.md`](019_AI_MODEL_GATEWAY.md),
 [`020_SECURE_PROVIDER_INTEGRATION.md`](020_SECURE_PROVIDER_INTEGRATION.md),
@@ -1150,4 +1222,4 @@ See [`018_KNOWLEDGE_BASE_AND_RAG.md`](018_KNOWLEDGE_BASE_AND_RAG.md),
 [`031_CI_OBSERVATION_AGENT.md`](031_CI_OBSERVATION_AGENT.md),
 [`032_REPAIR_AGENT.md`](032_REPAIR_AGENT.md),
 [`033_APPROVAL_GATE.md`](033_APPROVAL_GATE.md),
-[`034_MERGE_AGENT.md`](034_MERGE_AGENT.md), [`035_RELEASE_MANAGER.md`](035_RELEASE_MANAGER.md), [`036_DEPLOYMENT_OBSERVATION.md`](036_DEPLOYMENT_OBSERVATION.md), [`037_ROLLBACK_MANAGER.md`](037_ROLLBACK_MANAGER.md), [`038_RELEASE_POLICIES.md`](038_RELEASE_POLICIES.md), [`039_ENVIRONMENT_MANAGEMENT.md`](039_ENVIRONMENT_MANAGEMENT.md), [`040_AUDIT_CENTER.md`](040_AUDIT_CENTER.md).
+[`034_MERGE_AGENT.md`](034_MERGE_AGENT.md), [`035_RELEASE_MANAGER.md`](035_RELEASE_MANAGER.md), [`036_DEPLOYMENT_OBSERVATION.md`](036_DEPLOYMENT_OBSERVATION.md), [`037_ROLLBACK_MANAGER.md`](037_ROLLBACK_MANAGER.md), [`038_RELEASE_POLICIES.md`](038_RELEASE_POLICIES.md), [`039_ENVIRONMENT_MANAGEMENT.md`](039_ENVIRONMENT_MANAGEMENT.md), [`040_AUDIT_CENTER.md`](040_AUDIT_CENTER.md), [`043_MULTI_AGENT_COLLABORATION.md`](043_MULTI_AGENT_COLLABORATION.md), [`044_KNOWLEDGE_ENGINE.md`](044_KNOWLEDGE_ENGINE.md).

@@ -71,6 +71,13 @@ nova:
     max-retrieved-characters: 20000
     max-query-characters: 10000
     retrieval-enabled: true
+    engine:
+      enabled: true
+      cache:
+        enabled: true
+        ttl-seconds: 300
+      chunk-size: 1000
+      chunk-overlap: 100
   model-gateway:
     enabled: true
     max-input-characters: 200000

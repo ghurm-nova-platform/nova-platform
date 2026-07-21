@@ -87,7 +87,7 @@ Identity Projects     Agent Runtime   Feedback    Audit/Usage
 - Workflows and Events
 - Tools and Sandboxes
 - Models and Usage
-- Knowledge and Memory
+- Knowledge and Memory Engine — org-scoped structured documents with keyword search, relations, import/export, and agent memory surfacing; parallel to RAG stack, no vectors/embeddings (V56)
 - Feedback Intelligence
 - Audit and Compliance — Enterprise Audit Center publishes lifecycle events from orchestration, all pipeline agents, approval/merge/release managers, environments, policies, deployments, rollbacks, and security/REST capture; V51 database triggers enforce immutability on event rows
 - Enterprise Dashboard — read-only org-scoped aggregation across pipeline, releases, deployments, environments, audit, approvals, CI, and rollbacks; in-memory TTL cache and HTTP polling only (V54 permissions)
