@@ -21,5 +21,6 @@ public enum AuditSource {
     PULL_REQUEST,
     CI_OBSERVATION,
     REPAIR,
-    APPROVAL_GATE
+    APPROVAL_GATE,
+    DEPLOYMENT_EXECUTION
 }

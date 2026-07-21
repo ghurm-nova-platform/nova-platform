@@ -1,0 +1,76 @@
+.deployment-execution-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  max-width: 1200px;
+}
+
+.page-header h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.75rem;
+}
+
+.subtitle {
+  margin: 0.25rem 0;
+  color: #4a5568;
+  max-width: 52rem;
+}
+
+.subtitle.safety {
+  color: #1a365d;
+  font-weight: 600;
+}
+
+.run-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.banner.error {
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  background: #fff5f5;
+  color: #9b2c2c;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 1rem;
+}
+
+.list-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  margin-bottom: 0.5rem;
+}
+
+.list-item.active {
+  border-color: #3182ce;
+  background: #ebf8ff;
+}
+
+.muted {
+  color: #718096;
+}
+
+.logs {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+}

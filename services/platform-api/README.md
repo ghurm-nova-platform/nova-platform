@@ -176,6 +176,10 @@ See [`docs/035_RELEASE_MANAGER.md`](../../docs/035_RELEASE_MANAGER.md) and ADR-0
 
 See [`docs/036_DEPLOYMENT_OBSERVATION.md`](../../docs/036_DEPLOYMENT_OBSERVATION.md) and ADR-0025.
 
+## Deployment Execution Engine
+
+See [`docs/041_DEPLOYMENT_EXECUTION.md`](../../docs/041_DEPLOYMENT_EXECUTION.md) and ADR-0030.
+
 ## Rollback Manager
 
 See [`docs/037_ROLLBACK_MANAGER.md`](../../docs/037_ROLLBACK_MANAGER.md) and ADR-0026.

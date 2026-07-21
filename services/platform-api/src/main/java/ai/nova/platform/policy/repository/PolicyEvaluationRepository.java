@@ -17,4 +17,7 @@ public interface PolicyEvaluationRepository extends JpaRepository<PolicyEvaluati
     Optional<PolicyEvaluationEntity> findFirstByPolicyIdOrderByCreatedAtDesc(UUID policyId);
 
     Optional<PolicyEvaluationEntity> findFirstByPolicyIdOrderByEvaluatedAtDesc(UUID policyId);
+
+    Optional<PolicyEvaluationEntity> findFirstByPolicyIdAndReleaseOperationIdOrderByEvaluatedAtDesc(
+            UUID policyId, UUID releaseOperationId);
 }

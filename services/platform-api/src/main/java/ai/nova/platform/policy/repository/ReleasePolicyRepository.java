@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import ai.nova.platform.policy.entity.PolicyStatus;
 import ai.nova.platform.policy.entity.ReleasePolicyEntity;
 
 public interface ReleasePolicyRepository extends JpaRepository<ReleasePolicyEntity, UUID> {
@@ -18,4 +19,7 @@ public interface ReleasePolicyRepository extends JpaRepository<ReleasePolicyEnti
 
     List<ReleasePolicyEntity> findByOrganizationIdAndProjectIdOrderByPriorityAscCreatedAtDesc(
             UUID organizationId, UUID projectId);
+
+    List<ReleasePolicyEntity> findByOrganizationIdAndProjectIdAndStatusOrderByPriorityAscCreatedAtDesc(
+            UUID organizationId, UUID projectId, PolicyStatus status);
 }

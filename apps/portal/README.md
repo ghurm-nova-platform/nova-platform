@@ -45,6 +45,7 @@ Angular 20 administration portal for organizations, projects, agents, feedback, 
 ## Sprint 4 Phase 2 scope
 
 - Deployment Observation under `/deployments`
+- Deployment Execution Engine under `/deployment-execution` (EXECUTION_RUN / EXECUTION_READ; controlled provider execution; no auto rollback / blue-green / canary)
 - Observe / verify deployment state linked to Releases across environments
 - Deployment list, environment, release version, status, health badges, duration, provider, timeline, history
 - DEPLOYMENT_* permission helper (Platform API only)

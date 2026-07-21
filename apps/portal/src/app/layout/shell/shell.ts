@@ -147,6 +147,12 @@ export class Shell {
       icon: 'cloud_done',
     },
     {
+      labelEn: 'Deployment Execution',
+      labelAr: 'تنفيذ النشر',
+      path: '/deployment-execution',
+      icon: 'play_circle',
+    },
+    {
       labelEn: 'Rollbacks',
       labelAr: 'التراجع',
       path: '/rollbacks',

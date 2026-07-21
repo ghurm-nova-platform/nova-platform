@@ -228,6 +228,16 @@ nova:
     execution-enabled: false
     allow-plan-edit: false
     retain-history: true
+  execution:
+    enabled: true
+    provider: LOCAL
+    retry-count: 0
+    verification-timeout-seconds: 60
+    execution-timeout-seconds: 300
+    worker-count: 4
+    queue-capacity: 32
+    allow-cancel: true
+    rest-base-url: ""
   policy:
     enabled: true
     allow-custom-policies: true

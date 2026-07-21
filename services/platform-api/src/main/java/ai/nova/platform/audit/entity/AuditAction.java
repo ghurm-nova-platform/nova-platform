@@ -18,6 +18,9 @@ public enum AuditAction {
     PREPARE,
     READY,
     PUBLISH,
+    QUEUE,
+    VERIFY,
+    CANCEL,
     LOGIN,
     LOGOUT,
     ACCESS
