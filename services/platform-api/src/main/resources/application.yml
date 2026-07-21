@@ -259,6 +259,10 @@ nova:
     cache:
       enabled: true
       ttl-seconds: 30
+  collaboration:
+    enabled: true
+    polling-seconds: 10
+    max-messages: 500
   secrets:
     master-key: ${NOVA_SECRET_MASTER_KEY:}
 

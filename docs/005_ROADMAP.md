@@ -80,9 +80,18 @@
 
 **Exit criteria:** Operators can view unified pipeline/release/deployment/audit signals without new operational tables or real-time infrastructure.
 
+### Sprint 6 — Multi-Agent Collaboration (Phase 1)
+
+- Collaboration sessions coordinating existing agents on shared orchestration runs
+- Immutable messages, shared context, parallel participant groups, conflict detection
+- Portal `/collaboration` with timeline, participants, tasks, and 10s HTTP polling
+- Audit integration via `AuditSource.COLLABORATION`
+
+**Exit criteria:** Multiple agents collaborate in one session with full timeline, human intervention, and audit trail without distributed messaging.
+
 ## After Beta
 
-- Multiple collaborating engineering agents
+- Knowledge and project memory (collaboration foundation in Sprint 6)
 - Knowledge and project memory
 - Pull-request review automation
 - Enterprise SSO and LDAP

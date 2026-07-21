@@ -63,6 +63,7 @@ export class Shell {
 
   readonly navItems: NavItem[] = [
     { labelEn: 'Dashboard', labelAr: 'لوحة التحكم', path: '/dashboard', icon: 'dashboard' },
+    { labelEn: 'Collaboration', labelAr: 'التعاون', path: '/collaboration', icon: 'groups' },
     { labelEn: 'Organizations', labelAr: 'المنظمات', path: '/organizations', icon: 'business' },
     { labelEn: 'Projects', labelAr: 'المشاريع', path: '/projects', icon: 'folder' },
     { labelEn: 'Model providers', labelAr: 'مزودو النماذج', path: '/model-providers', icon: 'hub' },

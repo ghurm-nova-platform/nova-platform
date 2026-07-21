@@ -1,0 +1,340 @@
+<section class="collaboration">
+  <header class="collaboration__header">
+    <div>
+      <h1>Multi-Agent Collaboration</h1>
+      <p class="collaboration__subtitle">
+        Monitor agent sessions, tasks, decisions, and human-in-the-loop requests.
+      </p>
+    </div>
+    <div class="collaboration__actions">
+      <button mat-stroked-button type="button" (click)="refreshSessions()" [disabled]="loading()">
+        <mat-icon>refresh</mat-icon>
+        Refresh sessions
+      </button>
+      @if (selectedSessionId()) {
+        <button mat-stroked-button type="button" (click)="refreshSelected()" [disabled]="loading()">
+          <mat-icon>sync</mat-icon>
+          Refresh session
+        </button>
+      }
+      @if (permissions.canWrite() && selectedSessionId()) {
+        <button mat-stroked-button type="button" (click)="pauseSelected()" [disabled]="loading()">
+          Pause
+        </button>
+        <button mat-stroked-button type="button" (click)="resumeSelected()" [disabled]="loading()">
+          Resume
+        </button>
+        <button mat-stroked-button color="warn" type="button" (click)="cancelSelected()" [disabled]="loading()">
+          Cancel
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (unauthorized()) {
+    <p class="collaboration__error">You need COLLABORATION_READ permission to view this page.</p>
+  } @else if (loading() && sessions().length === 0) {
+    <div class="collaboration__loading">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  } @else if (error() && !sessionDetail()) {
+    <p class="collaboration__error">{{ error() }}</p>
+  } @else {
+    <div class="collaboration__layout">
+      <mat-card class="collaboration__sessions">
+        <mat-card-header>
+          <mat-card-title>Sessions</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          @if (sessions().length === 0) {
+            <p class="collaboration__empty">No collaboration sessions yet.</p>
+          } @else {
+            <ul class="collaboration__session-list">
+              @for (session of sessions(); track session.id) {
+                <li>
+                  <button
+                    type="button"
+                    class="collaboration__session-item"
+                    [class.collaboration__session-item--active]="selectedSessionId() === session.id"
+                    (click)="selectSession(session)"
+                  >
+                    <span class="collaboration__session-name">{{ session.name }}</span>
+                    <span [class]="statusClass(session.status)">{{ session.status }}</span>
+                    @if (session.conflictDetected) {
+                      <mat-icon class="collaboration__conflict-icon" aria-label="Conflict detected">warning</mat-icon>
+                    }
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </mat-card-content>
+      </mat-card>
+
+      @if (sessionDetail(); as detail) {
+        <div class="collaboration__detail">
+          <mat-card class="collaboration__summary">
+            <mat-card-header>
+              <mat-card-title>{{ detail.name }}</mat-card-title>
+              <mat-card-subtitle>
+                Updated {{ detail.updatedAt | date: 'medium' }}
+                @if (detail.conflictDetected) {
+                  <span class="collaboration__conflict-badge">Conflict detected</span>
+                }
+              </mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="collaboration__stats">
+                <span [class]="statusClass(detail.status)">{{ detail.status }}</span>
+                <span>{{ detail.participants.length }} participants</span>
+                <span>{{ detail.tasks.length }} tasks</span>
+                <span>{{ detail.messages.length }} messages</span>
+                <span>{{ detail.decisions.length }} decisions</span>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-tab-group class="collaboration__tabs" dynamicHeight>
+            <mat-tab label="Overview">
+              <div class="collaboration__tab-content">
+                <div class="collaboration__overview-grid">
+                  <mat-card>
+                    <mat-card-title>Session</mat-card-title>
+                    <mat-card-content>
+                      <dl class="collaboration__dl">
+                        <dt>Project</dt>
+                        <dd>{{ detail.projectId }}</dd>
+                        <dt>Orchestration run</dt>
+                        <dd>{{ detail.orchestrationRunId ?? '—' }}</dd>
+                        <dt>Parallel group</dt>
+                        <dd>{{ detail.parallelGroup ?? '—' }}</dd>
+                        <dt>Started</dt>
+                        <dd>{{ detail.startedAt ? (detail.startedAt | date: 'medium') : '—' }}</dd>
+                        <dt>Completed</dt>
+                        <dd>{{ detail.completedAt ? (detail.completedAt | date: 'medium') : '—' }}</dd>
+                      </dl>
+                    </mat-card-content>
+                  </mat-card>
+                  <mat-card>
+                    <mat-card-title>Shared context</mat-card-title>
+                    <mat-card-content>
+                      @if (detail.sharedContext) {
+                        <dl class="collaboration__dl">
+                          <dt>Branch</dt>
+                          <dd>{{ detail.sharedContext.branch ?? '—' }}</dd>
+                          <dt>Release</dt>
+                          <dd>{{ detail.sharedContext.releaseId ?? '—' }}</dd>
+                          <dt>Environment</dt>
+                          <dd>{{ detail.sharedContext.environmentId ?? '—' }}</dd>
+                          <dt>Execution</dt>
+                          <dd>{{ detail.sharedContext.executionId ?? '—' }}</dd>
+                        </dl>
+                      } @else {
+                        <p class="collaboration__empty">No shared context linked.</p>
+                      }
+                    </mat-card-content>
+                  </mat-card>
+                </div>
+              </div>
+            </mat-tab>
+
+            <mat-tab label="Participants">
+              <div class="collaboration__tab-content">
+                @if (detail.participants.length === 0) {
+                  <p class="collaboration__empty">No participants.</p>
+                } @else {
+                  <table class="collaboration__table">
+                    <thead>
+                      <tr>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Progress</th>
+                        <th>Parallel group</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (participant of detail.participants; track participant.id) {
+                        <tr>
+                          <td>{{ participant.participantRole }}</td>
+                          <td><span [class]="statusClass(participant.status)">{{ participant.status }}</span></td>
+                          <td>{{ participant.progressPercent }}%</td>
+                          <td>{{ participant.parallelGroup ?? '—' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+              </div>
+            </mat-tab>
+
+            <mat-tab label="Timeline">
+              <div class="collaboration__tab-content">
+                @if (detail.timeline.length === 0) {
+                  <p class="collaboration__empty">No timeline events yet.</p>
+                } @else {
+                  <ol class="collaboration__timeline">
+                    @for (event of detail.timeline; track event.id) {
+                      <li class="collaboration__timeline-item">
+                        <div class="collaboration__timeline-marker">
+                          <mat-icon>{{ timelineIcon(event.eventType) }}</mat-icon>
+                        </div>
+                        <div class="collaboration__timeline-body">
+                          <div class="collaboration__timeline-head">
+                            <span class="collaboration__timeline-step">{{ timelineStepLabel(event.eventType) }}</span>
+                            <span class="collaboration__timeline-type">{{ event.eventType }}</span>
+                            <time>{{ event.createdAt | date: 'short' }}</time>
+                          </div>
+                          <p class="collaboration__timeline-summary">{{ event.summary }}</p>
+                          @if (event.actorRole) {
+                            <p class="collaboration__timeline-meta">Actor: {{ event.actorRole }}</p>
+                          }
+                        </div>
+                      </li>
+                    }
+                  </ol>
+                }
+              </div>
+            </mat-tab>
+
+            <mat-tab label="Messages">
+              <div class="collaboration__tab-content">
+                @if (detail.messages.length === 0) {
+                  <p class="collaboration__empty">No messages.</p>
+                } @else {
+                  <div class="collaboration__messages">
+                    @for (message of detail.messages; track message.id) {
+                      <mat-card class="collaboration__message">
+                        <mat-card-header>
+                          <mat-card-title>{{ message.senderRole }}</mat-card-title>
+                          <mat-card-subtitle>{{ message.messageType }} · {{ message.createdAt | date: 'short' }}</mat-card-subtitle>
+                        </mat-card-header>
+                        <mat-card-content>{{ message.content }}</mat-card-content>
+                      </mat-card>
+                    }
+                  </div>
+                }
+              </div>
+            </mat-tab>
+
+            <mat-tab label="Tasks">
+              <div class="collaboration__tab-content">
+                @if (detail.tasks.length === 0) {
+                  <p class="collaboration__empty">No tasks.</p>
+                } @else {
+                  <table class="collaboration__table">
+                    <thead>
+                      <tr>
+                        <th>Key</th>
+                        <th>Title</th>
+                        <th>Status</th>
+                        <th>Parallel group</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (task of detail.tasks; track task.id) {
+                        <tr>
+                          <td>{{ task.taskKey }}</td>
+                          <td>{{ task.title }}</td>
+                          <td><span [class]="statusClass(task.status)">{{ task.status }}</span></td>
+                          <td>{{ task.parallelGroup ?? '—' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+              </div>
+            </mat-tab>
+
+            <mat-tab label="Decisions">
+              <div class="collaboration__tab-content">
+                @if (detail.decisions.length === 0) {
+                  <p class="collaboration__empty">No decisions.</p>
+                } @else {
+                  <div class="collaboration__decisions">
+                    @for (decision of detail.decisions; track decision.id) {
+                      <mat-card>
+                        <mat-card-header>
+                          <mat-card-title>{{ decision.decisionType }}</mat-card-title>
+                          <mat-card-subtitle>{{ decision.createdAt | date: 'short' }}</mat-card-subtitle>
+                        </mat-card-header>
+                        <mat-card-content>{{ decision.summary }}</mat-card-content>
+                      </mat-card>
+                    }
+                  </div>
+                }
+              </div>
+            </mat-tab>
+
+            <mat-tab label="Conflicts">
+              <div class="collaboration__tab-content">
+                @if (!detail.conflictDetected && conflictEvents().length === 0) {
+                  <p class="collaboration__empty">No conflicts detected.</p>
+                } @else {
+                  @if (detail.conflictDetails) {
+                    <mat-card class="collaboration__conflict-card">
+                      <mat-card-title>Conflict details</mat-card-title>
+                      <mat-card-content>
+                        <pre class="collaboration__json">{{ detail.conflictDetails | json }}</pre>
+                      </mat-card-content>
+                    </mat-card>
+                  }
+                  @for (event of conflictEvents(); track event.id) {
+                    <mat-card class="collaboration__conflict-card">
+                      <mat-card-header>
+                        <mat-card-title>{{ event.summary }}</mat-card-title>
+                        <mat-card-subtitle>{{ event.createdAt | date: 'short' }}</mat-card-subtitle>
+                      </mat-card-header>
+                    </mat-card>
+                  }
+                }
+              </div>
+            </mat-tab>
+
+            <mat-tab label="Human Requests">
+              <div class="collaboration__tab-content">
+                @if (humanRequests().messages.length === 0 && humanRequests().decisions.length === 0) {
+                  <p class="collaboration__empty">No pending human requests.</p>
+                } @else {
+                  @if (humanRequests().messages.length > 0) {
+                    <h3>Approval messages</h3>
+                    <div class="collaboration__messages">
+                      @for (message of humanRequests().messages; track message.id) {
+                        <mat-card class="collaboration__message">
+                          <mat-card-header>
+                            <mat-card-title>{{ message.senderRole }}</mat-card-title>
+                            <mat-card-subtitle>{{ message.createdAt | date: 'short' }}</mat-card-subtitle>
+                          </mat-card-header>
+                          <mat-card-content>{{ message.content }}</mat-card-content>
+                        </mat-card>
+                      }
+                    </div>
+                  }
+                  @if (humanRequests().decisions.length > 0) {
+                    <h3>Requested actions</h3>
+                    <div class="collaboration__decisions">
+                      @for (decision of humanRequests().decisions; track decision.id) {
+                        <mat-card>
+                          <mat-card-header>
+                            <mat-card-title>{{ decision.decisionType }}</mat-card-title>
+                            <mat-card-subtitle>{{ decision.createdAt | date: 'short' }}</mat-card-subtitle>
+                          </mat-card-header>
+                          <mat-card-content>{{ decision.summary }}</mat-card-content>
+                        </mat-card>
+                      }
+                    </div>
+                  }
+                }
+              </div>
+            </mat-tab>
+          </mat-tab-group>
+        </div>
+      } @else if (selectedSessionId()) {
+        <div class="collaboration__loading">
+          <mat-spinner diameter="40"></mat-spinner>
+        </div>
+      } @else {
+        <p class="collaboration__empty">Select a session to view collaboration details.</p>
+      }
+    </div>
+  }
+</section>
